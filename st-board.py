@@ -10,4 +10,5 @@ def ipo_year(list_date):
     return year
 
 data['ipo'] = data.list_date.apply(ipo_year)
-data1 = data.groupby(data.ipo //10 *10)
+data1 = data.groupby([data.ipo //10 *10,data.industry])[['list_date','symbol']]
+data1.max()
