@@ -1,14 +1,31 @@
 import tushare as ts
 import pandas as pd
+from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+
+sub_path = r".\data_csv"
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
-data = ts_pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
 
-def ipo_year(list_date):
-    year = list_date[:4]
-    year = pd.to_datetime(year).year
-    return year
+def get_stock_list(return_df = True):
+    """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
+    retrun_df:<bool> 是返回DataFrame数据，否返回None
+    """
+    file_name = "stock_list.csv"
+    df = ts_pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,exchange,curr_type,list_date,delist_date')
+    df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+    if return_df != True:
+        df = None
+    return df
 
-data['ipo'] = data.list_date.apply(ipo_year)
-data1 = data.groupby([data.ipo //10 *10,data.industry])[['list_date','symbol']]
-data1.max()
+def load_stock_list():
+    file_name = "stock_list.csv"
+    try:
+        df = pd.read_csv(sub_path + '\\' + file_name)
+    except FileNotFoundError:
+        add_log(20, '[fn]load_stock_list(). file not found')
+        df = None
+    return df
+
+if __name__ == "__main__":
+    #df = get_stock_list()
+    df = load_stock_list()
