@@ -1,5 +1,6 @@
 import tushare as ts
 import pandas as pd
+from datetime import datetime
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 
 sub_path = r".\data_csv"
@@ -39,7 +40,23 @@ def get_daily_basic(return_df = True):
         df = None
     return df
 
+def last_trad_day_str():
+    """获取最近一个交易日的日期
+    return: <str> in 'YYYYMMDD' e.g.'20190712'
+    未完成"""
+    today = datetime.now()
+
+def get_trade_calendar():
+    """获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
+    日历会更新到当年的年底"""
+    file_name = "trade_calendar.csv"
+    df = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
+    df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+    return df
+
+
 if __name__ == "__main__":
     #df = get_stock_list()
     #df = load_stock_list()
-    df = get_daily_basic()
+    #df = get_daily_basic()
+    df = get_trade_calendar()
