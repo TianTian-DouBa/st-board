@@ -40,11 +40,15 @@ def get_daily_basic(return_df = True):
         df = None
     return df
 
-def last_trad_day_str():
-    """获取最近一个交易日的日期
-    return: <str> in 'YYYYMMDD' e.g.'20190712'
-    未完成"""
+def day_str(mode = 'today'):
+    """返回日期字符串
+    return: <str> in 'YYYYMMDD' e.g.'20190712'"""
+    if lowercase(mode) == 'today
+    
     today = datetime.now()
+    dt_str = today.strftime("%Y%m%d")
+    
+    return dt_str
 
 def get_trade_calendar():
     """获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
@@ -54,9 +58,17 @@ def get_trade_calendar():
     df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
     return df
 
+class Static_Model():
+    """    """
+    def __init__(self):
+        self.trade_calendar = None
+        
+    
+
 
 if __name__ == "__main__":
     #df = get_stock_list()
     #df = load_stock_list()
-    #df = get_daily_basic()
-    df = get_trade_calendar()
+    df = get_daily_basic()
+    cl = get_trade_calendar()
+    last_trad_day_str()
