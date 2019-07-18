@@ -53,33 +53,103 @@ def day_str(mode = 'today'):
     if mode.lower() == 'last_trade_day':
         #未完待续
         #last_trade_day_str = query_last_trade_day(today_str)
+        pass
     
-def query_last_trade_day(dt_str):
-    """查询statics_model.trade_calendar,当天是交易日的话返回当日字符串，否返回前一交易日字符串
-    未完待续
-    """
 
 
 
-def get_trade_calendar():
-    """获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
-    日历会更新到当年的年底"""
-    file_name = "trade_calendar.csv"
-    df = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
-    df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-    return df
+
+
+
+
 
 class Static_Model():
     """    """
-    def __init__(self):
-        self.trade_calendar = None
-        
-    
+    def __init__(self, pull=False):
+        self.trade_calendar = Trade_Calendar(pull)
+        self.stock_list = None
 
+        
+
+
+    
+       
+
+class Trade_Calendar():
+    """    """
+    def __init__(self, pull=False):
+        self.df = None
+        if pull == True:
+            self.get()
+        else:
+            self.load()
+    
+    def load(self):
+        """load trade_calendar.csv文件，读入statics_model.trade_calendar
+        """
+        file_name = "trade_calendar.csv"
+        try:
+            self.df = pd.read_csv(sub_path + '\\' + file_name)
+        except FileNotFoundError:
+            add_log(20, '[fn]Trade_Calendar.load(). file not found')
+            self.df = None
+        return
+    
+    def get(self):
+        """获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
+        日历会更新到当年的年底"""
+        file_name = "trade_calendar.csv"
+        self.df = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
+        self.df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        return
+    
+    def valid(self):
+        """to valid trade_calendar
+        return: True or False"""
+        if isinstance(self.df,pd.DataFrame):
+            return True
+        else:
+            return False
+    
+    def last_trade_day(self, dt_str = None):
+        """查询指定日最近的交易日，返回日期字符串
+        dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+                None 代表当日
+        return: <string> in 'YYYYMMDD' e.g.'20190719'
+        """
+        if not self.valid():
+            add_log(20, '[fn]Trade_Calendar.last_trade_day() df not valid')
+            return None
+        if dt_str == None:
+            dt = datetime.now()
+            dt_str = dt.strftime("%Y%m%d")
+        if isinstance(dt_str,str) and (len(dt_str) == 8):
+            tdf = self.df.set_index(['cal_date'])
+            try:
+                is_open = tdf.loc[dt_str]['is_open']
+                if is_open == 1:
+                    return dt_str
+                elif is_open == 0:
+                    pretrade_date = tdf.loc[dt_str]['pretrade_date']
+                    return pretrade_date
+                else:
+                    return None
+            except KeyError:
+                 log_args = [dt_str]
+                 add_log(20, '[fn]Trade_Calendar.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+                 return None
+        else:
+            log_args = [dt_str]
+            add_log(20, '[fn]Trade_Calendar.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+            return None
 
 if __name__ == "__main__":
     #df = get_stock_list()
     #df = load_stock_list()
-    df = get_daily_basic()
-    cl = get_trade_calendar()
-    last_trad_day_str()
+    #df = get_daily_basic()
+    #cl = get_trade_calendar()
+    #last_trad_day_str()
+    static_model = Static_Model(pull=True)
+    b = static_model.trade_calendar
+    b.valid()
+    b.df
