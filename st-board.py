@@ -1,5 +1,6 @@
 import tushare as ts
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 
@@ -153,6 +154,7 @@ class Index():
     """指数相关，包括行业板块指数等"""
     def __init__(self, pull=False):
         self.index_basic_df = None
+        self.idx_ts_code = None #<df> ts_code indexed
         self.valid = {'index_basic_sse':STATUS_WORD[3], #上交所
                       'index_basic_szse':STATUS_WORD[3], #深交所
                       'index_basic_sw':STATUS_WORD[3]} #申万
@@ -163,9 +165,10 @@ class Index():
             self.get_index_basic()
         else:
             self.load_index_basic()
+        self._idx_ts_code()
     
     def get_index_basic(self):
-        """获取指数的基本信息列表，如代码
+        """从ts_pro获取指数的基本信息列表
         待续：获取数据失败时，self.valid对应项的设-bad-处理
         """
         #上交所指数
@@ -192,16 +195,16 @@ class Index():
         #上交所指数
         file_name = "index_basic_sse.csv"
         try:
-            self._sse = pd.read_csv(sub_path + '\\' + file_name)
+            self._sse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
             self.valid['index_basic_sse']=STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
             self._sse = None
-         #深交所指数
+        #深交所指数
         file_name = "index_basic_szse.csv"
         try:
-            self._szse = pd.read_csv(sub_path + '\\' + file_name)
+            self._szse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
             self.valid['index_basic_szse']=STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
@@ -210,7 +213,7 @@ class Index():
         #申万指数
         file_name = "index_basic_sw.csv"
         try:
-            self._sw = pd.read_csv(sub_path + '\\' + file_name)
+            self._sw = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
             self.valid['index_basic_sw']=STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
@@ -219,6 +222,20 @@ class Index():
         self._update_index_basic_df()
         return
     
+    def que_list_date(self, ts_code):
+        """查询上市时间list_date
+        return:<str> e.g. '19930503'
+        ts_code:<str> e.g. '000001.SH'
+        """
+        #try:
+        result = self.idx_ts_code.loc[ts_code]['list_date']
+        return result
+
+
+    def _idx_ts_code(self):
+        """以self.index_basic_df为基础，以ts_code字段创建index"""
+        self.idx_ts_code = self.index_basic_df.set_index('ts_code')
+
     def _update_index_basic_df(self):
         """将self._sse等内部<df>合并读入self.index_basic_df"""
         _frames = []
@@ -241,4 +258,4 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
     #c = raw_data.trade_calendar
     index = raw_data.index
-    szcz = que_index_daily(ts_code="801034.SI",start_date="20190104")
+    zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
