@@ -1,7 +1,7 @@
 import tushare as ts
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 
 sub_path = r".\data_csv"
@@ -10,6 +10,39 @@ STATUS_WORD = {0:'-bad-',
                3:'-uncertain-'}
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
+
+def valid_date_str_fmt(date_str):
+    """验证date_str形式格式是否正确
+    date_str:<str> e.g. '20190723' YYYYMMDD
+    return:<bool> True=valid
+    """
+    if isinstance(date_str,str):
+        if len(date_str) == 8:
+            return True
+    return False
+
+def today_str():
+    """
+    return: <str> today in 'YYYYMMDD' e.g.'20190712'
+    """
+    dt = datetime.now()
+    today_str = dt.strftime("%Y%m%d")
+    return today_str
+
+def date_to_date_str(dt):
+    """将datetime转化为data_str
+    dt:<datetime>
+    return:<str> e.g. '20190723'
+    """
+    return dt.strftime("%Y%m%d")
+
+def date_str_to_date(date_str):
+    """将date_str转化为datetime
+    date_str:<str> e.g. '20190723'
+    return:<datetime>
+    """
+    date = datetime.strptime(date_str,"%Y%m%d")
+    return date
 
 def get_stock_list(return_df = True):
     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
@@ -44,20 +77,7 @@ def get_daily_basic(return_df = True):
         df = None
     return df
 
-def day_str(mode = 'today'):
-    """
-    未完待续
-    mode: 'today' return today string
-          'last_trade_day' return last trade day
-    return: <str> in 'YYYYMMDD' e.g.'20190712'"""
-    dt = datetime.now()
-    today_str = dt.strftime("%Y%m%d")
-    if mode.lower() == 'today':
-        return today_str
-    if mode.lower() == 'last_trade_day':
-        #未完待续
-        #last_trade_day_str = query_last_trade_day(today_str)
-        pass
+
     
 def que_index_daily(ts_code,start_date=None,end_date=None):
     """通过Tushare index_daily接口获取指标日线数据
@@ -81,6 +101,23 @@ class Raw_Data():
         self.trade_calendar = Trade_Calendar(pull)
         self.index = Index(pull) #指数相关数据
         self.stock_list = None
+    
+    def valid_ts_code(self, ts_code):
+        """验证在raw_data内ts_code是否有效,
+        包含index,
+        return: <bool> True=valid
+        """
+        #--------------------Index---------------
+        try:
+            name = self.index.idx_ts_code.loc[ts_code]['name']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(30, '[fn]Raw_Data.valid_ts_code(). ts_code "{0[0]}" invalid', log_args)
+            return False
+        if isinstance(name,str):
+            if len(name) > 0:
+                return True
+        return False
 
 class Trade_Calendar():
     """    """
@@ -230,6 +267,58 @@ class Index():
         #try:
         result = self.idx_ts_code.loc[ts_code]['list_date']
         return result
+    
+    def get_index_daily(self, ts_code, reload = False):
+        """通过ts_pro.index_daily下载指数的日线数据到daily_data\<ts_code>.csv文件
+        ts_code: <str> '399001.SZ'
+        reload: <bool> True=重头开始下载
+        retrun: <df> if success, None if fail
+        """
+        QUE_LIMIT = 8000 #每次查询返回的条目限制
+        sub_path_2nd = r"\daily_data"
+        if raw_data.valid_ts_code(ts_code):
+            if reload == True: #重头开始下载
+                df = None
+                start_date_str = self.que_list_date(ts_code)
+                end_date_str = today_str()
+                #to be continued
+                start_date = date_str_to_date(start_date_str)
+                end_date = date_str_to_date(end_date_str)
+                duration = (end_date-start_date).days
+                _start_str = start_date_str
+                while duration > QUE_LIMIT:
+                    _end_time = date_str_to_date(_start_str) + timedelta(QUE_LIMIT)
+                    _end_str = date_to_date_str(_end_time)
+                    _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                    if not isinstance(df,pd.DataFrame):
+                        df = _df
+                    else:
+                        _frames = [_df,df]
+                        df=pd.concat(_frames,ignore_index=True)
+                    _start_time = _end_time + timedelta(1)
+                    _start_str = date_to_date_str(_start_time)
+                    duration = duration - QUE_LIMIT
+                    #print("duration=", duration) debug
+                else:
+                    _end_str = end_date_str
+                    _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                    if not isinstance(df,pd.DataFrame):
+                        df = _df
+                    else:
+                        _frames = [_df,df]
+                        df=pd.concat(_frames,ignore_index=True)
+                file_name = 'd_' + ts_code + '.csv'
+                df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                return df
+            else: #reload != True
+                print("to be continued L314")
+                #读入文件，看最后条目的日期，继续下载数据
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
+            return
+        
+    
 
 
     def _idx_ts_code(self):
