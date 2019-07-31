@@ -318,8 +318,21 @@ class Index():
             add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
             return
         
-    
-
+    def load_index_daily(self, ts_code):
+        """从文件读入指数日线数据
+        return: <df>
+        """
+        sub_path_2nd = r"\daily_data"
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'd_' + ts_code + '.csv'
+            result = pd.read_csv(sub_path + sub_path_2nd + '\\' + file_name,dtype={'trade_date':str})
+            result['vol']=result['vol'].astype(np.int64)
+            #待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.load_index_daily() ts_code "{0[0]}" invalid', log_args)
+            return
 
     def _idx_ts_code(self):
         """以self.index_basic_df为基础，以ts_code字段创建index"""
@@ -347,4 +360,5 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
     #c = raw_data.trade_calendar
     index = raw_data.index
-    zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
+    #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
+    ttt = index.load_index_daily('000001.SH')
