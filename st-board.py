@@ -310,9 +310,29 @@ class Index():
                 file_name = 'd_' + ts_code + '.csv'
                 df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
                 return df
-            else: #reload != True
-                print("to be continued L314")
-                #读入文件，看最后条目的日期，继续下载数据
+            else: #reload != True 读入文件，看最后条目的日期，继续下载数据
+                df = self.load_index_daily(ts_code)
+                if isinstance(df, pd.DataFrame):
+                    last_date_str = df.iloc[0]['trade_date']
+                    last_date = date_str_to_date(last_date_str)
+                    today_str_ = today_str()
+                    today = date_str_to_date(today_str_)
+                    start_date = last_date + timedelta(1)
+                    _start_str = date_to_date_str(start_date)
+                    _end_str = today_str_
+                    if last_date < today:
+                        _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                        _frames = [_df,df]
+                        df=pd.concat(_frames,ignore_index=True)
+                        file_name = 'd_' + ts_code + '.csv'
+                        print("未完成，超过单次8000限制的处理,L325")
+                    df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                    return df
+                else:
+                    log_args = [ts_code]
+                    add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" load csv fail', log_args)
+                    return
+                
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
@@ -361,4 +381,4 @@ if __name__ == "__main__":
     #c = raw_data.trade_calendar
     index = raw_data.index
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
-    ttt = index.load_index_daily('000001.SH')
+    ttt = index.get_index_daily('000001.SH',reload=False)
