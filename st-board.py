@@ -1,13 +1,19 @@
 import tushare as ts
 import pandas as pd
 import numpy as np
+import os
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 
 sub_path = r".\data_csv"
+sub_path_2nd_daily = r"\daily_data" #日线数据
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
                3:'-uncertain-'}
+DOWNLOAD_WORD = {0:'-success-',
+                 1:'-fail-',
+                 3:'-unknow-'}
+DEFAULT_OPEN_DATE_STR = "19901219" #中国股市开始时间？
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
 
@@ -78,6 +84,46 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
             _frames = [_df,df]
             df=pd.concat(_frames,ignore_index=True)
     return df
+
+def bulk_download(config_path, reload=False):
+    """根据下载列表配置文件，批量下载数据到csv文件
+    config_path:<str> path for configure file e.g. r'.\data_csv\download_cnfg.csv'
+    reload:<bool> True重新下载完整文件
+    return:<df> of download configure file is success; None if failed
+    """
+    try:
+        df_cnfg = pd.read_csv(config_path, index_col=False)
+    except FileNotFoundError:
+        log_args = [config_path]
+        add_log(10, '[fn]bulk_download(). file "{0[0]}" not found',log_args)
+        df_cnfg = None
+        return None
+    df_cnfg['status']=DOWNLOAD_WORD[3] #<str>'-unknow-',增加一列存放数据下载的状态
+    for _, row in df_cnfg.iterrows():
+        #print("ts_code: " + ts_code + "    type: " + _type)
+        if row['selected'] == 'x' or row['selected'] == 'X':
+            ts_code, _type = row['ts_code'], row['type']
+            #----指数类型----
+            if _type == 'index':
+                file_name = 'd_' + ts_code + '.csv'
+                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                if reload==True or (not os.path.exists(file_path)):
+                    _reload = True
+                else:
+                    _reload = False
+                df_daily = raw_data.index.get_index_daily(ts_code, _reload)
+                if isinstance(df_daily,pd.DataFrame):
+                    row['status'] = DOWNLOAD_WORD[0] #'-success-'
+                else:
+                    row['status'] = DOWNLOAD_WORD[1] #'-fail-'
+            #----股票类型----
+            if _type != 'index':
+                print("其它类型待继续 line-114")
+            log_args = [ts_code, row['status']]
+            add_log(40, '[fn]bulk_download() ts_code: "{0[0]}"  status: "{0[1]}"', log_args)
+    return df_cnfg
+
+
 
 def get_stock_list(return_df = True):
     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
@@ -297,7 +343,19 @@ class Index():
         """
         #try:
         result = self.idx_ts_code.loc[ts_code]['list_date']
-        return result
+        if valid_date_str_fmt(result):
+            return result
+        else:
+            result = self.idx_ts_code.loc[ts_code]['base_date']
+            if valid_date_str_fmt(result):
+                log_args = [ts_code, result]
+                add_log(40, '[fn]:Index.que_list_date() ts_code: "{0[0]}" used "base_date" {0[1]} instead "list_date".', log_args)
+                return result
+            else:
+                result = DEFAULT_OPEN_DATE_STR
+                log_args = [ts_code, result]
+                add_log(40, '[fn]:Index.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
+                return result
     
     def get_index_daily(self, ts_code, reload = False):
         """通过ts_pro.index_daily下载指数的日线数据到daily_data\<ts_code>.csv文件
@@ -305,8 +363,9 @@ class Index():
         reload: <bool> True=重头开始下载
         retrun: <df> if success, None if fail
         """
-        QUE_LIMIT = 100 #每次查询返回的条目限制
-        sub_path_2nd = r"\daily_data"
+        global sub_path_2nd_daily
+        QUE_LIMIT = 8000 #每次查询返回的条目限制
+        sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             if reload == True: #重头开始下载
                 start_date_str = self.que_list_date(ts_code)
@@ -315,7 +374,7 @@ class Index():
                 df = sgmt_daily_index_download(ts_code,start_date_str,end_date_str,QUE_LIMIT)
                 if isinstance(df, pd.DataFrame):
                     file_name = 'd_' + ts_code + '.csv'
-                    df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                    df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                     return df
                 else:
                     log_args = [ts_code,df]
@@ -337,7 +396,7 @@ class Index():
                         _frames = [_df,df]
                         df=pd.concat(_frames,ignore_index=True)
                         file_name = 'd_' + ts_code + '.csv'
-                        df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                        df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                         return df
                 else:
                     log_args = [ts_code]
@@ -353,10 +412,10 @@ class Index():
         """从文件读入指数日线数据
         return: <df>
         """
-        sub_path_2nd = r"\daily_data"
+        sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False)
+            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -392,4 +451,6 @@ if __name__ == "__main__":
     #c = raw_data.trade_calendar
     index = raw_data.index
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
-    ttt = index.get_index_daily('399003.SZ',reload=False)
+    #ttt = index.get_index_daily('399003.SZ',reload=False)
+    download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
+    bulk_download(download_cnfg_path)
