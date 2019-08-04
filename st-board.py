@@ -44,6 +44,41 @@ def date_str_to_date(date_str):
     date = datetime.strptime(date_str,"%Y%m%d")
     return date
 
+def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
+    """分段下载数据
+    ts_code: <str> 对象的tushare代码 e.g. '399001.SZ'
+    start_date_str: <str> 开始时间字符串 YYYYMMDD '19930723'
+    end_date_str: <str> 结束时间字符串 YYYYMMDD '20190804'
+    size: <int> 每个分段的大小 1 to xxxx
+    retrun: <df> if success, None if fail
+    """
+    df = None
+    start_date = date_str_to_date(start_date_str)
+    end_date = date_str_to_date(end_date_str)
+    duration = (end_date-start_date).days
+    _start_str = start_date_str
+    while duration > size:
+        _end_time = date_str_to_date(_start_str) + timedelta(size)
+        _end_str = date_to_date_str(_end_time)
+        _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+        if not isinstance(df,pd.DataFrame):
+            df = _df
+        else:
+            _frames = [_df,df]
+            df=pd.concat(_frames,ignore_index=True)
+        _start_time = _end_time + timedelta(1)
+        _start_str = date_to_date_str(_start_time)
+        duration = duration - size
+    else:
+        _end_str = end_date_str
+        _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+        if not isinstance(df,pd.DataFrame):
+            df = _df
+        else:
+            _frames = [_df,df]
+            df=pd.concat(_frames,ignore_index=True)
+    return df
+
 def get_stock_list(return_df = True):
     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
     retrun_df:<bool> 是返回DataFrame数据，否返回None
@@ -77,23 +112,19 @@ def get_daily_basic(return_df = True):
         df = None
     return df
 
-
-    
-def que_index_daily(ts_code,start_date=None,end_date=None):
-    """通过Tushare index_daily接口获取指标日线数据
-    ts_code: <str> '399001.SZ'
-    start_date: <str> '20190628', 省略为股票上市日期
-    end_date: <str> '20190719', 省略为当日最近的交易日
-    <未完成>
-    """
-    if start_date == None:
-        start_date = '20190628'
-    if end_date == None:
-        end_date = '20190719'
-    df = ts_pro.index_daily(ts_code=ts_code,start_date=start_date,end_date=end_date)
-    return df
-
-
+# def que_index_daily(ts_code,start_date=None,end_date=None):
+#     """通过Tushare index_daily接口获取指标日线数据
+#     ts_code: <str> '399001.SZ'
+#     start_date: <str> '20190628', 省略为股票上市日期
+#     end_date: <str> '20190719', 省略为当日最近的交易日
+#     <未完成，待删除>
+#     """
+#     if start_date == None:
+#         start_date = '20190628'
+#     if end_date == None:
+#         end_date = '20190719'
+#     df = ts_pro.index_daily(ts_code=ts_code,start_date=start_date,end_date=end_date)
+#     return df
 
 class Raw_Data():
     """    """
@@ -274,60 +305,40 @@ class Index():
         reload: <bool> True=重头开始下载
         retrun: <df> if success, None if fail
         """
-        QUE_LIMIT = 8000 #每次查询返回的条目限制
+        QUE_LIMIT = 100 #每次查询返回的条目限制
         sub_path_2nd = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             if reload == True: #重头开始下载
-                df = None
                 start_date_str = self.que_list_date(ts_code)
                 end_date_str = today_str()
                 #to be continued
-                start_date = date_str_to_date(start_date_str)
-                end_date = date_str_to_date(end_date_str)
-                duration = (end_date-start_date).days
-                _start_str = start_date_str
-                while duration > QUE_LIMIT:
-                    _end_time = date_str_to_date(_start_str) + timedelta(QUE_LIMIT)
-                    _end_str = date_to_date_str(_end_time)
-                    _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-                    if not isinstance(df,pd.DataFrame):
-                        df = _df
-                    else:
-                        _frames = [_df,df]
-                        df=pd.concat(_frames,ignore_index=True)
-                    _start_time = _end_time + timedelta(1)
-                    _start_str = date_to_date_str(_start_time)
-                    duration = duration - QUE_LIMIT
-                    #print("duration=", duration) debug
+                df = sgmt_daily_index_download(ts_code,start_date_str,end_date_str,QUE_LIMIT)
+                if isinstance(df, pd.DataFrame):
+                    file_name = 'd_' + ts_code + '.csv'
+                    df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                    return df
                 else:
-                    _end_str = end_date_str
-                    _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-                    if not isinstance(df,pd.DataFrame):
-                        df = _df
-                    else:
-                        _frames = [_df,df]
-                        df=pd.concat(_frames,ignore_index=True)
-                file_name = 'd_' + ts_code + '.csv'
-                df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
-                return df
+                    log_args = [ts_code,df]
+                    add_log(20, '[fn]Index.get_index_daily() failed to get DataFrame. ts_code: "{0[0]}" df: ', log_args)
+                    return None
             else: #reload != True 读入文件，看最后条目的日期，继续下载数据
                 df = self.load_index_daily(ts_code)
                 if isinstance(df, pd.DataFrame):
                     last_date_str = df.iloc[0]['trade_date']
                     last_date = date_str_to_date(last_date_str)
                     today_str_ = today_str()
-                    today = date_str_to_date(today_str_)
+                    today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
                     start_date = last_date + timedelta(1)
                     _start_str = date_to_date_str(start_date)
                     _end_str = today_str_
                     if last_date < today:
-                        _df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                        _df = sgmt_daily_index_download(ts_code,_start_str,_end_str,QUE_LIMIT)
+                        #_df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
                         _frames = [_df,df]
                         df=pd.concat(_frames,ignore_index=True)
                         file_name = 'd_' + ts_code + '.csv'
-                        print("未完成，超过单次8000限制的处理,L325")
-                    df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
-                    return df
+                        df.to_csv(sub_path + sub_path_2nd + '\\' + file_name)
+                        return df
                 else:
                     log_args = [ts_code]
                     add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" load csv fail', log_args)
@@ -345,7 +356,7 @@ class Index():
         sub_path_2nd = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd + '\\' + file_name,dtype={'trade_date':str})
+            result = pd.read_csv(sub_path + sub_path_2nd + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -381,4 +392,4 @@ if __name__ == "__main__":
     #c = raw_data.trade_calendar
     index = raw_data.index
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
-    ttt = index.get_index_daily('000001.SH',reload=False)
+    ttt = index.get_index_daily('399003.SZ',reload=False)
