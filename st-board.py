@@ -2,6 +2,7 @@ import tushare as ts
 import pandas as pd
 import numpy as np
 import os
+import time
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 
@@ -66,7 +67,16 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
     while duration > size:
         _end_time = date_str_to_date(_start_str) + timedelta(size)
         _end_str = date_to_date_str(_end_time)
-        _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+        _try = 0
+        while _try < 100:
+            try:
+                _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+            except: #ConnectTimeout:
+                time.sleep(1)
+                _try += 1
+                print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
+                continue
+            break
         if not isinstance(df,pd.DataFrame):
             df = _df
         else:
@@ -77,7 +87,16 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
         duration = duration - size
     else:
         _end_str = end_date_str
-        _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+        _try = 0
+        while _try < 100:
+            try:
+                _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+            except: #ConnectTimeout:
+                time.sleep(1)
+                _try += 1
+                print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
+                continue
+            break
         if not isinstance(df,pd.DataFrame):
             df = _df
         else:
@@ -383,7 +402,10 @@ class Index():
             else: #reload != True 读入文件，看最后条目的日期，继续下载数据
                 df = self.load_index_daily(ts_code)
                 if isinstance(df, pd.DataFrame):
-                    last_date_str = df.iloc[0]['trade_date']
+                    try:
+                        last_date_str = df.iloc[0]['trade_date']
+                    except IndexError:
+                        last_date_str = self.que_list_date(ts_code)
                     last_date = date_str_to_date(last_date_str)
                     today_str_ = today_str()
                     today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
@@ -454,3 +476,4 @@ if __name__ == "__main__":
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
     bulk_download(download_cnfg_path)
+    #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
