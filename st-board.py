@@ -121,9 +121,11 @@ def bulk_download(config_path, reload=False):
     for _, row in df_cnfg.iterrows():
         #print("ts_code: " + ts_code + "    type: " + _type)
         if row['selected'] == 'x' or row['selected'] == 'X':
-            ts_code, _type = row['ts_code'], row['type']
+            #print("debug#124: {}".format(row))
+            ts_code, handler = row['ts_code'], row['handler']
+            #print("debug#125 ts_code='{}' _type='{}'".format(ts_code,_type))
             #----指数类型----
-            if _type == 'index':
+            if handler == 'index':
                 file_name = 'd_' + ts_code + '.csv'
                 file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
                 if reload==True or (not os.path.exists(file_path)):
@@ -136,7 +138,7 @@ def bulk_download(config_path, reload=False):
                 else:
                     row['status'] = DOWNLOAD_WORD[1] #'-fail-'
             #----申万指数类型----
-            if _type == 'sw_daily':
+            if handler == 'sw_daily':
                 print("其它类型待继续 line-114")
             log_args = [ts_code, row['status']]
             add_log(40, '[fn]bulk_download() ts_code: "{0[0]}"  status: "{0[1]}"', log_args)
@@ -475,6 +477,6 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
-    #bulk_download(download_cnfg_path)
+    bulk_download(download_cnfg_path)
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
-    ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
+    #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
