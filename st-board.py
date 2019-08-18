@@ -5,6 +5,7 @@ import os
 import time
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+import matplotlib.pyplot as plt
 
 sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
@@ -470,8 +471,9 @@ class Index():
             log_args = [ts_code]
             add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
             return
-        
-    def load_index_daily(self, ts_code):
+
+    @staticmethod    
+    def load_index_daily(ts_code):
         """从文件读入指数日线数据
         return: <df>
         """
@@ -487,7 +489,8 @@ class Index():
             add_log(20, '[fn]Index.load_index_daily() ts_code "{0[0]}" invalid', log_args)
             return
     
-    def load_sw_daily(self, ts_code):
+    @staticmethod
+    def load_sw_daily(ts_code):
         """从文件读入指数日线数据
         return: <df>
         """
@@ -519,6 +522,20 @@ class Index():
         if len(_frames) > 0:
             self.index_basic_df = pd.concat(_frames, ignore_index=True)
 
+class Plot():
+    """用于绘图显示"""
+    @staticmethod
+    def try_plot():
+        df = Index.load_sw_daily('801003.SI')
+        df = df[['trade_date','close']]
+        df['trade_date'] = pd.to_datetime(df['trade_date'])
+        df.set_index('trade_date', inplace=True)
+        ax = df.plot()
+        ax.set_xlabel('trade_date')
+        ax.set_ylabel('测试801003.SI close')
+        plt.show()
+
+
 
 if __name__ == "__main__":
     #df = get_stock_list()
@@ -532,6 +549,7 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
-    bulk_download(download_cnfg_path)
+    #bulk_download(download_cnfg_path) 批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
+    Plot.try_plot()
