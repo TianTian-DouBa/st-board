@@ -1,0 +1,9 @@
+ttt = ts_pro.sw_daily(ts_code='850623.SI',start_date='20190601',end_date='20190731')
+
+ttt = ts_pro.sw_daily(ts_code='801003.SI',start_date='19991231',end_date='20190818')
+
+ttt.to_csv(r"C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\data_csv\ttt.csv")
+
+aaa = ts_pro.index_daily(ts_code='000001.SH',start_date='19991231',end_date='20190731')
+
+aaa.to_csv(r"C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\data_csv\aaa.csv")

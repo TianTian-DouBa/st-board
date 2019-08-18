@@ -17,6 +17,9 @@ DOWNLOAD_WORD = {0:'-success-',
 DEFAULT_OPEN_DATE_STR = "19901219" #中国股市开始时间？
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
+# 'handler_s':handler
+HANDLER = {'index':ts_pro.index_daily,
+           'sw_daily':ts_pro.sw_daily}
 
 def valid_date_str_fmt(date_str):
     """验证date_str形式格式是否正确
@@ -51,12 +54,13 @@ def date_str_to_date(date_str):
     date = datetime.strptime(date_str,"%Y%m%d")
     return date
 
-def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
-    """分段下载数据
+def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
+    """通过TuShare API分段下载数据
     ts_code: <str> 对象的tushare代码 e.g. '399001.SZ'
     start_date_str: <str> 开始时间字符串 YYYYMMDD '19930723'
     end_date_str: <str> 结束时间字符串 YYYYMMDD '20190804'
     size: <int> 每个分段的大小 1 to xxxx
+    handler: <tushare API> listed in HANDLER e.g. ts_pro.index_daily, ts_pro.sw_daily
     retrun: <df> if success, None if fail
     """
     df = None
@@ -68,13 +72,19 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
         _end_time = date_str_to_date(_start_str) + timedelta(size)
         _end_str = date_to_date_str(_end_time)
         _try = 0
-        while _try < 100:
+        while _try < 20:
             try:
-                _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                #--------debug-------------
+                #print("[debug]L78: ts_code:{} , start_date:{}, end_date:{}".format(ts_code, _start_str, _end_str))
+                #len__df = len(_df)
+                #print("[debug]L81: len__df:{}".format(len__df))
             except: #ConnectTimeout:
                 time.sleep(1)
                 _try += 1
-                print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
+                log_args = [ts_code, _try]
+                add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
+                #print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
                 continue
             break
         if not isinstance(df,pd.DataFrame):
@@ -88,13 +98,19 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size):
     else:
         _end_str = end_date_str
         _try = 0
-        while _try < 100:
+        while _try < 20:
             try:
-                _df = ts_pro.index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                #--------debug-------------
+                #print("[debug]L103: ts_code:{} , start_date:{}, end_date:{}, handler:{}".format(ts_code, _start_str, _end_str, handler))
+                #len__df = len(_df)
+                #print("[debug]L105: len__df:{}".format(len__df))
             except: #ConnectTimeout:
                 time.sleep(1)
                 _try += 1
-                print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
+                log_args = [ts_code, _try]
+                add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
+                #print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
                 continue
             break
         if not isinstance(df,pd.DataFrame):
@@ -122,24 +138,35 @@ def bulk_download(config_path, reload=False):
         #print("ts_code: " + ts_code + "    type: " + _type)
         if row['selected'] == 'x' or row['selected'] == 'X':
             #print("debug#124: {}".format(row))
-            ts_code, handler = row['ts_code'], row['handler']
-            #print("debug#125 ts_code='{}' _type='{}'".format(ts_code,_type))
-            #----指数类型----
-            if handler == 'index':
-                file_name = 'd_' + ts_code + '.csv'
-                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-                if reload==True or (not os.path.exists(file_path)):
-                    _reload = True
-                else:
-                    _reload = False
-                df_daily = raw_data.index.get_index_daily(ts_code, _reload)
-                if isinstance(df_daily,pd.DataFrame):
-                    row['status'] = DOWNLOAD_WORD[0] #'-success-'
-                else:
-                    row['status'] = DOWNLOAD_WORD[1] #'-fail-'
-            #----申万指数类型----
-            if handler == 'sw_daily':
-                print("其它类型待继续 line-114")
+            ts_code, handler_s = row['ts_code'], row['handler']
+            #print("debug#131 ts_code='{}' handler_s='{}'".format(ts_code,handler_s))
+            file_name = 'd_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            if reload==True or (not os.path.exists(file_path)):
+                _reload = True
+            else:
+                _reload = False
+            df_daily = raw_data.index.get_index_daily(ts_code, handler_s, _reload)
+            if isinstance(df_daily,pd.DataFrame):
+                row['status'] = DOWNLOAD_WORD[0] #'-success-'
+            else:
+                row['status'] = DOWNLOAD_WORD[1] #'-fail-'
+            # #----指数类型----
+            # if handler == 'index':
+            #     file_name = 'd_' + ts_code + '.csv'
+            #     file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            #     if reload==True or (not os.path.exists(file_path)):
+            #         _reload = True
+            #     else:
+            #         _reload = False
+            #     df_daily = raw_data.index.get_index_daily(ts_code, _reload)
+            #     if isinstance(df_daily,pd.DataFrame):
+            #         row['status'] = DOWNLOAD_WORD[0] #'-success-'
+            #     else:
+            #         row['status'] = DOWNLOAD_WORD[1] #'-fail-'
+            # #----申万指数类型----
+            # if handler == 'sw_daily':
+            #     print("其它类型待继续 line-114")
             log_args = [ts_code, row['status']]
             add_log(40, '[fn]bulk_download() ts_code: "{0[0]}"  status: "{0[1]}"', log_args)
     return df_cnfg
@@ -378,21 +405,29 @@ class Index():
                 add_log(40, '[fn]:Index.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
                 return result
     
-    def get_index_daily(self, ts_code, reload = False):
-        """通过ts_pro.index_daily下载指数的日线数据到daily_data\<ts_code>.csv文件
+    def get_index_daily(self, ts_code, handler_s, reload = False):
+        """通过调用sgmt_daily_index_download下载指数的日线数据到daily_data\<ts_code>.csv文件
         ts_code: <str> '399001.SZ'
+        handler_s: <str> in HANDLER e.g. 'index', 'sw_daily'
         reload: <bool> True=重头开始下载
         retrun: <df> if success, None if fail
         """
         global sub_path_2nd_daily
+        READER = {'index':self.load_index_daily,
+                  'sw_daily':self.load_sw_daily}
         QUE_LIMIT = 8000 #每次查询返回的条目限制
         sub_path_2nd_daily = r"\daily_data"
+        try:
+            handler = HANDLER[handler_s] #debug try catch wrong handler
+        except KeyError:
+            log_args = [ts_code, handler_s]
+            add_log(20, '[fn]get_index_daily(). ts_code: "{0[0]}" handler_s: "{0[1]}" incorrect',log_args)
+            return
         if raw_data.valid_ts_code(ts_code):
             if reload == True: #重头开始下载
                 start_date_str = self.que_list_date(ts_code)
                 end_date_str = today_str()
-                #to be continued
-                df = sgmt_daily_index_download(ts_code,start_date_str,end_date_str,QUE_LIMIT)
+                df = sgmt_daily_index_download(ts_code,start_date_str,end_date_str,QUE_LIMIT,handler)
                 if isinstance(df, pd.DataFrame):
                     file_name = 'd_' + ts_code + '.csv'
                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
@@ -402,7 +437,8 @@ class Index():
                     add_log(20, '[fn]Index.get_index_daily() failed to get DataFrame. ts_code: "{0[0]}" df: ', log_args)
                     return None
             else: #reload != True 读入文件，看最后条目的日期，继续下载数据
-                df = self.load_index_daily(ts_code)
+                reader = READER[handler_s]
+                df = reader(ts_code)
                 if isinstance(df, pd.DataFrame):
                     try:
                         last_date_str = df.iloc[0]['trade_date']
@@ -415,12 +451,15 @@ class Index():
                     _start_str = date_to_date_str(start_date)
                     _end_str = today_str_
                     if last_date < today:
-                        _df = sgmt_daily_index_download(ts_code,_start_str,_end_str,QUE_LIMIT)
-                        #_df = que_index_daily(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
+                        _df = sgmt_daily_index_download(ts_code,_start_str,_end_str,QUE_LIMIT,handler)
                         _frames = [_df,df]
                         df=pd.concat(_frames,ignore_index=True)
                         file_name = 'd_' + ts_code + '.csv'
                         df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                        if logable(40):
+                            number_of_items = len(df)
+                            log_args = [ts_code, number_of_items]
+                            add_log(40,"[fn]Index.get_index_daily() ts_code: {0[0]}, total items: {0[1]}", log_args)
                         return df
                 else:
                     log_args = [ts_code]
@@ -446,6 +485,22 @@ class Index():
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Index.load_index_daily() ts_code "{0[0]}" invalid', log_args)
+            return
+    
+    def load_sw_daily(self, ts_code):
+        """从文件读入指数日线数据
+        return: <df>
+        """
+        sub_path_2nd_daily = r"\daily_data"
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'd_' + ts_code + '.csv'
+            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col=False)
+            result['vol']=result['vol'].astype(np.int64)
+            #待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.load_sw_daily() ts_code "{0[0]}" invalid', log_args)
             return
 
     def _idx_ts_code(self):
