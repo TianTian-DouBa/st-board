@@ -473,15 +473,14 @@ class Index():
             return
 
     @staticmethod    
-    def load_index_daily(ts_code,nrows=None):
+    def load_index_daily(ts_code):
         """从文件读入指数日线数据
-        nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
         sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False,nrows=nrows)
+            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -491,15 +490,14 @@ class Index():
             return
     
     @staticmethod
-    def load_sw_daily(ts_code, nrows=None):
+    def load_sw_daily(ts_code):
         """从文件读入指数日线数据
-        nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
         sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col=False,nrows=nrows)
+            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col=False)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -551,26 +549,7 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
-    #bulk_download(download_cnfg_path) #批量下载数据
+    bulk_download(download_cnfg_path) #批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
-    df = Index.load_sw_daily('801003.SI',30)
-    df = df[['trade_date','close']]
-    df['trade_date'] = pd.to_datetime(df['trade_date'])
-    df.set_index('trade_date', inplace=True)
-    base_close, = df.tail(1)['close'].values
-    df['base_chg_pct']=(df['close']/base_close-1)*100
-    ax = plt.plot(df.index,df['base_chg_pct'])
-    
-    df1 = Index.load_sw_daily('850341.SI',30)
-    df1 = df1[['trade_date','close']]
-    df1['trade_date'] = pd.to_datetime(df1['trade_date'])
-    df1.set_index('trade_date', inplace=True)
-    base_close, = df1.tail(1)['close'].values
-    df1['base_chg_pct']=(df1['close']/base_close-1)*100
-    ax1 = plt.plot(df1.index,df1['base_chg_pct'])
-    #ax.set_xlabel('trade_date')
-    #ax.set_ylabel('change %')
-    plt.xticks(df.index,rotation='vertical')
-    plt.show()
