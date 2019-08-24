@@ -9,3 +9,5 @@ ttt = Index.load_sw_daily('801003.SI')
 aaa = ts_pro.index_daily(ts_code='000001.SH',start_date='19991231',end_date='20190731')
 
 aaa.to_csv(r"C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\data_csv\aaa.csv")
+
+df = sgmt_daily_index_download('801901.SI','20021231','20190824',8000,ts_pro.sw_daily)

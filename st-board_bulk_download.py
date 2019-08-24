@@ -80,11 +80,12 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
                 #print("[debug]L78: ts_code:{} , start_date:{}, end_date:{}".format(ts_code, _start_str, _end_str))
                 #len__df = len(_df)
                 #print("[debug]L81: len__df:{}".format(len__df))
-            except: #ConnectTimeout:
-                time.sleep(1)
+            except Exception as e: #ConnectTimeout:
+                time.sleep(60)
                 _try += 1
-                log_args = [ts_code, _try]
+                log_args = [ts_code, _try, e.__class__.__name__, e]
                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
+                add_log(40, '[fn]sgmt_daily_index_download(). err_type:{0[2]}; msg:{0[3]}', log_args)
                 #print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
                 continue
             break
@@ -106,11 +107,12 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
                 #print("[debug]L103: ts_code:{} , start_date:{}, end_date:{}, handler:{}".format(ts_code, _start_str, _end_str, handler))
                 #len__df = len(_df)
                 #print("[debug]L105: len__df:{}".format(len__df))
-            except: #ConnectTimeout:
-                time.sleep(1)
+            except Exception as e: #ConnectTimeout:
+                time.sleep(60)
                 _try += 1
-                log_args = [ts_code, _try]
+                log_args = [ts_code, _try, e.__class__.__name__, e]
                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
+                add_log(40, '[fn]sgmt_daily_index_download(). err_type:{0[2]}; msg:{0[3]}', log_args)
                 #print("[tmp del] ts_code:" + ts_code + "  ; _try: " + str(_try))
                 continue
             break
