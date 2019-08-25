@@ -6,9 +6,12 @@ import time
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
+from pylab import mpl
 
 sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
+sub_path_config = r"\config" #配置文件
+
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
                3:'-uncertain-'}
@@ -54,6 +57,8 @@ def date_str_to_date(date_str):
     """
     date = datetime.strptime(date_str,"%Y%m%d")
     return date
+
+
 
 def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
     """通过TuShare API分段下载数据
@@ -245,6 +250,80 @@ class Raw_Data():
                 return True
         return False
 
+class All_Assets_List():
+    """处理全资产列表"""
+
+    @staticmethod
+    def load_all_assets_list():
+        """从all_asstes_list.csv中读取全代码列表
+        """
+        file_name = "all_assets_list.csv"
+        file_path = sub_path + sub_path_config + '\\' + file_name
+        try:
+            df = pd.read_csv(file_path,index_col='ts_code')
+        except FileNotFoundError:
+            log_args = [file_path]
+            add_log(10, '[fn]load_all_assets_list. "{0[0]}" not found', log_args)
+            df = None
+        return df
+
+    @staticmethod
+    def rebuild_all_assets_list(que_from_ts = False):
+        """重头开始构建全资产列表
+        que_from_ts: <bool> F：从文件读 T:从tushare 接口读
+        """
+        file_name = "all_assets_list_rebuild.csv" #不同名避免误操作
+        file_path_al = sub_path + sub_path_config + '\\' + file_name
+        df_al = pd.DataFrame(columns=['ts_code','valid','selected','name','type','stype1','stype2'])
+        df_al = df_al.set_index('ts_code')
+        #--------------SW 指数---------------
+        if que_from_ts == True:
+            df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
+            df_l1=df_l1['index_code','industry_name']
+            df_l2=df_l2['index_code','industry_name']
+            df_l3=df_l3['index_code','industry_name']
+        else:     
+            file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
+            file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
+            file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
+            try:
+                _file_path = file_path_sw_l1
+                df_l1 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+                _file_path = file_path_sw_l2
+                df_l2 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+                _file_path = file_path_sw_l3
+                df_l3 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+            except FileNotFoundError:
+                log_args = [_file_path]
+                add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+                return
+        df_l1.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l1['valid'] = 'T'
+        df_l1['selected'] = 'T'
+        df_l1['type'] = 'index'
+        df_l1['stype1'] = 'SW'
+        df_l1['stype2'] = 'L1'
+        df_l1.set_index('ts_code',inplace=True)
+        df_l2.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l2['valid'] = 'T'
+        df_l2['selected'] = 'T'
+        df_l2['type'] = 'index'
+        df_l2['stype1'] = 'SW'
+        df_l2['stype2'] = 'L2'
+        df_l2.set_index('ts_code',inplace=True)
+        df_l3.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l3['valid'] = 'T'
+        df_l3['selected'] = 'T'
+        df_l3['type'] = 'index'
+        df_l3['stype1'] = 'SW'
+        df_l3['stype2'] = 'L3'
+        df_l3.set_index('ts_code',inplace=True)
+        _frame = [df_al,df_l1,df_l2,df_l3]
+        df_al = pd.concat(_frame,sort=False)
+        df_al.to_csv(file_path_al,encoding="utf-8")
+        return
+
+
 class Trade_Calendar():
     """    """
     def __init__(self, pull=False):
@@ -385,6 +464,26 @@ class Index():
         self._update_index_basic_df()
         return
     
+    @staticmethod
+    def get_sw_index_classify(return_df = True):
+        """从ts_pro获取申万行业指数的分类
+        """
+        #一级行业列表
+        file_name = "index_sw_L1_list.csv"
+        df_l1 = ts_pro.index_classify(level='L1', src='SW',fields='index_code,industry_name,level,industry_code,src')
+        df_l1.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        #二级行业列表
+        file_name = "index_sw_L2_list.csv"
+        df_l2 = ts_pro.index_classify(level='L2', src='SW',fields='index_code,industry_name,level,industry_code,src')
+        df_l2.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        #三级行业列表
+        file_name = "index_sw_L3_list.csv"
+        df_l3 = ts_pro.index_classify(level='L3', src='SW',fields='index_code,industry_name,level,industry_code,src')
+        df_l3.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        if return_df != True:
+            return None
+        return (df_l1, df_l2, df_l3)
+
     def que_list_date(self, ts_code):
         """查询上市时间list_date
         return:<str> e.g. '19930503'
@@ -555,22 +654,36 @@ if __name__ == "__main__":
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
-    df = Index.load_sw_daily('801003.SI',30)
-    df = df[['trade_date','close']]
-    df['trade_date'] = pd.to_datetime(df['trade_date'])
-    df.set_index('trade_date', inplace=True)
-    base_close, = df.tail(1)['close'].values
-    df['base_chg_pct']=(df['close']/base_close-1)*100
-    ax = plt.plot(df.index,df['base_chg_pct'])
+    ##------------------------资产赛跑-----------------------
+    # num_samples=30
+    # df = Index.load_sw_daily('801003.SI',num_samples)
+    # df = df[['trade_date','close']]
+    # df['trade_date'] = pd.to_datetime(df['trade_date'])
+    # df.set_index('trade_date', inplace=True)
+    # base_close, = df.tail(1)['close'].values
+    # df['base_chg_pct']=(df['close']/base_close-1)*100
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # ax.plot(df.index,df['base_chg_pct'],label='801003.SI\n指数A')
     
-    df1 = Index.load_sw_daily('850341.SI',30)
-    df1 = df1[['trade_date','close']]
-    df1['trade_date'] = pd.to_datetime(df1['trade_date'])
-    df1.set_index('trade_date', inplace=True)
-    base_close, = df1.tail(1)['close'].values
-    df1['base_chg_pct']=(df1['close']/base_close-1)*100
-    ax1 = plt.plot(df1.index,df1['base_chg_pct'])
-    #ax.set_xlabel('trade_date')
-    #ax.set_ylabel('change %')
-    plt.xticks(df.index,rotation='vertical')
-    plt.show()
+    # df1 = Index.load_sw_daily('850341.SI',30)
+    # df1 = df1[['trade_date','close']]
+    # df1['trade_date'] = pd.to_datetime(df1['trade_date'])
+    # df1.set_index('trade_date', inplace=True)
+    # base_close, = df1.tail(1)['close'].values
+    # df1['base_chg_pct']=(df1['close']/base_close-1)*100
+    # ax.plot(df1.index,df1['base_chg_pct'],label='850341.SI\n指数B')
+    # plt.legend(handles=ax.lines)
+    # plt.grid(True)
+    # mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
+    # mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
+    # plt.xticks(df.index,rotation='vertical')
+    # plt.title('申万板块指标{}日涨幅比较'.format(num_samples))
+    # plt.ylabel('收盘%')
+    # plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
+    # plt.show()
+    #------------------------下载申万三级行业分类-----------------------
+    df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
+    al = All_Assets_List.load_all_assets_list()
+    All_Assets_List.rebuild_all_assets_list()
+
