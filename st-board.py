@@ -7,6 +7,9 @@ from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
+from pandas.plotting import register_matplotlib_converters
+
+register_matplotlib_converters() #否则Warning
 
 sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
@@ -244,8 +247,8 @@ class Raw_Data():
         """
         #--------------------Index---------------
         try:
-            print("[not complete L247 ] 需要根据all_assets_list改写")
-            name = self.index.idx_ts_code.loc[ts_code]['name']
+            name = self.all_assets_list.loc[ts_code]['name']
+            #print("[debug L249] name:{}".format(name))
         except KeyError:
             log_args = [ts_code]
             add_log(30, '[fn]Raw_Data.valid_ts_code(). ts_code "{0[0]}" invalid', log_args)
@@ -320,6 +323,87 @@ class Plot_Utility():
                 log_args = [al_name]
                 add_log(20, '[fn]Plot_Utility.gen_al(). al_name invalid. "al_{0[0]}.csv" file not generated', log_args)
         return al
+
+class Plot_Assets_Racing():
+    """资产竞速图表：不同资产从同一基准起跑，一定时间内的价格表现
+    """
+    def __init__(self,al_file,period=30):
+        """
+        al_file: <str> 资产表的文件名e.g.'al_SW_Index_L1.csv'
+        period: <int> 比较的周期
+        """
+        al_path = sub_path + sub_path_al + '\\' + al_file
+        try:
+            al_df = pd.read_csv(al_path,nrows=period)
+            #print("[debug L335] al_df:{}".format(al_df))
+        except FileNotFoundError:
+            log_args = [al_path]
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). file "{0[0]}" not found',log_args)
+            return
+        al_df.set_index('ts_code',inplace=True)
+        #print("[debug L341] al_df:{}".format(al_df))
+        self.al = al_df[al_df=='T'].index #index of ts_code
+        if len(self.al) == 0:
+            log_args = [al_path]
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). no item in "{0[0]}"',log_args)
+            return
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        _aal = raw_data.all_assets_list
+        self.raw_data = pd.DataFrame(columns=['ts_code','name','base_close','last_chg','df'])
+        self.raw_data.set_index('ts_code',inplace=True)
+        for ts_code in self.al:
+            #print("[debug L349] ts_code:{}".format(ts_code))
+            name,_type, stype1, stype2 = _aal.loc[ts_code][['name','type','stype1','stype2']]
+            handler = None
+            #--------------Index.load_sw_daily---------------
+            if stype1=='SW':
+                handler = Index.load_sw_daily
+            #--------------handler = ts_pro.index_daily(未完成)----------
+            if handler == None:
+                log_args = [ts_code]
+                add_log(20, '[fn]Plot_Assets_Racing.__init__(). No matched handler for "{0[0]}"',log_args)
+                continue
+            df = handler(ts_code=ts_code, nrows=period)
+            #print("[debug L364] df:{}".format(df))
+            if isinstance(df,pd.DataFrame):
+                log_args = [ts_code]
+                add_log(40, '[fn]Plot_Assets_Racing() ts_code: "{0[0]}"  df load -success-', log_args)
+            else:
+                log_args = [ts_code]
+                add_log(20, '[fn]Plot_Assets_Racing() ts_code: "{0[0]}"  df load -fail-', log_args)
+                continue
+            df = df[['trade_date','close']]
+            df['trade_date'] = pd.to_datetime(df['trade_date'])
+            df.set_index('trade_date', inplace=True)
+            base_close, = df.tail(1)['close'].values
+            df['base_chg_pct']=(df['close']/base_close-1)*100
+            last_chg, = df.head(1)['base_chg_pct'].values
+            row = pd.Series({'ts_code':ts_code,'name':name,'base_close':base_close,'last_chg':last_chg,'df':df},name=ts_code)
+            #print("[L383] row:{}".format(row))
+            self.raw_data=self.raw_data.append(row)
+            #self.raw_data.loc[ts_code]=[name,base_close,last_chg,df]
+        #print("[L383] self.raw_data:{}".format(self.raw_data))
+        self.raw_data.sort_values(by='last_chg',inplace=True,ascending=False)
+        print("[L385] self.raw_data:{}".format(self.raw_data[['name','last_chg']]))
+        for ts_code, pen in self.raw_data.iterrows():
+            name, last_chg, df = pen['name'],pen['last_chg'],pen['df']
+            last_chg = str(round(last_chg,2))
+            label = last_chg + '%  ' + name #  + '\n' + ts_code
+            ax.plot(df.index,df['base_chg_pct'],label=label,lw=1)
+        plt.legend(handles=ax.lines)
+        plt.grid(True)
+        mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
+        mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
+        plt.xticks(df.index,rotation='vertical')
+        plt.title('申万板块指标{}日涨幅比较'.format(period))
+        plt.ylabel('收盘%')
+        plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
+        plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
+        plt.show()
+
+
+
 
 class All_Assets_List():
     """处理全资产列表"""
@@ -712,7 +796,7 @@ if __name__ == "__main__":
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
-    ##------------------------资产赛跑-----------------------
+    # #------------------------资产赛跑-----------------------
     # num_samples=30
     # df = Index.load_sw_daily('801003.SI',num_samples)
     # df = df[['trade_date','close']]
@@ -744,8 +828,10 @@ if __name__ == "__main__":
     # df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
     # al = All_Assets_List.load_all_assets_list()
     # All_Assets_List.rebuild_all_assets_list()
-    #------------------------生成al文件-----------------------
-    al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
-    al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
-    al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
+    # #------------------------生成al文件-----------------------
+    #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
+    # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
+    # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
+    # #-------------------Plot_Assets_Racing资产竞速-----------------------
+    plot_ar = Plot_Assets_Racing('al_SW_Index_L2.csv',period=30)
 
