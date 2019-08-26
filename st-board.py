@@ -11,6 +11,7 @@ from pylab import mpl
 sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
 sub_path_config = r"\config" #配置文件
+sub_path_al = r"\assets_lists" #资产列表
 
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
@@ -127,7 +128,7 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
     return df
 
 def bulk_download(config_path, reload=False):
-    """根据下载列表配置文件，批量下载数据到csv文件
+    r"""根据下载列表配置文件，批量下载数据到csv文件
     config_path:<str> path for configure file e.g. r'.\data_csv\download_cnfg.csv'
     reload:<bool> True重新下载完整文件
     return:<df> of download configure file is success; None if failed
@@ -227,28 +228,98 @@ def get_daily_basic(return_df = True):
 #     return df
 
 class Raw_Data():
-    """    """
+    """存放其它模块计算时所要用的公共数据的基础模块，需要实例化填充数据后使用"""
     def __init__(self, pull=False):
+        """
+        pull: True=get from Tushare; False=load from file
+        """
         self.trade_calendar = Trade_Calendar(pull)
         self.index = Index(pull) #指数相关数据
-        self.stock_list = None
+        self.all_assets_list = All_Assets_List.load_all_assets_list()
+        #self.stock_list = None
     
     def valid_ts_code(self, ts_code):
-        """验证在raw_data内ts_code是否有效,
-        包含index,
+        """验证在raw_data内ts_code是否有效,包含index,
         return: <bool> True=valid
         """
         #--------------------Index---------------
         try:
+            print("[not complete L247 ] 需要根据all_assets_list改写")
             name = self.index.idx_ts_code.loc[ts_code]['name']
         except KeyError:
             log_args = [ts_code]
             add_log(30, '[fn]Raw_Data.valid_ts_code(). ts_code "{0[0]}" invalid', log_args)
-            return False
+            return None
         if isinstance(name,str):
             if len(name) > 0:
                 return True
-        return False
+        return None
+
+    def valid_all_assets_list(self):
+        """验证self.all_assets_list的有效性
+        return: True=valid
+        """
+        if isinstance(self.all_assets_list, pd.DataFrame):
+            if len(self.all_assets_list) > 10:
+                return True
+        return None
+
+class Plot_Utility():
+    """存放绘图出报告用的公用工具"""
+    @staticmethod
+    def gen_al(al_name=None, ts_code=None,valid='T',selected='T',type_=None,stype1=None,stype2=None):
+        r"""生成资产列表文件.\assets_lists\al_<name>.csv
+        al_name: default=None只返回df不生成文件；<str> 填充文件名的<name>部分
+        ts_code: <str> default=None 全部，[未完成] 考虑批量传入
+        valid：<str> default='T' 筛选出值为'T'的，None=全部
+        selected：<str> default='T' 筛选出值为'T'的，None=全部
+        type: <str> default=None 全部， 其它<str>按此筛选
+        stype1: <str> default=None 全部， 其它<str>按此筛选
+        stype2: <str> default=None 全部， 其它<str>按此筛选
+        return: <df> or None
+        """
+        if raw_data.valid_all_assets_list:
+            _aal = raw_data.all_assets_list #all=all_assets_list
+            if ts_code == None:
+                al = _aal
+            else: #[未完成] 考虑批量传入
+                print("[not complete L285] 考虑批量传入")
+                return
+            #-------valid-----------
+            if valid=='T':
+                al = al[(al.valid=='T')]
+            elif isinstance(valid,str):
+                al = al[(al.valid==valid)]
+            #-------selected-----------
+            if selected=='T':
+                al = al[(al.selected=='T')]
+            elif isinstance(selected,str):
+                al = al[(al.valid==selected)]
+            #-------type-----------
+            if isinstance(type_,str):
+                al = al[(al.type==type_)]
+            #-------stype1-----------
+            if isinstance(stype1,str):
+                al = al[(al.stype1==stype1)]
+            #-------stype2-----------
+            if isinstance(stype2,str):
+                al = al[(al.stype2==stype2)]
+            
+            al = al['selected']
+        else:
+            add_log(10, '[fn]Plot_Utility.gen_al(). raw_data.all_assets_list is not valid')
+            return
+        if isinstance(al_name,str):
+            if len(al_name) > 0:
+                file_name = 'al_' + al_name + '.csv'
+                file_path = sub_path + sub_path_al + '\\' + file_name
+                al.to_csv(file_path,encoding='utf-8',header=True) #haeder=True是Series.to_csv的处理，否则Warning
+                log_args = [al_name]
+                add_log(40, '[fn]Plot_Utility.gen_al(). "al_{0[0]}.csv" generated', log_args)
+            else:
+                log_args = [al_name]
+                add_log(20, '[fn]Plot_Utility.gen_al(). al_name invalid. "al_{0[0]}.csv" file not generated', log_args)
+        return al
 
 class All_Assets_List():
     """处理全资产列表"""
@@ -279,9 +350,9 @@ class All_Assets_List():
         #--------------SW 指数---------------
         if que_from_ts == True:
             df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
-            df_l1=df_l1['index_code','industry_name']
-            df_l2=df_l2['index_code','industry_name']
-            df_l3=df_l3['index_code','industry_name']
+            df_l1=df_l1[['index_code','industry_name']]
+            df_l2=df_l2[['index_code','industry_name']]
+            df_l3=df_l3[['index_code','industry_name']]
         else:     
             file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
             file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
@@ -322,7 +393,6 @@ class All_Assets_List():
         df_al = pd.concat(_frame,sort=False)
         df_al.to_csv(file_path_al,encoding="utf-8")
         return
-
 
 class Trade_Calendar():
     """    """
@@ -395,6 +465,9 @@ class Trade_Calendar():
 class Index():
     """指数相关，包括行业板块指数等"""
     def __init__(self, pull=False):
+        """
+        pull: True=get from Tushare; False=load from file
+        """
         self.index_basic_df = None
         self.idx_ts_code = None #<df> ts_code indexed
         self.valid = {'index_basic_sse':STATUS_WORD[3], #上交所
@@ -506,7 +579,7 @@ class Index():
                 return result
     
     def get_index_daily(self, ts_code, handler_s, reload = False):
-        """通过调用sgmt_daily_index_download下载指数的日线数据到daily_data\<ts_code>.csv文件
+        r"""通过调用sgmt_daily_index_download下载指数的日线数据到daily_data\<ts_code>.csv文件
         ts_code: <str> '399001.SZ'
         handler_s: <str> in HANDLER e.g. 'index', 'sw_daily'
         reload: <bool> True=重头开始下载
@@ -623,21 +696,6 @@ class Index():
         if len(_frames) > 0:
             self.index_basic_df = pd.concat(_frames, ignore_index=True)
 
-class Plot():
-    """用于绘图显示"""
-    @staticmethod
-    def try_plot():
-        df = Index.load_sw_daily('801003.SI')
-        df = df[['trade_date','close']]
-        df['trade_date'] = pd.to_datetime(df['trade_date'])
-        df.set_index('trade_date', inplace=True)
-        ax = df.plot()
-        ax.set_xlabel('trade_date')
-        ax.set_ylabel('测试801003.SI close')
-        plt.show()
-
-
-
 if __name__ == "__main__":
     #df = get_stock_list()
     #df = load_stock_list()
@@ -682,8 +740,12 @@ if __name__ == "__main__":
     # plt.ylabel('收盘%')
     # plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
     # plt.show()
-    #------------------------下载申万三级行业分类-----------------------
-    df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
-    al = All_Assets_List.load_all_assets_list()
-    All_Assets_List.rebuild_all_assets_list()
+    # #------------------------下载申万三级行业分类-----------------------
+    # df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
+    # al = All_Assets_List.load_all_assets_list()
+    # All_Assets_List.rebuild_all_assets_list()
+    #------------------------生成al文件-----------------------
+    al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
+    al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
+    al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
 
