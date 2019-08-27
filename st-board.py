@@ -334,7 +334,7 @@ class Plot_Assets_Racing():
         """
         al_path = sub_path + sub_path_al + '\\' + al_file
         try:
-            al_df = pd.read_csv(al_path,nrows=period)
+            al_df = pd.read_csv(al_path)
             #print("[debug L335] al_df:{}".format(al_df))
         except FileNotFoundError:
             log_args = [al_path]
@@ -352,6 +352,7 @@ class Plot_Assets_Racing():
         _aal = raw_data.all_assets_list
         self.raw_data = pd.DataFrame(columns=['ts_code','name','base_close','last_chg','df'])
         self.raw_data.set_index('ts_code',inplace=True)
+        print("[L355] no. of self.al: {}".format(len(self.al)))
         for ts_code in self.al:
             #print("[debug L349] ts_code:{}".format(ts_code))
             name,_type, stype1, stype2 = _aal.loc[ts_code][['name','type','stype1','stype2']]
@@ -396,7 +397,7 @@ class Plot_Assets_Racing():
         mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
         mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
         plt.xticks(df.index,rotation='vertical')
-        plt.title('申万板块指标{}日涨幅比较'.format(period))
+        plt.title('资产竞速{}周期涨幅比较 - {}'.format(period,al_file[3:-4]))
         plt.ylabel('收盘%')
         plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
         plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
@@ -647,7 +648,13 @@ class Index():
         ts_code:<str> e.g. '000001.SH'
         """
         #try:
-        result = self.idx_ts_code.loc[ts_code]['list_date']
+        try:
+            result = self.idx_ts_code.loc[ts_code]['list_date']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]:Index.que_list_date() ts_code: "{0[0]}" was not found in Index.idx_ts_code. use DEFAULT_OPEN_DATE_STR instead', log_args)
+            result = DEFAULT_OPEN_DATE_STR
+            return result
         if valid_date_str_fmt(result):
             return result
         else:
@@ -755,7 +762,13 @@ class Index():
         sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col=False,nrows=nrows)
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            try:
+                result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col=False,nrows=nrows)
+            except FileNotFoundError:
+                log_args = [file_path]
+                add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
+                return
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -833,5 +846,5 @@ if __name__ == "__main__":
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
-    plot_ar = Plot_Assets_Racing('al_SW_Index_L2.csv',period=30)
+    plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
 

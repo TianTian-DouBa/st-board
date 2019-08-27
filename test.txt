@@ -11,3 +11,6 @@ aaa = ts_pro.index_daily(ts_code='000001.SH',start_date='19991231',end_date='201
 aaa.to_csv(r"C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\data_csv\aaa.csv")
 
 df = sgmt_daily_index_download('801901.SI','20021231','20190824',8000,ts_pro.sw_daily)
+
+aal = raw_data.all_assets_list
+al = aal['selected']
