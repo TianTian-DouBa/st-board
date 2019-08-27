@@ -130,16 +130,16 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
             df=pd.concat(_frames,ignore_index=True)
     return df
 
-def bulk_download(config_path, reload=False):
+def bulk_download(download_file, reload=False):
     r"""根据下载列表配置文件，批量下载数据到csv文件
-    config_path:<str> path for configure file e.g. r'.\data_csv\download_cnfg.csv'
+    download_file:<str> path for configure file e.g. r'.\data_csv\download_cnfg.csv'
     reload:<bool> True重新下载完整文件
     return:<df> of download configure file is success; None if failed
     """
     try:
-        df_cnfg = pd.read_csv(config_path, index_col=False)
+        df_cnfg = pd.read_csv(download_file, index_col=False)
     except FileNotFoundError:
-        log_args = [config_path]
+        log_args = [download_file]
         add_log(10, '[fn]bulk_download(). file "{0[0]}" not found',log_args)
         df_cnfg = None
         return None
@@ -397,7 +397,7 @@ class Plot_Assets_Racing():
         mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
         mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
         plt.xticks(df.index,rotation='vertical')
-        plt.title('申万板块指标{}日涨幅比较'.format(period))
+        plt.title('资产竞速{}周期涨幅比较 - {}'.format(period,al_file[3:-4]))
         plt.ylabel('收盘%')
         plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
         plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
@@ -476,7 +476,40 @@ class All_Assets_List():
         df_l3.set_index('ts_code',inplace=True)
         _frame = [df_al,df_l1,df_l2,df_l3]
         df_al = pd.concat(_frame,sort=False)
-        df_al.to_csv(file_path_al,encoding="utf-8")
+
+        #--------------上交所指数---------------
+        if que_from_ts == True:
+            raw_data.index.get_index_basic()
+        _file_path = sub_path + '\\' + 'index_basic_sse.csv'        
+        try:
+            df_sse = pd.read_csv(_file_path,usecols=['ts_code','name'])
+        except FileNotFoundError:
+            log_args = [_file_path]
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            return
+        df_sse['valid'] = 'T'
+        df_sse['selected'] = 'T'
+        df_sse['type'] = 'index'
+        df_sse['stype1'] = 'SSE'
+        df_sse['stype2'] = ''
+        df_sse.set_index('ts_code',inplace=True)
+        _file_path = sub_path + '\\' + 'index_basic_szse.csv'        
+        try:
+            df_szse = pd.read_csv(_file_path,usecols=['ts_code','name'])
+        except FileNotFoundError:
+            log_args = [_file_path]
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            return
+        df_szse['valid'] = 'T'
+        df_szse['selected'] = 'T'
+        df_szse['type'] = 'index'
+        df_szse['stype1'] = 'SZSE'
+        df_szse['stype2'] = ''
+        df_szse.set_index('ts_code',inplace=True)
+        _frame = [df_al,df_sse,df_szse]
+        df_al = pd.concat(_frame,sort=False)
+
+        df_al.to_csv(file_path_al,encoding="utf-8")    
         return
 
 class Trade_Calendar():
@@ -728,8 +761,7 @@ class Index():
                 else:
                     log_args = [ts_code]
                     add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" load csv fail', log_args)
-                    return
-                
+                    return                
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
@@ -846,5 +878,5 @@ if __name__ == "__main__":
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
-    #plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=30)
+    #plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
 

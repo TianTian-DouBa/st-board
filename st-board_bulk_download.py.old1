@@ -476,40 +476,7 @@ class All_Assets_List():
         df_l3.set_index('ts_code',inplace=True)
         _frame = [df_al,df_l1,df_l2,df_l3]
         df_al = pd.concat(_frame,sort=False)
-
-        #--------------上交所指数---------------
-        if que_from_ts == True:
-            raw_data.index.get_index_basic()
-        _file_path = sub_path + '\\' + 'index_basic_sse.csv'        
-        try:
-            df_sse = pd.read_csv(_file_path,usecols=['ts_code','name'])
-        except FileNotFoundError:
-            log_args = [_file_path]
-            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
-            return
-        df_sse['valid'] = 'T'
-        df_sse['selected'] = 'T'
-        df_sse['type'] = 'index'
-        df_sse['stype1'] = 'SSE'
-        df_sse['stype2'] = ''
-        df_sse.set_index('ts_code',inplace=True)
-        _file_path = sub_path + '\\' + 'index_basic_szse.csv'        
-        try:
-            df_szse = pd.read_csv(_file_path,usecols=['ts_code','name'])
-        except FileNotFoundError:
-            log_args = [_file_path]
-            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
-            return
-        df_szse['valid'] = 'T'
-        df_szse['selected'] = 'T'
-        df_szse['type'] = 'index'
-        df_szse['stype1'] = 'SZSE'
-        df_szse['stype2'] = ''
-        df_szse.set_index('ts_code',inplace=True)
-        _frame = [df_al,df_sse,df_szse]
-        df_al = pd.concat(_frame,sort=False)
-
-        df_al.to_csv(file_path_al,encoding="utf-8")    
+        df_al.to_csv(file_path_al,encoding="utf-8")
         return
 
 class Trade_Calendar():
@@ -761,7 +728,8 @@ class Index():
                 else:
                     log_args = [ts_code]
                     add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" load csv fail', log_args)
-                    return                
+                    return
+                
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
@@ -837,7 +805,7 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_cnfg_path = r".\data_csv\dowload_cnfg.csv"
-    #bulk_download(download_cnfg_path) #批量下载数据
+    bulk_download(download_cnfg_path) #批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -878,5 +846,5 @@ if __name__ == "__main__":
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
-    plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
+    #plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
 
