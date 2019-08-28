@@ -872,6 +872,7 @@ if __name__ == "__main__":
     # #------------------------下载申万三级行业分类-----------------------
     # df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
     # al = All_Assets_List.load_all_assets_list()
+    # All_Assets_List.rebuild_all_assets_list(que_from_ts = True)
     # All_Assets_List.rebuild_all_assets_list()
     # #------------------------生成al文件-----------------------
     #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数

@@ -73,6 +73,8 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
     handler: <tushare API> listed in HANDLER e.g. ts_pro.index_daily, ts_pro.sw_daily
     retrun: <df> if success, None if fail
     """
+    TRY_TIMES = 20
+    SLEEP_TIME = 20
     df = None
     start_date = date_str_to_date(start_date_str)
     end_date = date_str_to_date(end_date_str)
@@ -82,7 +84,7 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
         _end_time = date_str_to_date(_start_str) + timedelta(size)
         _end_str = date_to_date_str(_end_time)
         _try = 0
-        while _try < 20:
+        while _try < TRY_TIMES:
             try:
                 _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
                 #--------debug-------------
@@ -90,7 +92,7 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
                 #len__df = len(_df)
                 #print("[debug]L81: len__df:{}".format(len__df))
             except Exception as e: #ConnectTimeout, 每分钟200:
-                time.sleep(60)
+                time.sleep(SLEEP_TIME)
                 _try += 1
                 log_args = [ts_code, _try, e.__class__.__name__, e]
                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
@@ -108,7 +110,7 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
     else:
         _end_str = end_date_str
         _try = 0
-        while _try < 20:
+        while _try < TRY_TIMES:
             try:
                 _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
                 #--------debug-------------
@@ -116,7 +118,7 @@ def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
                 #len__df = len(_df)
                 #print("[debug]L105: len__df:{}".format(len__df))
             except Exception as e: #ConnectTimeout:
-                time.sleep(60)
+                time.sleep(SLEEP_TIME)
                 _try += 1
                 log_args = [ts_code, _try, e.__class__.__name__, e]
                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
