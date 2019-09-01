@@ -15,6 +15,7 @@ sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
 sub_path_config = r"\config" #配置文件
 sub_path_al = r"\assets_lists" #资产列表
+sub_path_result = r".\plot_result" #分析模板运行结果
 
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
@@ -338,6 +339,10 @@ def download_data(ts_code,category,reload=False):
             if isinstance(df, pd.DataFrame):
                 file_name = 'd_' + ts_code + '.csv'
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                if logable(40):
+                        number_of_items = len(df)
+                        log_args = [ts_code, number_of_items]
+                        add_log(40,"[fn]download_data() ts_code: {0[0]}, total items: {0[1]}", log_args)
                 return df
             else:
                 log_args = [ts_code,df]
@@ -813,7 +818,13 @@ class Plot_Assets_Racing():
             #self.raw_data.loc[ts_code]=[name,base_close,last_chg,df]
         #print("[L383] self.raw_data:{}".format(self.raw_data))
         self.raw_data.sort_values(by='last_chg',inplace=True,ascending=False)
-        print("[L385] self.raw_data:{}".format(self.raw_data[['name','last_chg']]))
+        result = self.raw_data[['name','last_chg']]
+        print(result)
+        file_name = str('资产竞速{}周期涨幅比较_{}'.format(period,al_file[3:-4])) + '_' + today_str() + '.csv'
+        file_path = sub_path_result + r'\Plot_Assets_Racing' + '\\' + file_name
+        result.to_csv(file_path,encoding="utf-8")
+        log_args = [file_path]
+        add_log(40, '[fn]:Plot_Assets_Racing() result saved to file "{}"', log_args)
         for ts_code, pen in self.raw_data.iterrows():
             name, last_chg, df = pen['name'],pen['last_chg'],pen['df']
             last_chg = str(round(last_chg,2))
@@ -829,9 +840,6 @@ class Plot_Assets_Racing():
         plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
         plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
         plt.show()
-
-
-
 
 class All_Assets_List():
     """处理全资产列表"""
@@ -1019,7 +1027,7 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     download_path = r"download_all"
-    bulk_download(download_path) #批量下载数据
+    #bulk_download(download_path) #批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1059,7 +1067,7 @@ if __name__ == "__main__":
     #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
-    al_download = Plot_Utility.gen_al(al_name='download_all',selected=None) #全部valid='T'的资产
+    # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None) #全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
     plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
 
