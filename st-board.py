@@ -271,6 +271,52 @@ class Index():
         if len(_frames) > 0:
             self.index_basic_df = pd.concat(_frames, ignore_index=True)
 
+class Stock():
+    """股票类的资产"""
+
+    def __init__(self, pull=False):
+        self.basic = None
+        if pull == True:
+            self.get_stock_basic()
+        else:
+            self.load_stock_basic()
+
+    def get_stock_basic(self):
+        """
+        从ts_pro.stock_basic获取个股的基本信息列表
+        return:<df> is success, None if fail
+        """
+        file_name = 'stock_basic.csv'
+        file_path = sub_path + '\\' + file_name
+        self.basic = ts_pro.stock_basic(fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange,curr_type,list_status,list_date,delist_date,is_hs')
+        if isinstance(self.basic, pd.DataFrame):
+            if len(self.basic) > 10:
+                self.basic.set_index('ts_code',inplace=True)
+                self.basic.to_csv(file_path,encoding='utf-8')
+                log_args = [file_path]
+                add_log(40, '[fn]:Stock.get_stock_basic() file "{0[0]}" saved', log_args)
+                return self.basic
+        log_args = [file_path]
+        add_log(20, '[fn]:Stock.get_stock_basic() failed to save file "{0[0]}"', log_args)
+        return
+    
+    def load_stock_basic(self):
+        """
+        从stock_basic.csv文件读入个股的基本信息列表
+        return:<df> is success, None if fail
+        """
+        file_name = "stock_basic.csv"
+        file_path = sub_path + '\\' + file_name
+        try:
+            self.basic = pd.read_csv(file_path,dtype={'symbol':str,'list_date':str,'delist_date':str},index_col='ts_code')
+            return self.basic
+        except FileNotFoundError:
+            log_args = [file_path]
+            add_log(20, '[fn]Stock.get_stock_basic()e. file "{0[0]}" not found', log_args)
+            return
+
+
+
 #LOADER读入.csv数据的接口
 LOADER = {'index_sse':Index.load_index_daily,
           'index_szse':Index.load_index_daily,
@@ -671,11 +717,12 @@ class Raw_Data():
         """
         self.trade_calendar = Trade_Calendar(pull)
         self.index = Index(pull) #指数相关数据
+        self.stock = Stock(pull) #个股相关数据
         self.all_assets_list = All_Assets_List.load_all_assets_list()
         #self.stock_list = None
     
     def valid_ts_code(self, ts_code):
-        """验证在raw_data内ts_code是否有效,包含index,
+        """验证在raw_data内ts_code是否有效,
         return: <bool> True=valid
         """
         #--------------------Index---------------
@@ -943,7 +990,37 @@ class All_Assets_List():
         df_szse.set_index('ts_code',inplace=True)
         _frame = [df_al,df_sse,df_szse]
         df_al = pd.concat(_frame,sort=False)
-
+        #--------------个股---------------
+        if que_from_ts == True:
+            raw_data.stock.get_stock_basic()
+        file_name = 'stock_basic.csv'
+        _file_path = sub_path + '\\' + file_name    
+        try:
+            df = pd.read_csv(_file_path,usecols=['ts_code','name'],index_col='ts_code')
+        except FileNotFoundError:
+            log_args = [_file_path]
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            return
+        df['valid'] = 'T'
+        df['selected'] = 'T'
+        df['type'] = 'stock'
+        #df['stype1'] = ''
+        #df['stype2'] = ''
+        df.loc[df.index.str.startswith('600'),'stype1'] = 'SHZB' #上海主板
+        df.loc[df.index.str.startswith('601'),'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('602'),'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('603'),'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('688'),'stype1'] = 'KCB' #科创板
+        df.loc[df.index.str.startswith('000'),'stype1'] = 'SZZB' #深圳主板
+        df.loc[df.index.str.startswith('001'),'stype1'] = 'SZZB'
+        df.loc[df.index.str.startswith('002'),'stype1'] = 'ZXB' #中小板
+        df.loc[df.index.str.startswith('003'),'stype1'] = 'ZXB'
+        df.loc[df.index.str.startswith('004'),'stype1'] = 'ZXB'
+        df.loc[df.index.str.startswith('300'),'stype1'] = 'CYB' #创业板
+        df['stype2'] = ''
+        _frame = [df_al,df]
+        df_al = pd.concat(_frame,sort=False)
+        #--------------结尾---------------
         df_al.to_csv(file_path_al,encoding="utf-8")    
         return
 
@@ -1067,7 +1144,11 @@ if __name__ == "__main__":
     #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
-    # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None) #全部valid='T'的资产
+    # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
-    plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
+    #plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
+    # #-------------------Stock Class-----------------------
+    #stock = Stock(pull=True)
+    #stock = Stock()
+
 
