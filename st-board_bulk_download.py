@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     #download_path = r"download_all"
-    download_path = r"SW_Index_L1"
+    download_path = r"download_all"
     bulk_download(download_path) #批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')

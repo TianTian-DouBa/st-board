@@ -127,7 +127,6 @@ class Index():
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
-        #try:
         try:
             result = self.idx_ts_code.loc[ts_code]['list_date']
         except KeyError:
@@ -149,77 +148,13 @@ class Index():
                 add_log(40, '[fn]:Index.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
                 return result
     
-    # def get_index_daily(self, ts_code, handler_s, reload = False):
-    #     r"""通过调用sgmt_daily_index_download下载指数的日线数据到daily_data\<ts_code>.csv文件
-    #     ts_code: <str> '399001.SZ'
-    #     handler_s: <str> in HANDLER e.g. 'index', 'sw_daily'
-    #     reload: <bool> True=重头开始下载
-    #     retrun: <df> if success, None if fail
-    #     """
-    #     global sub_path_2nd_daily
-    #     READER = {'index':self.load_index_daily,
-    #               'sw_daily':self.load_sw_daily}
-    #     QUE_LIMIT = 8000 #每次查询返回的条目限制
-    #     try:
-    #         handler = HANDLER[handler_s] #debug try catch wrong handler
-    #     except KeyError:
-    #         log_args = [ts_code, handler_s]
-    #         add_log(20, '[fn]get_index_daily(). ts_code: "{0[0]}" handler_s: "{0[1]}" incorrect',log_args)
-    #         return
-    #     if raw_data.valid_ts_code(ts_code):
-    #         if reload == True: #重头开始下载
-    #             start_date_str = self.que_list_date(ts_code)
-    #             end_date_str = today_str()
-    #             df = sgmt_daily_index_download(ts_code,start_date_str,end_date_str,QUE_LIMIT,handler)
-    #             if isinstance(df, pd.DataFrame):
-    #                 file_name = 'd_' + ts_code + '.csv'
-    #                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
-    #                 return df
-    #             else:
-    #                 log_args = [ts_code,df]
-    #                 add_log(20, '[fn]Index.get_index_daily() failed to get DataFrame. ts_code: "{0[0]}" df: ', log_args)
-    #                 return None
-    #         else: #reload != True 读入文件，看最后条目的日期，继续下载数据
-    #             reader = READER[handler_s]
-    #             df = reader(ts_code)
-    #             if isinstance(df, pd.DataFrame):
-    #                 try:
-    #                     last_date_str = df.iloc[0]['trade_date']
-    #                 except IndexError:
-    #                     last_date_str = self.que_list_date(ts_code)
-    #                 last_date = date_str_to_date(last_date_str)
-    #                 today_str_ = today_str()
-    #                 today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
-    #                 start_date = last_date + timedelta(1)
-    #                 _start_str = date_to_date_str(start_date)
-    #                 _end_str = today_str_
-    #                 if last_date < today:
-    #                     _df = sgmt_daily_index_download(ts_code,_start_str,_end_str,QUE_LIMIT,handler)
-    #                     _frames = [_df,df]
-    #                     df=pd.concat(_frames,ignore_index=True)
-    #                     file_name = 'd_' + ts_code + '.csv'
-    #                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
-    #                     if logable(40):
-    #                         number_of_items = len(df)
-    #                         log_args = [ts_code, number_of_items]
-    #                         add_log(40,"[fn]Index.get_index_daily() ts_code: {0[0]}, total items: {0[1]}", log_args)
-    #                     return df
-    #             else:
-    #                 log_args = [ts_code]
-    #                 add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" load csv fail', log_args)
-    #                 return                
-    #     else:
-    #         log_args = [ts_code]
-    #         add_log(20, '[fn]Index.get_index_daily() ts_code "{0[0]}" invalid', log_args)
-    #         return
-
     @staticmethod    
     def load_index_daily(ts_code,nrows=None):
-        """从文件读入指数日线数据
+        """
+        从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
-        sub_path_2nd_daily = r"\daily_data"
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col=False,nrows=nrows)
@@ -233,7 +168,8 @@ class Index():
     
     @staticmethod
     def load_sw_daily(ts_code, nrows=None):
-        """从文件读入指数日线数据
+        """
+        从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
@@ -314,17 +250,56 @@ class Stock():
             log_args = [file_path]
             add_log(20, '[fn]Stock.get_stock_basic()e. file "{0[0]}" not found', log_args)
             return
-
-
+    
+    @staticmethod
+    def load_stock_daily(ts_code,nrows=None):
+        """
+        从文件读入指数日线数据
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'd_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='ts_code',nrows=nrows)
+            result['vol']=result['vol'].astype(np.int64)
+            #待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Stock.load_stock_daily() ts_code "{0[0]}" invalid', log_args)
+            return
+    
+    def que_list_date(self, ts_code):
+        """查询上市时间list_date
+        return:<str> e.g. '19930503'
+        ts_code:<str> e.g. '000001.SH'
+        """
+        try:
+            result = self.basic.loc[ts_code]['list_date']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]:Stock.que_list_date() ts_code: "{0[0]}" was not found in Stock.base. use DEFAULT_OPEN_DATE_STR instead', log_args)
+            result = DEFAULT_OPEN_DATE_STR
+            return result
+        if valid_date_str_fmt(result):
+            return result
+        else:
+            result = DEFAULT_OPEN_DATE_STR
+            log_args = [ts_code, result]
+            add_log(40, '[fn]:Stock.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
+            return result
 
 #LOADER读入.csv数据的接口
 LOADER = {'index_sse':Index.load_index_daily,
           'index_szse':Index.load_index_daily,
-          'index_sw':Index.load_sw_daily}
+          'index_sw':Index.load_sw_daily,
+          'stock':Stock.load_stock_daily}
 #GETTER从Tushare下载数据的接口
 GETTER = {'index_sse':ts_pro.index_daily,
           'index_szse':ts_pro.index_daily,
-          'index_sw':ts_pro.sw_daily}
+          'index_sw':ts_pro.sw_daily,
+          'stock':ts_pro.daily}
 
 # 'handler_s':handler
 # HANDLER = {'index':ts_pro.index_daily,
@@ -349,14 +324,16 @@ def today_str():
     return today_str
 
 def date_to_date_str(dt):
-    """将datetime转化为data_str
+    """
+    将datetime转化为data_str
     dt:<datetime>
     return:<str> e.g. '20190723'
     """
     return dt.strftime("%Y%m%d")
 
 def date_str_to_date(date_str):
-    """将date_str转化为datetime
+    """
+    将date_str转化为datetime
     date_str:<str> e.g. '20190723'
     return:<datetime>
     """
@@ -364,11 +341,13 @@ def date_str_to_date(date_str):
     return date
 
 def download_data(ts_code,category,reload=False):
-    r"""通过调用sgmt_daily_index_download下载资产数据到数据文e.g. daily_data\d_<ts_code>.csv文件
-        ts_code: <str> '399001.SZ'
-        category: <str> in READER e.g. 'Index.load_index_daily'
-        reload: <bool> True=重头开始下载
-        retrun: <df> if success, None if fail
+    r"""
+    通过调用sgmt_daily_index_download下载资产数据到数据文e.g. daily_data\d_<ts_code>.csv文件
+    需要在增加资产类别时改写
+    ts_code: <str> '399001.SZ'
+    category: <str> in READER e.g. 'Index.load_index_daily'
+    reload: <bool> True=重头开始下载
+    retrun: <df> if success, None if fail
     """
     QUE_LIMIT = 8000 #每次查询返回的条目限制,假定所有loader都相同
     try:
@@ -379,16 +358,22 @@ def download_data(ts_code,category,reload=False):
         return
     if raw_data.valid_ts_code(ts_code):
         if reload == True: #重头开始下载
-            start_date_str = raw_data.index.que_list_date(ts_code)
+            #-----------index类别--------------
+            if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
+                start_date_str = raw_data.index.que_list_date(ts_code)
+            #-----------stock类别--------------
+            if category == 'stock':
+                start_date_str = raw_data.stock.que_list_date(ts_code)
+            #-----------其它类型(未完成)--------------
             end_date_str = today_str()
             df = sgmt_download(ts_code,start_date_str,end_date_str,QUE_LIMIT,category)
             if isinstance(df, pd.DataFrame):
                 file_name = 'd_' + ts_code + '.csv'
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                 if logable(40):
-                        number_of_items = len(df)
-                        log_args = [ts_code, number_of_items]
-                        add_log(40,"[fn]download_data() ts_code: {0[0]}, total items: {0[1]}", log_args)
+                    number_of_items = len(df)
+                    log_args = [ts_code, number_of_items]
+                    add_log(40,"[fn]download_data() ts_code: {0[0]}, total items: {0[1]}", log_args)
                 return df
             else:
                 log_args = [ts_code,df]
@@ -401,7 +386,13 @@ def download_data(ts_code,category,reload=False):
                 try:
                     last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
                 except IndexError:
-                    last_date_str = raw_data.index.que_list_date(ts_code)
+                    #-----------index类别--------------
+                    if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
+                        last_date_str = raw_data.index.que_list_date(ts_code)
+                    #-----------stock类别--------------
+                    if category == 'stock':
+                        last_date_str = raw_data.stock.que_list_date(ts_code)
+                    #-----------其它类型(未完成)--------------
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
                 today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
@@ -429,7 +420,8 @@ def download_data(ts_code,category,reload=False):
         return
 
 def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
-    """通过TuShare API分段下载数据
+    """
+    通过TuShare API分段下载数据
     ts_code: <str> 对象的tushare代码 e.g. '399001.SZ'
     start_date_str: <str> 开始时间字符串 YYYYMMDD '19930723'
     end_date_str: <str> 结束时间字符串 YYYYMMDD '20190804'
@@ -494,76 +486,10 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
             df=pd.concat(_frames,ignore_index=True)
     return df
 
-# def sgmt_daily_index_download(ts_code,start_date_str,end_date_str,size,handler):
-#     """通过TuShare API分段下载数据
-#     ts_code: <str> 对象的tushare代码 e.g. '399001.SZ'
-#     start_date_str: <str> 开始时间字符串 YYYYMMDD '19930723'
-#     end_date_str: <str> 结束时间字符串 YYYYMMDD '20190804'
-#     size: <int> 每个分段的大小 1 to xxxx
-#     handler: <tushare API> listed in HANDLER e.g. ts_pro.index_daily, ts_pro.sw_daily
-#     retrun: <df> if success, None if fail
-#     """
-#     TRY_TIMES = 20
-#     SLEEP_TIME = 20
-#     df = None
-#     start_date = date_str_to_date(start_date_str)
-#     end_date = date_str_to_date(end_date_str)
-#     duration = (end_date-start_date).days
-#     _start_str = start_date_str
-#     while duration > size:
-#         _end_time = date_str_to_date(_start_str) + timedelta(size)
-#         _end_str = date_to_date_str(_end_time)
-#         _try = 0
-#         while _try < TRY_TIMES:
-#             try:
-#                 _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-#                 #--------debug-------------
-#                 #print("[debug]L78: ts_code:{} , start_date:{}, end_date:{}".format(ts_code, _start_str, _end_str))
-#                 #len__df = len(_df)
-#                 #print("[debug]L81: len__df:{}".format(len__df))
-#             except Exception as e: #ConnectTimeout, 每分钟200:
-#                 time.sleep(SLEEP_TIME)
-#                 _try += 1
-#                 log_args = [ts_code, _try, e.__class__.__name__, e]
-#                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
-#                 add_log(40, '[fn]sgmt_daily_index_download(). except_type:{0[2]}; msg:{0[3]}', log_args)
-#                 continue
-#             break
-#         if not isinstance(df,pd.DataFrame):
-#             df = _df
-#         else:
-#             _frames = [_df,df]
-#             df=pd.concat(_frames,ignore_index=True)
-#         _start_time = _end_time + timedelta(1)
-#         _start_str = date_to_date_str(_start_time)
-#         duration = duration - size
-#     else:
-#         _end_str = end_date_str
-#         _try = 0
-#         while _try < TRY_TIMES:
-#             try:
-#                 _df = handler(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-#                 #--------debug-------------
-#                 #print("[debug]L103: ts_code:{} , start_date:{}, end_date:{}, handler:{}".format(ts_code, _start_str, _end_str, handler))
-#                 #len__df = len(_df)
-#                 #print("[debug]L105: len__df:{}".format(len__df))
-#             except Exception as e: #ConnectTimeout:
-#                 time.sleep(SLEEP_TIME)
-#                 _try += 1
-#                 log_args = [ts_code, _try, e.__class__.__name__, e]
-#                 add_log(40, '[fn]sgmt_daily_index_download(). ts_code:{0[0]} _try: {0[1]}', log_args)
-#                 add_log(40, '[fn]sgmt_daily_index_download(). except_type:{0[2]}; msg:{0[3]}', log_args)
-#                 continue
-#             break
-#         if not isinstance(df,pd.DataFrame):
-#             df = _df
-#         else:
-#             _frames = [_df,df]
-#             df=pd.concat(_frames,ignore_index=True)
-#     return df
-
 def bulk_download(download_file, reload=False):
-    r"""根据资产列表文件，批量下载数据到csv文件
+    r"""
+    根据资产列表文件，批量下载数据到csv文件
+    需要在增加资产类别时改写
     download_file:<str> path for al file e.g. r'.\data_csv\assets_lists\al_<download_file>.csv'
     reload:<bool> True重新下载完整文件
     """
@@ -598,6 +524,9 @@ def bulk_download(download_file, reload=False):
             #--------------深圳指数---------------
             if _type == 'index' and stype1=='SZSE':
                 category = 'index_szse'
+            #--------------个股---------------
+            if _type == 'stock':
+                category = 'stock'
             #--------------其它类型(未完成)----------
             if category == None:
                 log_args = [ts_code]
@@ -610,57 +539,6 @@ def bulk_download(download_file, reload=False):
             else:
                 _reload = False
             download_data(ts_code, category, _reload)
-
-# def bulk_download_1(download_file, reload=False):
-#     r"""根据下载列表配置文件，批量下载数据到csv文件
-#     download_file:<str> path for configure file e.g. r'.\data_csv\download_cnfg.csv'
-#     reload:<bool> True重新下载完整文件
-#     return:<df> of download configure file is success; None if failed
-#     """
-#     try:
-#         df_cnfg = pd.read_csv(download_file, index_col=False)
-#     except FileNotFoundError:
-#         log_args = [download_file]
-#         add_log(10, '[fn]bulk_download(). file "{0[0]}" not found',log_args)
-#         df_cnfg = None
-#         return None
-#     df_cnfg['status']=DOWNLOAD_WORD[3] #<str>'-unknow-',增加一列存放数据下载的状态
-#     for _, row in df_cnfg.iterrows():
-#         #print("ts_code: " + ts_code + "    type: " + _type)
-#         if row['selected'] == 'x' or row['selected'] == 'X':
-#             #print("debug#124: {}".format(row))
-#             ts_code, handler_s = row['ts_code'], row['handler']
-#             #print("debug#131 ts_code='{}' handler_s='{}'".format(ts_code,handler_s))
-#             file_name = 'd_' + ts_code + '.csv'
-#             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-#             if reload==True or (not os.path.exists(file_path)):
-#                 _reload = True
-#             else:
-#                 _reload = False
-#             df_daily = raw_data.index.get_index_daily(ts_code, handler_s, _reload)
-#             if isinstance(df_daily,pd.DataFrame):
-#                 row['status'] = DOWNLOAD_WORD[0] #'-success-'
-#             else:
-#                 row['status'] = DOWNLOAD_WORD[1] #'-fail-'
-#             # #----指数类型----
-#             # if handler == 'index':
-#             #     file_name = 'd_' + ts_code + '.csv'
-#             #     file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-#             #     if reload==True or (not os.path.exists(file_path)):
-#             #         _reload = True
-#             #     else:
-#             #         _reload = False
-#             #     df_daily = raw_data.index.get_index_daily(ts_code, _reload)
-#             #     if isinstance(df_daily,pd.DataFrame):
-#             #         row['status'] = DOWNLOAD_WORD[0] #'-success-'
-#             #     else:
-#             #         row['status'] = DOWNLOAD_WORD[1] #'-fail-'
-#             # #----申万指数类型----
-#             # if handler == 'sw_daily':
-#             #     print("其它类型待继续 line-114")
-#             log_args = [ts_code, row['status']]
-#             add_log(40, '[fn]bulk_download() ts_code: "{0[0]}"  status: "{0[1]}"', log_args)
-#     return df_cnfg
 
 def get_stock_list(return_df = True):
     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
@@ -694,20 +572,6 @@ def get_daily_basic(return_df = True):
     if return_df != True:
         df = None
     return df
-
-# def que_index_daily(ts_code,start_date=None,end_date=None):
-#     """通过Tushare index_daily接口获取指标日线数据
-#     ts_code: <str> '399001.SZ'
-#     start_date: <str> '20190628', 省略为股票上市日期
-#     end_date: <str> '20190719', 省略为当日最近的交易日
-#     <未完成，待删除>
-#     """
-#     if start_date == None:
-#         start_date = '20190628'
-#     if end_date == None:
-#         end_date = '20190719'
-#     df = ts_pro.index_daily(ts_code=ts_code,start_date=start_date,end_date=end_date)
-#     return df
 
 class Raw_Data():
     """存放其它模块计算时所要用的公共数据的基础模块，需要实例化填充数据后使用"""
@@ -836,9 +700,15 @@ class Plot_Assets_Racing():
             #print("[debug L349] ts_code:{}".format(ts_code))
             name,_type, stype1, stype2 = _aal.loc[ts_code][['name','type','stype1','stype2']]
             handler = None
-            #--------------Index.load_sw_daily---------------
-            if stype1=='SW':
+            #--------------申万指数---------------
+            if _type=='index' and stype1=='SW':
                 handler = Index.load_sw_daily
+            #--------------上证及深圳指数---------------
+            if _type=='index' and (stype1=='SSE' or stype1=='SZSE'):
+                handler = Index.load_index_daily
+            #--------------个股类型---------------
+            if _type=='stock':
+                handler = Stock.load_stock_daily
             #--------------handler = ts_pro.index_daily(未完成)----------
             if handler == None:
                 log_args = [ts_code]
@@ -1103,7 +973,8 @@ if __name__ == "__main__":
     index = raw_data.index
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
-    download_path = r"download_all"
+    #download_path = r"download_all"
+    download_path = r"dl_stocks"
     #bulk_download(download_path) #批量下载数据
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
@@ -1144,11 +1015,11 @@ if __name__ == "__main__":
     #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
     # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
     # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
+    # al_dl_stocks = Plot_Utility.gen_al(al_name='dl_stocks',selected=None,type_='stock')#全部valid='T'的资产
     # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
-    #plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
+    # plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
+    plot_ar = Plot_Assets_Racing('al_user_001.csv',period=30)
     # #-------------------Stock Class-----------------------
     #stock = Stock(pull=True)
     #stock = Stock()
-
-
