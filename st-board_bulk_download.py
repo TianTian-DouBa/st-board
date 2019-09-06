@@ -1043,9 +1043,9 @@ if __name__ == "__main__":
     download_path = r"download_all"
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
-    #bulk_download(download_path,reload=True) #批量下载数据
+    bulk_download(download_path,reload=True) #批量下载数据
     download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    #bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1089,7 +1089,7 @@ if __name__ == "__main__":
     # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
     # plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
-    plot_ar = Plot_Assets_Racing('al_user_001.csv',period=30)
+    # plot_ar = Plot_Assets_Racing('al_user_001.csv',period=30)
     # #-------------------Stock Class-----------------------
     #stock = Stock(pull=True)
     #stock = Stock()
