@@ -252,6 +252,23 @@ class Stock():
             return
 
     @staticmethod
+    def load_adj_factor(ts_code,nrows=None):
+        """
+        从文件读入复权因子
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'fq_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='ts_code',nrows=nrows)
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Stock.load_adj_factor() ts_code "{0[0]}" invalid', log_args)
+            return
+
+    @staticmethod
     def load_stock_daily(ts_code,nrows=None):
         """
         从文件读入指数日线数据
@@ -312,13 +329,15 @@ LOADER = {'index_sse':Index.load_index_daily,
           'index_szse':Index.load_index_daily,
           'index_sw':Index.load_sw_daily,
           'stock':Stock.load_stock_daily,
-          'stock_daily_basic':Stock.load_stock_daily_basic}
+          'stock_daily_basic':Stock.load_stock_daily_basic,
+          'adj_factor':Stock.load_adj_factor}
 #GETTER从Tushare下载数据的接口
 GETTER = {'index_sse':ts_pro.index_daily,
           'index_szse':ts_pro.index_daily,
           'index_sw':ts_pro.sw_daily,
           'stock':ts_pro.daily,
-          'stock_daily_basic':ts_pro.daily_basic}
+          'stock_daily_basic':ts_pro.daily_basic,
+          'adj_factor':ts_pro.adj_factor}
 
 # 'handler_s':handler
 # HANDLER = {'index':ts_pro.index_daily,
@@ -386,12 +405,18 @@ def download_data(ts_code,category,reload=False):
             #-----------stock每日指标类别--------------
             if category == 'stock_daily_basic':
                 start_date_str = raw_data.stock.que_list_date(ts_code)
+            #-----------复权因子--------------
+            if category == 'adj_factor':
+                start_date_str = raw_data.stock.que_list_date(ts_code)
             #-----------其它类型(未完成)--------------
             end_date_str = today_str()
             df = sgmt_download(ts_code,start_date_str,end_date_str,QUE_LIMIT,category)
             if isinstance(df, pd.DataFrame):
                 if category == 'stock_daily_basic':
                     file_name = 'db_' + ts_code + '.csv'
+                elif category == 'adj_factor':
+                    file_name = 'fq_' + ts_code + '.csv'
+                #-----新类别需修改
                 else:
                     file_name = 'd_' + ts_code + '.csv'
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
@@ -419,6 +444,9 @@ def download_data(ts_code,category,reload=False):
                         last_date_str = raw_data.stock.que_list_date(ts_code)
                     #-----------stock每日指标类别--------------
                     if category == 'stock_daily_basic':
+                        last_date_str = raw_data.stock.que_list_date(ts_code)
+                    #-----------复权因子--------------
+                    if category == 'adj_factor':
                         last_date_str = raw_data.stock.que_list_date(ts_code)
                     #-----------其它类型(未完成)--------------
                 last_date = date_str_to_date(last_date_str)
@@ -597,8 +625,18 @@ def bulk_dl_appendix(al_file, reload=False):
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
+            #-------------每日指标--------------
             category = 'stock_daily_basic' #股票每日指标
             file_name = 'db_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            if reload==True or (not os.path.exists(file_path)):
+                _reload = True
+            else:
+                _reload = False
+            download_data(ts_code, category, _reload)
+            #-------------复权因子--------------
+            category = 'adj_factor' #股票复权
+            file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if reload==True or (not os.path.exists(file_path)):
                 _reload = True
@@ -1043,7 +1081,8 @@ if __name__ == "__main__":
     #download_path = r"download_all"
     #download_path = r"dl_stocks"
     download_path = r"try_001"
-    bulk_download(download_path,reload=True) #批量下载数据
+    # bulk_download(download_path,reload=True) #批量下载数据
+    download_path = r"dl_stocks"
     bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
