@@ -1,4 +1,6 @@
 ttt = ts_pro.sw_daily(ts_code='850623.SI',start_date='20190601',end_date='20190731')
+ttt = ts_pro.sw_daily(ts_code='801020.SI',start_date='19991230',end_date='20190906')
+ttt = ts_pro.sw_daily(ts_code='801020.SI',start_date='20030101',end_date='20121230')
 
 ttt = ts_pro.sw_daily(ts_code='801003.SI',start_date='19991231',end_date='20190818')
 

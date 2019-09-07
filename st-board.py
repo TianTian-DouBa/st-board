@@ -148,6 +148,26 @@ class Index():
                 add_log(40, '[fn]:Index.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
                 return result
     
+    def que_base_date(self, ts_code):
+        """查询base_date
+        return:<str> e.g. '19930503'
+        ts_code:<str> e.g. '000001.SH'
+        """
+        try:
+            result = self.idx_ts_code.loc[ts_code]['base_date']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]:Index.que_base_date() ts_code: "{0[0]}" was not found in Index.idx_ts_code. use DEFAULT_OPEN_DATE_STR instead', log_args)
+            result = DEFAULT_OPEN_DATE_STR
+            return result
+        if valid_date_str_fmt(result):
+            return result
+        else:
+            result = DEFAULT_OPEN_DATE_STR
+            log_args = [ts_code, result]
+            add_log(40, '[fn]:Index.que_base_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "base_date".', log_args)
+            return result
+    
     @staticmethod    
     def load_index_daily(ts_code,nrows=None):
         """
@@ -338,10 +358,13 @@ GETTER = {'index_sse':ts_pro.index_daily,
           'stock':ts_pro.daily,
           'stock_daily_basic':ts_pro.daily_basic,
           'adj_factor':ts_pro.adj_factor}
-
-# 'handler_s':handler
-# HANDLER = {'index':ts_pro.index_daily,
-#           'sw_daily':ts_pro.sw_daily}
+#QUE_LIMIT,Tushare接口的单查询条目上限
+QUE_LIMIT = {'index_sse':8000,
+             'index_szse':8000,
+             'index_sw':1000,
+             'stock':4000,
+             'stock_daily_basic':8000,
+             'adj_factor':8000} 
 
 def valid_date_str_fmt(date_str):
     """验证date_str形式格式是否正确
@@ -387,9 +410,9 @@ def download_data(ts_code,category,reload=False):
     reload: <bool> True=重头开始下载
     retrun: <df> if success, None if fail
     """
-    QUE_LIMIT = 8000 #每次查询返回的条目限制,假定所有loader都相同
     try:
         loader = LOADER[category]
+        que_limit = QUE_LIMIT[category]
     except KeyError:
         log_args = [ts_code, category]
         add_log(20, '[fn]download_data(). ts_code: "{0[0]}" category: "{0[1]}" incorrect',log_args)
@@ -398,7 +421,7 @@ def download_data(ts_code,category,reload=False):
         if reload == True: #重头开始下载
             #-----------index类别--------------
             if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                start_date_str = raw_data.index.que_list_date(ts_code)
+                start_date_str = raw_data.index.que_base_date(ts_code)
             #-----------stock类别--------------
             if category == 'stock':
                 start_date_str = raw_data.stock.que_list_date(ts_code)
@@ -410,7 +433,7 @@ def download_data(ts_code,category,reload=False):
                 start_date_str = raw_data.stock.que_list_date(ts_code)
             #-----------其它类型(未完成)--------------
             end_date_str = today_str()
-            df = sgmt_download(ts_code,start_date_str,end_date_str,QUE_LIMIT,category)
+            df = sgmt_download(ts_code,start_date_str,end_date_str,que_limit,category)
             if isinstance(df, pd.DataFrame):
                 if category == 'stock_daily_basic':
                     file_name = 'db_' + ts_code + '.csv'
@@ -438,7 +461,7 @@ def download_data(ts_code,category,reload=False):
                 except IndexError:
                     #-----------index类别--------------
                     if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                        last_date_str = raw_data.index.que_list_date(ts_code)
+                        last_date_str = raw_data.index.que_base_date(ts_code)
                     #-----------stock类别--------------
                     if category == 'stock':
                         last_date_str = raw_data.stock.que_list_date(ts_code)
@@ -456,7 +479,7 @@ def download_data(ts_code,category,reload=False):
                 _start_str = date_to_date_str(start_date)
                 _end_str = today_str_
                 if last_date < today:
-                    _df = sgmt_download(ts_code,_start_str,_end_str,QUE_LIMIT,category)
+                    _df = sgmt_download(ts_code,_start_str,_end_str,que_limit,category)
                     _frames = [_df,df]
                     df=pd.concat(_frames,ignore_index=True)
                     if category == 'stock_daily_basic':
@@ -1081,9 +1104,9 @@ if __name__ == "__main__":
     #download_path = r"download_all"
     #download_path = r"dl_stocks"
     download_path = r"try_001"
-    # bulk_download(download_path,reload=True) #批量下载数据
+    bulk_download(download_path,reload=True) #批量下载数据
     download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    #bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
