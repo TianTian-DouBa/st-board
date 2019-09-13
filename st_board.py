@@ -281,7 +281,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='ts_code',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='trade_date',nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -298,7 +298,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='ts_code',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='trade_date',nrows=nrows)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -446,7 +446,7 @@ def download_data(ts_code,category,reload=False):
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, number_of_items]
-                    add_log(40,"[fn]download_data() ts_code: {0[0]}, category: {0[1]}, total items: {0[2]}", log_args)
+                    add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
                 return df
             else:
                 log_args = [ts_code,df]
@@ -490,7 +490,7 @@ def download_data(ts_code,category,reload=False):
                     if logable(40):
                         number_of_items = len(df)
                         log_args = [ts_code, category, number_of_items]
-                        add_log(40,"[fn]download_data() ts_code: {0[0]}, category: {0[1]}, total items: {0[2]}", log_args)
+                        add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
                     return df
             else:
                 log_args = [ts_code]
@@ -1101,12 +1101,12 @@ if __name__ == "__main__":
     #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     # #------------------------批量下载数据-----------------------
-    download_path = r"download_all"
+    #download_path = r"download_all"
     #download_path = r"dl_stocks"
-    # download_path = r"try_001"
-    bulk_download(download_path,reload=True) #批量下载数据
+    download_path = r"try_001"
+    # bulk_download(download_path,reload=True) #批量下载数据
     download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    #bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1150,7 +1150,26 @@ if __name__ == "__main__":
     # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
     # plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
-    plot_ar = Plot_Assets_Racing('al_user_001.csv',period=30)
+    # plot_ar = Plot_Assets_Racing('al_user_001.csv',period=10)
     # #-------------------Stock Class-----------------------
     #stock = Stock(pull=True)
     #stock = Stock()
+    #-------------------复权测试-----------------------
+    ts_code = '000001.SZ'
+    df_fq = Stock.load_adj_factor(ts_code)
+    df_stock = Stock.load_stock_daily(ts_code)
+    def fq_cls(x):
+        print('x={}'.format(x))
+        idx_date = x.index
+        factor = df_fq.loc[idx_date]['adj_factor']
+        result = x['close']*factor/109.169
+        return result
+    df_stock.loc[:,'fq_cls']=df_stock['close']
+    df_stock.loc[:,'factor']=df_fq['adj_factor']
+    for index, row in df_stock.iterrows():
+        factor = row['factor']
+        close = row['close']
+        #print("factor={}, close={}".format(factor,close))
+        fq_cls_ = close*factor/109.169
+        df_stock.at[index,'fq_cls']=fq_cls_
+    

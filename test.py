@@ -7,5 +7,9 @@ from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
+from st_board import Stock
 
-df_al = pd.DataFrame(columns=['ts_code','valid','selected','type','stype1','stype2'])
+ts_code = '00001.SZ'
+df_fq = Stock.load_adj_factor(ts_code)
+df_stock = Stock.load_stock_daily(ts_code)
+#df_cls = 
