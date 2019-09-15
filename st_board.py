@@ -1172,4 +1172,15 @@ if __name__ == "__main__":
         #print("factor={}, close={}".format(factor,close))
         fq_cls_ = close*factor/109.169
         df_stock.at[index,'fq_cls']=fq_cls_
+    df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
+    print(df1[['close','fq_cls','factor']])
+    df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='20190624', end_date='20190915')
+    df2.set_index('trade_date',inplace=True)
+    print(df2['close'])
+    print("----------------第二组-----------------------")
+    df1 = df_stock[(df_stock.index >= 19920501) & (df_stock.index <= 19920510)]
+    print(df1[['close','fq_cls','factor']])
+    df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
+    df2.set_index('trade_date',inplace=True)
+    print(df2['close'])
     
