@@ -225,7 +225,7 @@ class Index():
         if self.valid['index_basic_sw'] == STATUS_WORD[1]: #good
             _frames.append(self._sw)
         if len(_frames) > 0:
-            self.index_basic_df = pd.concat(_frames, ignore_index=True)
+            self.index_basic_df = pd.concat(_frames, ignore_index=True, sort=False)
 
 class Stock():
     """股票类的资产"""
@@ -281,7 +281,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='ts_code',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='trade_date',nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -298,7 +298,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='ts_code',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='trade_date',nrows=nrows)
             result['vol']=result['vol'].astype(np.int64)
             #待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -446,7 +446,7 @@ def download_data(ts_code,category,reload=False):
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, number_of_items]
-                    add_log(40,"[fn]download_data() ts_code: {0[0]}, category: {0[1]}, total items: {0[2]}", log_args)
+                    add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
                 return df
             else:
                 log_args = [ts_code,df]
@@ -481,7 +481,7 @@ def download_data(ts_code,category,reload=False):
                 if last_date < today:
                     _df = sgmt_download(ts_code,_start_str,_end_str,que_limit,category)
                     _frames = [_df,df]
-                    df=pd.concat(_frames,ignore_index=True)
+                    df=pd.concat(_frames,ignore_index=True,sort=False)
                     if category == 'stock_daily_basic':
                         file_name = 'db_' + ts_code + '.csv'
                     else:
@@ -490,7 +490,7 @@ def download_data(ts_code,category,reload=False):
                     if logable(40):
                         number_of_items = len(df)
                         log_args = [ts_code, category, number_of_items]
-                        add_log(40,"[fn]download_data() ts_code: {0[0]}, category: {0[1]}, total items: {0[2]}", log_args)
+                        add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
                     return df
             else:
                 log_args = [ts_code]
@@ -543,7 +543,7 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
             df = _df
         else:
             _frames = [_df,df]
-            df=pd.concat(_frames,ignore_index=True)
+            df=pd.concat(_frames,ignore_index=True,sort=False)
         _start_time = _end_time + timedelta(1)
         _start_str = date_to_date_str(_start_time)
         duration = duration - size
@@ -1103,7 +1103,8 @@ if __name__ == "__main__":
     # #------------------------批量下载数据-----------------------
     download_path = r"download_all"
     #download_path = r"dl_stocks"
-    # download_path = r"try_001"
+    #download_path = r"try_001"
+    #download_path = r"user_001"
     bulk_download(download_path,reload=True) #批量下载数据
     download_path = r"dl_stocks"
     bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
@@ -1150,7 +1151,9 @@ if __name__ == "__main__":
     # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
     # plot_ar = Plot_Assets_Racing('al_SW_Index_L3.csv',period=5)
-    plot_ar = Plot_Assets_Racing('al_user_001.csv',period=30)
+    # plot_ar = Plot_Assets_Racing('al_user_001.csv',period=10)
     # #-------------------Stock Class-----------------------
     #stock = Stock(pull=True)
     #stock = Stock()
+
+    
