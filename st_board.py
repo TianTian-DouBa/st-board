@@ -323,6 +323,23 @@ class Stock():
             log_args = [ts_code]
             add_log(20, '[fn]Stock.load_stock_daily_basic() ts_code "{0[0]}" invalid', log_args)
             return
+    
+    @staticmethod
+    def load_stock_dfq(ts_code,nrows=None):
+        """
+        从文件读入后复权的股票日线数据
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'dfq_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['trade_date','adj_factor','close'],index_col='trade_date',nrows=nrows)
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Stock.load_stock_dfq() ts_code "{0[0]}" invalid', log_args)
+            return
 
     @staticmethod
     def calc_dfq(ts_code,reload=False):
@@ -330,13 +347,13 @@ class Stock():
         计算后复权的日线数据
         reload: <bool> True重头创建文件
         """
-        def _create_dfq():
-            df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
-            df_stock = Stock.load_stock_daily(ts_code)[['close','open','high','low','vol','amount']]
-            print('[L336] df_df------------')
-            print(df_fq)
-            print('[L338] df_df------------')
-            print(df_stock)
+        def _create_dfq(nrows=None):
+            df_fq = Stock.load_adj_factor(ts_code,nrows=nrows)[['adj_factor']]
+            df_stock = Stock.load_stock_daily(ts_code,nrows=nrows)[['close','open','high','low','vol','amount']]
+            # print('[L336] df_df------------')
+            # print(df_fq)
+            # print('[L338] df_df------------')
+            # print(df_stock)
             df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
             df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
             df_dfq = df_stock[['adj_factor','dfq_cls']]
@@ -357,8 +374,10 @@ class Stock():
             add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" generated".', log_args)
         else: #read dfq filek, calculate and fill back the new items
             try:
-                df_dfq = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['trade_date','adj_factor','close'],index_col='trade_date')
-                print('[L357] 未完待续')
+                df_dfq = Stock.load_adj_factor(ts_code)
+
+                print('[L379] 未完待续')
+                print('参考test.py；先读去NaN的df_dfq日期；通过日期分别去找df_stock和df_fq里要读多少行，取小值条目数。做成增量的df后并入原来的')
 
             except FileNotFoundError:
                 log_args = [file_path]
@@ -376,7 +395,7 @@ class Stock():
         """
         try:
             result = self.basic.loc[ts_code]['list_date']
-        except KeyError:
+        except KeyError: 
             log_args = [ts_code]
             add_log(20, '[fn]:Stock.que_list_date() ts_code: "{0[0]}" was not found in Stock.base. use DEFAULT_OPEN_DATE_STR instead', log_args)
             result = DEFAULT_OPEN_DATE_STR
@@ -510,15 +529,17 @@ def download_data(ts_code,category,reload=False):
                     if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
                         last_date_str = str(raw_data.index.que_base_date(ts_code))
                     #-----------stock类别--------------
-                    if category == 'stock':
+                    elif category == 'stock':
                         last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------stock每日指标类别--------------
-                    if category == 'stock_daily_basic':
+                    elif category == 'stock_daily_basic':
                         last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------复权因子--------------
-                    if category == 'adj_factor':
+                    elif category == 'adj_factor':
                         last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------其它类型(未完成)--------------
+                    else:
+                        print('L542 此处log错误信息')
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
                 today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
@@ -531,7 +552,11 @@ def download_data(ts_code,category,reload=False):
                     df=pd.concat(_frames,ignore_index=True,sort=False)
                     if category == 'stock_daily_basic':
                         file_name = 'db_' + ts_code + '.csv'
+                    elif category == 'adj_factor':
+                        file_name = 'fq_' + ts_code + '.csv'
+                    #----------其它类型时修改------------
                     else:
+                        print('[L557] 修改此处明确适用category; else报错')
                         file_name = 'd_' + ts_code + '.csv'
                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                     if logable(40):
@@ -675,6 +700,7 @@ def bulk_dl_appendix(al_file, reload=False):
     al_file:<str> path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
     reload:<bool> True重新下载完整文件
     """
+    print('[L697] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
     file_path = None
     if isinstance(al_file,str):
         if len(al_file)>0:        
