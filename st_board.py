@@ -324,6 +324,51 @@ class Stock():
             add_log(20, '[fn]Stock.load_stock_daily_basic() ts_code "{0[0]}" invalid', log_args)
             return
 
+    @staticmethod
+    def calc_dfq(ts_code,reload=False):
+        """
+        计算后复权的日线数据
+        reload: <bool> True重头创建文件
+        """
+        def _create_dfq():
+            df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
+            df_stock = Stock.load_stock_daily(ts_code)[['close','open','high','low','vol','amount']]
+            print('[L336] df_df------------')
+            print(df_fq)
+            print('[L338] df_df------------')
+            print(df_stock)
+            df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
+            df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
+            df_dfq = df_stock[['adj_factor','dfq_cls']]
+            df_dfq.rename(columns={'dfq_cls':'close'},inplace=True)
+            return df_dfq
+
+        if raw_data.valid_ts_code(ts_code):
+            file_name = 'qfq_' + ts_code + '.csv'
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        else:
+            log_args = [ts_code]
+            add_log(10, '[fn]Stock.calc_dfq() ts_code:{0[0]} invalid', log_args)
+            return
+        if reload == True:
+            result = _create_dfq()
+            result.to_csv(file_path,encoding="utf-8")
+            log_args = [file_name]
+            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" generated".', log_args)
+        else: #read dfq filek, calculate and fill back the new items
+            try:
+                df_dfq = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['trade_date','adj_factor','close'],index_col='trade_date')
+                print('[L357] 未完待续')
+
+            except FileNotFoundError:
+                log_args = [file_path]
+                add_log(20, '[fn]Stock.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
+                print('[L362] 未完待续')
+
+
+
+
+
     def que_list_date(self, ts_code):
         """查询上市时间list_date
         return:<str> e.g. '19930503'
@@ -421,16 +466,16 @@ def download_data(ts_code,category,reload=False):
         if reload == True: #重头开始下载
             #-----------index类别--------------
             if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                start_date_str = raw_data.index.que_base_date(ts_code)
+                start_date_str = str(raw_data.index.que_base_date(ts_code))
             #-----------stock类别--------------
             if category == 'stock':
-                start_date_str = raw_data.stock.que_list_date(ts_code)
+                start_date_str = str(raw_data.stock.que_list_date(ts_code))
             #-----------stock每日指标类别--------------
             if category == 'stock_daily_basic':
-                start_date_str = raw_data.stock.que_list_date(ts_code)
+                start_date_str = str(raw_data.stock.que_list_date(ts_code))
             #-----------复权因子--------------
             if category == 'adj_factor':
-                start_date_str = raw_data.stock.que_list_date(ts_code)
+                start_date_str = str(raw_data.stock.que_list_date(ts_code))
             #-----------其它类型(未完成)--------------
             end_date_str = today_str()
             df = sgmt_download(ts_code,start_date_str,end_date_str,que_limit,category)
@@ -445,8 +490,8 @@ def download_data(ts_code,category,reload=False):
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                 if logable(40):
                     number_of_items = len(df)
-                    log_args = [ts_code, category, number_of_items]
-                    add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
+                    log_args = [ts_code, category, file_name, number_of_items]
+                    add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}", log_args)
                 return df
             else:
                 log_args = [ts_code,df]
@@ -457,20 +502,22 @@ def download_data(ts_code,category,reload=False):
             df = loader(ts_code)
             if isinstance(df, pd.DataFrame):
                 try:
-                    last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
+                    #last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
+                    last_date_str = str(df.index.values[0])
+                    print('[L507] {}'.format(last_date_str))
                 except IndexError:
                     #-----------index类别--------------
                     if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                        last_date_str = raw_data.index.que_base_date(ts_code)
+                        last_date_str = str(raw_data.index.que_base_date(ts_code))
                     #-----------stock类别--------------
                     if category == 'stock':
-                        last_date_str = raw_data.stock.que_list_date(ts_code)
+                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------stock每日指标类别--------------
                     if category == 'stock_daily_basic':
-                        last_date_str = raw_data.stock.que_list_date(ts_code)
+                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------复权因子--------------
                     if category == 'adj_factor':
-                        last_date_str = raw_data.stock.que_list_date(ts_code)
+                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
                     #-----------其它类型(未完成)--------------
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
@@ -1107,9 +1154,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     download_path = r"user_001"
-    #bulk_download(download_path,reload=True) #批量下载数据
+    bulk_download(download_path,reload=True) #批量下载数据
     #download_path = r"dl_stocks"
-    #bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1158,32 +1205,33 @@ if __name__ == "__main__":
     #stock = Stock(pull=True)
     #stock = Stock()
     #-------------------复权测试-----------------------
-    ts_code = '000001.SZ'
-    df_fq = Stock.load_adj_factor(ts_code)
-    df_stock = Stock.load_stock_daily(ts_code)
-    def fq_cls(x):
-        print('x={}'.format(x))
-        idx_date = x.index
-        factor = df_fq.loc[idx_date]['adj_factor']
-        result = x['close']*factor/109.169
-        return result
-    df_stock.loc[:,'fq_cls']=df_stock['close']
-    df_stock.loc[:,'factor']=df_fq['adj_factor']
-    for index, row in df_stock.iterrows():
-        factor = row['factor']
-        close = row['close']
-        #print("factor={}, close={}".format(factor,close))
-        fq_cls_ = close*factor/109.169
-        df_stock.at[index,'fq_cls']=fq_cls_
-    df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
-    print(df1[['close','fq_cls','factor']])
-    df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='20190624', end_date='20190915')
-    df2.set_index('trade_date',inplace=True)
-    print(df2['close'])
-    print("----------------第二组-----------------------")
-    df1 = df_stock[(df_stock.index >= 19920501) & (df_stock.index <= 19920510)]
-    print(df1[['close','fq_cls','factor']])
-    df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
-    df2.set_index('trade_date',inplace=True)
-    print(df2['close'])
+    # ts_code = '000001.SZ'
+    # df_fq = Stock.load_adj_factor(ts_code)
+    # df_stock = Stock.load_stock_daily(ts_code)
+    # def fq_cls(x):
+    #     print('x={}'.format(x))
+    #     idx_date = x.index
+    #     factor = df_fq.loc[idx_date]['adj_factor']
+    #     result = x['close']*factor/109.169
+    #     return result
+    # df_stock.loc[:,'fq_cls']=df_stock['close']
+    # df_stock.loc[:,'factor']=df_fq['adj_factor']
+    # for index, row in df_stock.iterrows():
+    #     factor = row['factor']
+    #     close = row['close']
+    #     #print("factor={}, close={}".format(factor,close))
+    #     fq_cls_ = close*factor/109.169
+    #     df_stock.at[index,'fq_cls']=fq_cls_
+    # df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
+    # print(df1[['close','fq_cls','factor']])
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='20190624', end_date='20190915')
+    # df2.set_index('trade_date',inplace=True)
+    # print(df2['close'])
+    # print("----------------第二组-----------------------")
+    # df1 = df_stock[(df_stock.index >= 19920501) & (df_stock.index <= 19920510)]
+    # print(df1[['close','fq_cls','factor']])
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
+    # df2.set_index('trade_date',inplace=True)
+    # print(df2['close'])
+    Stock.calc_dfq('000001.SZ',reload=False)
     

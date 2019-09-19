@@ -9,7 +9,23 @@ import matplotlib.pyplot as plt
 from pylab import mpl
 from st_board import Stock
 
-ts_code = '00001.SZ'
-df_fq = Stock.load_adj_factor(ts_code)
-df_stock = Stock.load_stock_daily(ts_code)
-#df_cls = 
+dates = pd.date_range('20190821',periods=6)
+df = pd.DataFrame(np.random.randn(6,4),index=dates,columns=['a','b','c','d'])
+dates1 = pd.date_range('20190821',periods=3)
+df1 = pd.DataFrame(np.random.randn(3,2),index=dates1,columns=['a','c'])
+df.loc[:,'e']=df1['a']
+combined = df
+#frames=[df,df1]
+#combined=pd.concat(frames)
+
+print('-----------------df-------------------')
+print(df)
+print('-----------------df1-------------------')
+print(df1)
+print('-----------------combined-------------------')
+print(combined)
+
+
+
+
+
