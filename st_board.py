@@ -375,7 +375,7 @@ class Stock():
         else: #read dfq filek, calculate and fill back the new items
             try:
                 df_dfq = Stock.load_adj_factor(ts_code)
-
+                print(df_dfq)
                 print('[L379] 未完待续')
                 print('参考test.py；先读去NaN的df_dfq日期；通过日期分别去找df_stock和df_fq里要读多少行，取小值条目数。做成增量的df后并入原来的')
 
@@ -481,31 +481,89 @@ def download_data(ts_code,category,reload=False):
         log_args = [ts_code, category]
         add_log(20, '[fn]download_data(). ts_code: "{0[0]}" category: "{0[1]}" incorrect',log_args)
         return
+    def _category_to_file_name(ts_code,category):
+        """
+        ts_code: <str> '399001.SZ'
+        category: <str> e.g. 'stock_daily_basic'
+        return: <str> e.g. "d_<ts_code>.csv"
+        """
+        if category == 'stock_daily_basic':
+            file_name = 'db_' + ts_code + '.csv'
+        elif category == 'adj_factor':
+            file_name = 'fq_' + ts_code + '.csv'
+        elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
+            file_name = 'd_' + ts_code + '.csv'
+        #----------其它类型时修改------------
+        else:
+            log_args = [category]
+            add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
+            return
+        return file_name
+    
+    def _category_to_start_date_str(ts_code,category):
+        """
+        ts_code: <str> '399001.SZ'
+        category: <str> e.g. 'adj_factor'
+        return: <str> e.g. "20190402"
+        """
+        #-----------index类别--------------
+        if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
+            start_date_str = str(raw_data.index.que_base_date(ts_code))
+        #-----------stock类别--------------
+        elif category == 'stock':
+            start_date_str = str(raw_data.stock.que_list_date(ts_code))
+        #-----------stock每日指标类别--------------
+        elif category == 'stock_daily_basic':
+            start_date_str = str(raw_data.stock.que_list_date(ts_code))
+        #-----------复权因子--------------
+        elif category == 'adj_factor':
+            start_date_str = str(raw_data.stock.que_list_date(ts_code))
+        #-----------其它类型(未完成)--------------
+        else:
+            log_args = [ts_code,category]
+            add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
+            return
+        return start_date_str
+
     if raw_data.valid_ts_code(ts_code):
         if reload == True: #重头开始下载
-            #-----------index类别--------------
-            if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                start_date_str = str(raw_data.index.que_base_date(ts_code))
-            #-----------stock类别--------------
-            if category == 'stock':
-                start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            #-----------stock每日指标类别--------------
-            if category == 'stock_daily_basic':
-                start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            #-----------复权因子--------------
-            if category == 'adj_factor':
-                start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            #-----------其它类型(未完成)--------------
+            # #-----------index类别--------------
+            # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
+            #     start_date_str = str(raw_data.index.que_base_date(ts_code))
+            # #-----------stock类别--------------
+            # elif category == 'stock':
+            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
+            # #-----------stock每日指标类别--------------
+            # elif category == 'stock_daily_basic':
+            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
+            # #-----------复权因子--------------
+            # elif category == 'adj_factor':
+            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
+            # #-----------其它类型(未完成)--------------
+            # else:
+            #     log_args = [ts_code,category]
+            #     add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
+            #     return
+            start_date_str = _category_to_start_date_str(ts_code,category)
+            if start_date_str == None:
+                return
             end_date_str = today_str()
             df = sgmt_download(ts_code,start_date_str,end_date_str,que_limit,category)
             if isinstance(df, pd.DataFrame):
-                if category == 'stock_daily_basic':
-                    file_name = 'db_' + ts_code + '.csv'
-                elif category == 'adj_factor':
-                    file_name = 'fq_' + ts_code + '.csv'
-                #-----新类别需修改
-                else:
-                    file_name = 'd_' + ts_code + '.csv'
+                # if category == 'stock_daily_basic':
+                #     file_name = 'db_' + ts_code + '.csv'
+                # elif category == 'adj_factor':
+                #     file_name = 'fq_' + ts_code + '.csv'
+                # elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
+                #     file_name = 'd_' + ts_code + '.csv'
+                # #----------其它类型时修改------------
+                # else:
+                #     log_args = [category]
+                #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
+                #     return
+                file_name = _category_to_file_name(ts_code,category)
+                if file_name == None:
+                    return
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                 if logable(40):
                     number_of_items = len(df)
@@ -515,7 +573,7 @@ def download_data(ts_code,category,reload=False):
             else:
                 log_args = [ts_code,df]
                 add_log(20, '[fn]download_data() fail to get DataFrame from Tushare. ts_code: "{0[0]}" df: ', log_args)
-                return None
+                return
         else: #reload != True 读入文件，看最后条目的日期，继续下载数据
             loader = LOADER[category]
             df = loader(ts_code)
@@ -525,21 +583,26 @@ def download_data(ts_code,category,reload=False):
                     last_date_str = str(df.index.values[0])
                     print('[L507] {}'.format(last_date_str))
                 except IndexError:
-                    #-----------index类别--------------
-                    if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                        last_date_str = str(raw_data.index.que_base_date(ts_code))
-                    #-----------stock类别--------------
-                    elif category == 'stock':
-                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    #-----------stock每日指标类别--------------
-                    elif category == 'stock_daily_basic':
-                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    #-----------复权因子--------------
-                    elif category == 'adj_factor':
-                        last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    #-----------其它类型(未完成)--------------
-                    else:
-                        print('L542 此处log错误信息')
+                    # #-----------index类别--------------
+                    # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
+                    #     last_date_str = str(raw_data.index.que_base_date(ts_code))
+                    # #-----------stock类别--------------
+                    # elif category == 'stock':
+                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
+                    # #-----------stock每日指标类别--------------
+                    # elif category == 'stock_daily_basic':
+                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
+                    # #-----------复权因子--------------
+                    # elif category == 'adj_factor':
+                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
+                    # #-----------其它类型(未完成)--------------
+                    # else:
+                    #     log_args = [category]
+                    #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
+                    #     return
+                    last_date_str = _category_to_start_date_str(ts_code,category)
+                    if last_date_str == None:
+                        return
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
                 today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
@@ -550,19 +613,25 @@ def download_data(ts_code,category,reload=False):
                     _df = sgmt_download(ts_code,_start_str,_end_str,que_limit,category)
                     _frames = [_df,df]
                     df=pd.concat(_frames,ignore_index=True,sort=False)
-                    if category == 'stock_daily_basic':
-                        file_name = 'db_' + ts_code + '.csv'
-                    elif category == 'adj_factor':
-                        file_name = 'fq_' + ts_code + '.csv'
-                    #----------其它类型时修改------------
-                    else:
-                        print('[L557] 修改此处明确适用category; else报错')
-                        file_name = 'd_' + ts_code + '.csv'
+                    # if category == 'stock_daily_basic':
+                    #     file_name = 'db_' + ts_code + '.csv'
+                    # elif category == 'adj_factor':
+                    #     file_name = 'fq_' + ts_code + '.csv'
+                    # elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
+                    #     file_name = 'd_' + ts_code + '.csv'
+                    # #----------其它类型时修改------------
+                    # else:
+                    #     log_args = [category]
+                    #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
+                    #     return
+                    file_name = _category_to_file_name(ts_code,category)
+                    if file_name == None:
+                        return
                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                     if logable(40):
                         number_of_items = len(df)
-                        log_args = [ts_code, category, number_of_items]
-                        add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, total items:{0[2]}", log_args)
+                        log_args = [ts_code, category,file_name, number_of_items]
+                        add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}", log_args)
                     return df
             else:
                 log_args = [ts_code]
@@ -667,25 +736,27 @@ def bulk_download(download_file, reload=False):
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
-            name,_type,stype1,stype2 = raw_data.all_assets_list.loc[ts_code][['name','type','stype1','stype2']]
-            category = None #资产的类别，传给下游[fn]处理
-            #--------------申万指数---------------
-            if _type == 'index' and stype1=='SW':
-                category = 'index_sw'
-            #--------------上证指数---------------
-            if _type == 'index' and stype1=='SSE':
-                category = 'index_sse'
-            #--------------深圳指数---------------
-            if _type == 'index' and stype1=='SZSE':
-                category = 'index_szse'
-            #--------------个股---------------
-            if _type == 'stock':
-                category = 'stock'
-            #--------------其它类型(未完成)----------
+            category = All_Assets_List.query_category_str(ts_code)
             if category == None:
-                log_args = [ts_code]
-                add_log(20, '[fn]bulk_download(). No matched category for "{0[0]}"',log_args)
                 continue
+            # name,_type,stype1,stype2 = raw_data.all_assets_list.loc[ts_code][['name','type','stype1','stype2']]
+            # category = None #资产的类别，传给下游[fn]处理
+            # #--------------申万指数---------------
+            # if _type == 'index' and stype1=='SW':
+            #     category = 'index_sw'
+            # #--------------上证指数---------------
+            # if _type == 'index' and stype1=='SSE':
+            #     category = 'index_sse'
+            # #--------------深圳指数---------------
+            # if _type == 'index' and stype1=='SZSE':
+            #     category = 'index_szse'
+            # #--------------个股---------------
+            # if _type == 'stock':
+            #     category = 'stock'
+            # #--------------其它类型(未完成)----------
+            # if category == None:
+            #     log_args = [ts_code]
+            #     add_log(20, '[fn]bulk_download(). No matched category for "{0[0]}"',log_args)
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if reload==True or (not os.path.exists(file_path)):
@@ -721,24 +792,31 @@ def bulk_dl_appendix(al_file, reload=False):
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
-            #-------------每日指标--------------
-            category = 'stock_daily_basic' #股票每日指标
-            file_name = 'db_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            if reload==True or (not os.path.exists(file_path)):
-                _reload = True
+            category = All_Assets_List.query_category_str(ts_code)
+            if category == None:
+                continue
+            elif category == 'stock':
+                #-------------每日指标--------------
+                category = 'stock_daily_basic' #股票每日指标
+                file_name = 'db_' + ts_code + '.csv'
+                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                if reload==True or (not os.path.exists(file_path)):
+                    _reload = True
+                else:
+                    _reload = False
+                download_data(ts_code, category, _reload)
+                #-------------复权因子--------------
+                category = 'adj_factor' #股票复权
+                file_name = 'fq_' + ts_code + '.csv'
+                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                if reload==True or (not os.path.exists(file_path)):
+                    _reload = True
+                else:
+                    _reload = False
+                download_data(ts_code, category, _reload)
             else:
-                _reload = False
-            download_data(ts_code, category, _reload)
-            #-------------复权因子--------------
-            category = 'adj_factor' #股票复权
-            file_name = 'fq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            if reload==True or (not os.path.exists(file_path)):
-                _reload = True
-            else:
-                _reload = False
-            download_data(ts_code, category, _reload)
+                log_args = [ts_code,category]
+                add_log(40, '[fn]bulk_dl_appendix(). {0[0]} category:{0[1]} skip',log_args)
 
 def get_stock_list(return_df = True):
     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
@@ -1095,6 +1173,36 @@ class All_Assets_List():
         #--------------结尾---------------
         df_al.to_csv(file_path_al,encoding="utf-8")    
         return
+    
+    @staticmethod
+    def query_category_str (ts_code):
+        """
+        query the category string
+        ts_code: <str> e.g. '000001.SZ'
+        return: None, if no match
+                <str> e.g. 'index_sw'; 'stock'
+        """
+        name,_type,stype1,stype2 = raw_data.all_assets_list.loc[ts_code][['name','type','stype1','stype2']]
+        category = None #资产的类别，传给下游[fn]处理
+        #--------------申万指数---------------
+        if _type == 'index' and stype1=='SW':
+            category = 'index_sw'
+        #--------------上证指数---------------
+        elif _type == 'index' and stype1=='SSE':
+            category = 'index_sse'
+        #--------------深圳指数---------------
+        elif _type == 'index' and stype1=='SZSE':
+            category = 'index_szse'
+        #--------------个股---------------
+        #'stock_daily_basic'和'adj_factor'不在此处理
+        elif _type == 'stock': 
+            category = 'stock'
+        #--------------其它类型(未完成)----------
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]All_Assets_List.query_category_str(). No matched category for "{0[0]}"',log_args)
+            return
+        return category
 
 class Trade_Calendar():
     """    """
@@ -1180,9 +1288,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     download_path = r"user_001"
-    bulk_download(download_path,reload=True) #批量下载数据
+    bulk_download(download_path,reload=False) #批量下载数据
     #download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
