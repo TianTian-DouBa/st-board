@@ -9,7 +9,12 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "args": [
+                "run",
+                "--no-debugger",
+                "--no-reload"
+            ]
         },
         {
             "name": "Python: Remote Attach",

@@ -317,7 +317,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'db_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','turnover_rate','turnover_rate_f','volume_ratio','pe','pe_ttm','pb','ps','ps_ttm','total_share','float_share','free_share','total_mv','circ_mv'],index_col='ts_code',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','turnover_rate','turnover_rate_f','volume_ratio','pe','pe_ttm','pb','ps','ps_ttm','total_share','float_share','free_share','total_mv','circ_mv'],index_col='trade_date',nrows=nrows)
             return result
         else:
             log_args = [ts_code]
