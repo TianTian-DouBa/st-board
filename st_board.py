@@ -612,7 +612,8 @@ def download_data(ts_code,category,reload=False):
                 if last_date < today:
                     _df = sgmt_download(ts_code,_start_str,_end_str,que_limit,category)
                     _frames = [_df,df]
-                    df=pd.concat(_frames,ignore_index=True,sort=False)
+                    #df=pd.concat(_frames,ignore_index=True,sort=False)
+                    df=pd.concat(_frames,sort=False)
                     # if category == 'stock_daily_basic':
                     #     file_name = 'db_' + ts_code + '.csv'
                     # elif category == 'adj_factor':
@@ -653,7 +654,7 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
     retrun: <df> if success, None if fail
     """
     TRY_TIMES = 20
-    SLEEP_TIME = 20
+    SLEEP_TIME = 20 #in seconds
     try:
         getter = GETTER[category]
     except KeyError:
@@ -707,6 +708,7 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
         else:
             _frames = [_df,df]
             df=pd.concat(_frames,ignore_index=True)
+    df.set_index('trade_date',inplace=True)
     return df
 
 def bulk_download(download_file, reload=False):
@@ -1367,5 +1369,5 @@ if __name__ == "__main__":
     # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
-    Stock.calc_dfq('000001.SZ',reload=False)
+    Stock.calc_dfq('600419.SH',reload=False)
     
