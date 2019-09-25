@@ -345,15 +345,17 @@ class Stock():
     def calc_dfq(ts_code,reload=False):
         """
         计算后复权的日线数据
+        ts_code: <str> e.g. '000001.SZ'
         reload: <bool> True重头创建文件
         """
         def _create_dfq(nrows=None):
             df_fq = Stock.load_adj_factor(ts_code,nrows=nrows)[['adj_factor']]
+            fq_head_index_str, =df_fq.head(1).index.values
+            print('[354] latest_date_str:{}'.format(fq_head_index_str))
             df_stock = Stock.load_stock_daily(ts_code,nrows=nrows)[['close','open','high','low','vol','amount']]
-            # print('[L336] df_df------------')
-            # print(df_fq)
-            # print('[L338] df_df------------')
-            # print(df_stock)
+            fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)
+            print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
+            print('[358] 通过将df_factor头部的index定位到df_stock中行号x；x=0 无操作；x>0 drop df_stock前x行; 无法定位，倒查定位到df_factor中y，y>0 无操作，无法定位 报错')
             df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
             df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
             df_dfq = df_stock[['adj_factor','dfq_cls']]
@@ -1290,9 +1292,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     download_path = r"user_001"
-    bulk_download(download_path,reload=False) #批量下载数据
+    #bulk_download(download_path,reload=False) #批量下载数据
     #download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
+    #bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1369,5 +1371,5 @@ if __name__ == "__main__":
     # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
-    Stock.calc_dfq('600419.SH',reload=False)
+    Stock.calc_dfq('600419.SH',reload=True)
     
