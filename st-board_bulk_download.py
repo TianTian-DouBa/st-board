@@ -1290,9 +1290,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     #download_path = r"user_001"
-    bulk_download(download_path,reload=True) #批量下载数据
+    bulk_download(download_path,reload=False) #批量下载数据
     download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
+    bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
