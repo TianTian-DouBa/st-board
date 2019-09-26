@@ -375,7 +375,7 @@ class Stock():
             return df_dfq
 
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'qfq_' + ts_code + '.csv'
+            file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
         else:
             log_args = [ts_code]
@@ -394,7 +394,7 @@ class Stock():
                 add_log(20, '[fn]Stock.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
             dfq_head_index_str,  = df_dfq.head(1).index.values
             try:
-                dfq_head_in_stock = df_stock.get_loc(dfq_head_index_str)
+                dfq_head_in_stock = df_stock.index.get_loc(dfq_head_index_str)
             except IndexError:
                 log_args = [ts_code,dfq_head_index_str]
                 add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock', log_args)
@@ -407,7 +407,7 @@ class Stock():
                 df_stock = take_head_n(df_stock,dfq_head_in_stock)
 
             try:
-                dfq_head_in_fq = df_fq.get_loc(dfq_head_index_str)
+                dfq_head_in_fq = df_fq.index.get_loc(dfq_head_index_str)
             except IndexError:
                 log_args = [ts_code,dfq_head_index_str]
                 add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq', log_args)
@@ -865,7 +865,7 @@ def take_head_n(df, nrows):
     nrows: <int>需要提取的前nrows行
     retrun: <DataFrame>实例, None = failed
     """
-    if not isinstance(df,DataFrame):
+    if not isinstance(df, pd.DataFrame):
         add_log(20, '[fn]take_head_n() df is not an instance of <DataFrame>')
         return
     nrows=int(nrows)
@@ -1412,7 +1412,7 @@ if __name__ == "__main__":
     #     df_stock.at[index,'fq_cls']=fq_cls_
     # df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
     # print(df1[['close','fq_cls','factor']])
-    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='20190624', end_date='20190915')
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='dfq', start_date='20190624', end_date='20190915')
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
     # print("----------------第二组-----------------------")
