@@ -356,11 +356,11 @@ class Stock():
             #---[drop]通过将df_factor头部的index定位到df_stock中行号x；x=0 无操作；x>0 drop df_stock前x行; 无法定位，倒查定位到df_factor中y，y>=0 无操作，无法定位 报错
             try:
                 fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)
-            except IndexError:
+            except KeyError:
                 stock_head_index_str, =df_stock.head(1).index.values
                 try:
                     df_fq.index.get_loc(stock_head_index_str)
-                except IndexError:
+                except KeyError:
                     log_args = [ts_code]
                     add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args) #df_stock和df_fq(复权）相互查询不到第一条index的定位
                     return
@@ -368,11 +368,21 @@ class Stock():
             if fq_head_in_stock > 0:
                 df_stock.drop(df_stock.index[:fq_head_in_stock],inplace=True)
             #---[/drop]
-            df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
-            df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
+            with pd.option_context('mode.chained_assignment', None): #将包含代码的SettingWithCopyWarning暂时屏蔽
+                df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
+                df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
             df_dfq = df_stock[['adj_factor','dfq_cls']]
             df_dfq.rename(columns={'dfq_cls':'close'},inplace=True)
             return df_dfq
+        
+        def _generate_from_begin():
+            """
+            从头开始创建dfq文件
+            """
+            result = _create_dfq()
+            result.to_csv(file_path,encoding="utf-8")
+            log_args = [file_name]
+            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" reloaded".', log_args)
 
         if raw_data.valid_ts_code(ts_code):
             file_name = 'dfq_' + ts_code + '.csv'
@@ -382,22 +392,22 @@ class Stock():
             add_log(10, '[fn]Stock.calc_dfq() ts_code:{0[0]} invalid', log_args)
             return
         if reload == True:
-            result = _create_dfq()
-            result.to_csv(file_path,encoding="utf-8")
-            log_args = [file_name]
-            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" reloaded".', log_args)
+            _generate_from_begin()
+            return
         else: #read dfq filek, calculate and fill back the new items
             try:
                 df_dfq = Stock.load_stock_dfq(ts_code)
             except FileNotFoundError:
                 log_args = [file_path]
                 add_log(20, '[fn]Stock.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
+                _generate_from_begin()
+                return
             dfq_head_index_str,  = df_dfq.head(1).index.values
             try:
                 dfq_head_in_stock = df_stock.index.get_loc(dfq_head_index_str)
-            except IndexError:
+            except KeyError:
                 log_args = [ts_code,dfq_head_index_str]
-                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock', log_args)
+                add_log(10, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date', log_args)
                 return
             if dfq_head_in_stock == 0:
                 log_args = [ts_code]
@@ -405,12 +415,11 @@ class Stock():
                 return
             elif dfq_head_in_stock > 0:
                 df_stock = take_head_n(df_stock,dfq_head_in_stock)
-
             try:
                 dfq_head_in_fq = df_fq.index.get_loc(dfq_head_index_str)
-            except IndexError:
+            except KeyError:
                 log_args = [ts_code,dfq_head_index_str]
-                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq', log_args)
+                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq, df_fq maybe not up to date', log_args)
                 return
             if dfq_head_in_fq == 0:
                 log_args = [ts_code]
@@ -418,7 +427,6 @@ class Stock():
                 return
             elif dfq_head_in_fq > 0:
                 df_fq = take_head_n(df_fq,dfq_head_in_fq)
-            
             _df_dfq = _create_dfq()
             _frames=[_df_dfq,df_dfq]
             result=pd.concat(_frames,sort=False)
@@ -1342,9 +1350,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     download_path = r"user_001"
-    #bulk_download(download_path,reload=False) #批量下载数据
+    #bulk_download(download_path,reload=True) #批量下载数据
     #download_path = r"dl_stocks"
-    #bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
+    #bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
