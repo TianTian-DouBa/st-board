@@ -1335,6 +1335,7 @@ class Trade_Calendar():
             return None
 
 if __name__ == "__main__":
+    start_time = datetime.now()
     #df = get_stock_list()
     #df = load_stock_list()
     #df = get_daily_basic()
@@ -1430,4 +1431,7 @@ if __name__ == "__main__":
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
     Stock.calc_dfq('600419.SH',reload=False)
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print('duration={}'.format(duration))
     
