@@ -334,7 +334,7 @@ class Stock():
         if raw_data.valid_ts_code(ts_code):
             file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['trade_date','adj_factor','close'],index_col='trade_date',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['trade_date','adj_factor','close','open','high','low'],index_col='trade_date',nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -371,8 +371,11 @@ class Stock():
             with pd.option_context('mode.chained_assignment', None): #将包含代码的SettingWithCopyWarning暂时屏蔽
                 df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
                 df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
-            df_dfq = df_stock[['adj_factor','dfq_cls']]
-            df_dfq.rename(columns={'dfq_cls':'close'},inplace=True)
+                df_stock.loc[:,'dfq_open']=df_stock['open']*df_stock['adj_factor']
+                df_stock.loc[:,'dfq_high']=df_stock['high']*df_stock['adj_factor']
+                df_stock.loc[:,'dfq_low']=df_stock['low']*df_stock['adj_factor']
+            df_dfq = df_stock[['adj_factor','dfq_cls','dfq_open','dfq_high','dfq_low']]
+            df_dfq.rename(columns={'dfq_cls':'close','dfq_open':'open','dfq_high':'high','dfq_low':'low'},inplace=True)
             return df_dfq
         
         def _generate_from_begin():

@@ -304,7 +304,7 @@ class Stock():
             return result
         else:
             log_args = [ts_code]
-            add_log(20, '[fn]Stock.load_stock_daily() ts_code "{0[0]}" invalid', log_args)
+            add_log(20, '[fn]Stock.load_stock_daily() ts_code:{0[0]} invalid', log_args)
             return
     
     @staticmethod
@@ -345,48 +345,94 @@ class Stock():
     def calc_dfq(ts_code,reload=False):
         """
         计算后复权的日线数据
+        ts_code: <str> e.g. '000001.SZ'
         reload: <bool> True重头创建文件
         """
-        def _create_dfq(nrows=None):
-            df_fq = Stock.load_adj_factor(ts_code,nrows=nrows)[['adj_factor']]
-            df_stock = Stock.load_stock_daily(ts_code,nrows=nrows)[['close','open','high','low','vol','amount']]
-            # print('[L336] df_df------------')
-            # print(df_fq)
-            # print('[L338] df_df------------')
-            # print(df_stock)
-            df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
-            df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
+        df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
+        fq_head_index_str, =df_fq.head(1).index.values
+        #print('[354] latest_date_str:{}'.format(fq_head_index_str))
+        df_stock = Stock.load_stock_daily(ts_code)[['close','open','high','low','vol','amount']]
+        def _create_dfq():
+            #---[drop]通过将df_factor头部的index定位到df_stock中行号x；x=0 无操作；x>0 drop df_stock前x行; 无法定位，倒查定位到df_factor中y，y>=0 无操作，无法定位 报错
+            try:
+                fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)
+            except KeyError:
+                stock_head_index_str, =df_stock.head(1).index.values
+                try:
+                    df_fq.index.get_loc(stock_head_index_str)
+                except KeyError:
+                    log_args = [ts_code]
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args) #df_stock和df_fq(复权）相互查询不到第一条index的定位
+                    return
+            #print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
+            if fq_head_in_stock > 0:
+                df_stock.drop(df_stock.index[:fq_head_in_stock],inplace=True)
+            #---[/drop]
+            with pd.option_context('mode.chained_assignment', None): #将包含代码的SettingWithCopyWarning暂时屏蔽
+                df_stock.loc[:,'adj_factor']=df_fq['adj_factor']
+                df_stock.loc[:,'dfq_cls']=df_stock['close']*df_stock['adj_factor']
             df_dfq = df_stock[['adj_factor','dfq_cls']]
             df_dfq.rename(columns={'dfq_cls':'close'},inplace=True)
             return df_dfq
+        
+        def _generate_from_begin():
+            """
+            从头开始创建dfq文件
+            """
+            result = _create_dfq()
+            result.to_csv(file_path,encoding="utf-8")
+            log_args = [file_name]
+            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" reloaded".', log_args)
 
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'qfq_' + ts_code + '.csv'
+            file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
         else:
             log_args = [ts_code]
             add_log(10, '[fn]Stock.calc_dfq() ts_code:{0[0]} invalid', log_args)
             return
         if reload == True:
-            result = _create_dfq()
-            result.to_csv(file_path,encoding="utf-8")
-            log_args = [file_name]
-            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" generated".', log_args)
+            _generate_from_begin()
+            return
         else: #read dfq filek, calculate and fill back the new items
             try:
-                df_dfq = Stock.load_adj_factor(ts_code)
-                print(df_dfq)
-                print('[L379] 未完待续')
-                print('参考test.py；先读去NaN的df_dfq日期；通过日期分别去找df_stock和df_fq里要读多少行，取小值条目数。做成增量的df后并入原来的')
-
+                df_dfq = Stock.load_stock_dfq(ts_code)
             except FileNotFoundError:
                 log_args = [file_path]
                 add_log(20, '[fn]Stock.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
-                print('[L362] 未完待续')
-
-
-
-
+                _generate_from_begin()
+                return
+            dfq_head_index_str,  = df_dfq.head(1).index.values
+            try:
+                dfq_head_in_stock = df_stock.index.get_loc(dfq_head_index_str)
+            except KeyError:
+                log_args = [ts_code,dfq_head_index_str]
+                add_log(10, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date', log_args)
+                return
+            if dfq_head_in_stock == 0:
+                log_args = [ts_code]
+                add_log(40, '[fn]calc_dfq() ts_code:{0[0]}; df_dfq up to df_stock date, no need to update', log_args)
+                return
+            elif dfq_head_in_stock > 0:
+                df_stock = take_head_n(df_stock,dfq_head_in_stock)
+            try:
+                dfq_head_in_fq = df_fq.index.get_loc(dfq_head_index_str)
+            except KeyError:
+                log_args = [ts_code,dfq_head_index_str]
+                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq, df_fq maybe not up to date', log_args)
+                return
+            if dfq_head_in_fq == 0:
+                log_args = [ts_code]
+                add_log(40, '[fn]calc_dfq() ts_code:{0[0]}; df_dfq up to df_fq date, no need to update', log_args)
+                return
+            elif dfq_head_in_fq > 0:
+                df_fq = take_head_n(df_fq,dfq_head_in_fq)
+            _df_dfq = _create_dfq()
+            _frames=[_df_dfq,df_dfq]
+            result=pd.concat(_frames,sort=False)
+            result.to_csv(file_path,encoding="utf-8")
+            log_args = [file_name]
+            add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" updated".', log_args)
 
     def que_list_date(self, ts_code):
         """查询上市时间list_date
@@ -431,7 +477,8 @@ QUE_LIMIT = {'index_sse':8000,
              'adj_factor':8000} 
 
 def valid_date_str_fmt(date_str):
-    """验证date_str形式格式是否正确
+    """
+    验证date_str形式格式是否正确
     date_str:<str> e.g. '20190723' YYYYMMDD
     return:<bool> True=valid
     """
@@ -581,7 +628,7 @@ def download_data(ts_code,category,reload=False):
                 try:
                     #last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
                     last_date_str = str(df.index.values[0])
-                    print('[L507] {}'.format(last_date_str))
+                    #print('[L507] {}'.format(last_date_str))
                 except IndexError:
                     # #-----------index类别--------------
                     # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
@@ -820,38 +867,51 @@ def bulk_dl_appendix(al_file, reload=False):
                 log_args = [ts_code,category]
                 add_log(40, '[fn]bulk_dl_appendix(). {0[0]} category:{0[1]} skip',log_args)
 
-def get_stock_list(return_df = True):
-    """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
-    retrun_df:<bool> 是返回DataFrame数据，否返回None
+def take_head_n(df, nrows):
     """
-    file_name = "stock_list.csv"
-    df = ts_pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,exchange,curr_type,list_date,delist_date')
-    df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-    if return_df != True:
-        df = None
-    return df
-
-def load_stock_list():
-    """从保存的stock_list.csv文件中,读入返回DataFram"""
-    file_name = "stock_list.csv"
-    try:
-        df = pd.read_csv(sub_path + '\\' + file_name)
-    except FileNotFoundError:
-        add_log(20, '[fn]load_stock_list(). file not found')
-        df = None
-    return df
-
-def get_daily_basic(return_df = True):
-    """获取TuShare最近交易日的每日指标，保存到daily_basic.csv文件,按需反馈DataFram
-    retrun_df:<bool> 是返回DataFrame数据，否返回None
+    df: <DataFrame>实例
+    nrows: <int>需要提取的前nrows行
+    retrun: <DataFrame>实例, None = failed
     """
-    file_name = "daily_basic.csv"
-    _trade_date = '20190712'
-    df = ts_pro.daily_basic(ts_code='', trade_date=_trade_date, fields='ts_code,trade_date,close,turnover_rate,turnover_rate_f,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_share,float_share,free_share,total_mv,circ_mv')
-    df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-    if return_df != True:
-        df = None
-    return df
+    if not isinstance(df, pd.DataFrame):
+        add_log(20, '[fn]take_head_n() df is not an instance of <DataFrame>')
+        return
+    nrows=int(nrows)
+    result = df.head(nrows)
+    return result
+
+# def get_stock_list(return_df = True):
+#     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
+#     retrun_df:<bool> 是返回DataFrame数据，否返回None
+#     """
+#     file_name = "stock_list.csv"
+#     df = ts_pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,exchange,curr_type,list_date,delist_date')
+#     df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+#     if return_df != True:
+#         df = None
+#     return df
+
+# def load_stock_list():
+#     """从保存的stock_list.csv文件中,读入返回DataFram"""
+#     file_name = "stock_list.csv"
+#     try:
+#         df = pd.read_csv(sub_path + '\\' + file_name)
+#     except FileNotFoundError:
+#         add_log(20, '[fn]load_stock_list(). file not found')
+#         df = None
+#     return df
+
+# def get_daily_basic(return_df = True):
+#     """获取TuShare最近交易日的每日指标，保存到daily_basic.csv文件,按需反馈DataFram
+#     retrun_df:<bool> 是返回DataFrame数据，否返回None
+#     """
+#     file_name = "daily_basic.csv"
+#     _trade_date = '20190712'
+#     df = ts_pro.daily_basic(ts_code='', trade_date=_trade_date, fields='ts_code,trade_date,close,turnover_rate,turnover_rate_f,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_share,float_share,free_share,total_mv,circ_mv')
+#     df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+#     if return_df != True:
+#         df = None
+#     return df
 
 class Raw_Data():
     """存放其它模块计算时所要用的公共数据的基础模块，需要实例化填充数据后使用"""
@@ -1275,6 +1335,7 @@ class Trade_Calendar():
             return None
 
 if __name__ == "__main__":
+    start_time = datetime.now()
     #df = get_stock_list()
     #df = load_stock_list()
     #df = get_daily_basic()
@@ -1290,9 +1351,9 @@ if __name__ == "__main__":
     #download_path = r"dl_stocks"
     #download_path = r"try_001"
     #download_path = r"user_001"
-    bulk_download(download_path,reload=False) #批量下载数据
+    bulk_download(download_path,reload=True) #批量下载数据
     download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
+    bulk_dl_appendix(download_path,reload=True) #批量下载股票每日指标数据，及股票复权因子
     #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     #Plot.try_plot()
@@ -1360,7 +1421,7 @@ if __name__ == "__main__":
     #     df_stock.at[index,'fq_cls']=fq_cls_
     # df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
     # print(df1[['close','fq_cls','factor']])
-    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='20190624', end_date='20190915')
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='dfq', start_date='20190624', end_date='20190915')
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
     # print("----------------第二组-----------------------")
@@ -1369,5 +1430,9 @@ if __name__ == "__main__":
     # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
-    # Stock.calc_dfq('600419.SH',reload=False)
+    #Stock.calc_dfq('600419.SH',reload=False)
+    
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print('duration={}'.format(duration))
     
