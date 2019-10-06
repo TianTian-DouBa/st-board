@@ -28,7 +28,9 @@ ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
 
 class Index():
-    """指数相关，包括行业板块指数等"""
+    """
+    指数相关，包括行业板块指数等
+    """
     def __init__(self, pull=False):
         """
         pull: True=get from Tushare; False=load from file
@@ -48,7 +50,8 @@ class Index():
         self._idx_ts_code()
     
     def get_index_basic(self):
-        """从ts_pro获取指数的基本信息列表
+        """
+        从ts_pro获取指数的基本信息列表
         待续：获取数据失败时，self.valid对应项的设-bad-处理
         """
         #上交所指数
@@ -70,7 +73,8 @@ class Index():
         return
     
     def load_index_basic(self):
-        """load index_basic.csv文件，读入self.index_basic_df
+        """
+        load index_basic.csv文件，读入self.index_basic_df
         """
         #上交所指数
         file_name = "index_basic_sse.csv"
@@ -104,7 +108,8 @@ class Index():
     
     @staticmethod
     def get_sw_index_classify(return_df = True):
-        """从ts_pro获取申万行业指数的分类
+        """
+        从ts_pro获取申万行业指数的分类
         """
         #一级行业列表
         file_name = "index_sw_L1_list.csv"
@@ -123,7 +128,8 @@ class Index():
         return (df_l1, df_l2, df_l3)
 
     def que_list_date(self, ts_code):
-        """查询上市时间list_date
+        """
+        查询上市时间list_date
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
@@ -149,7 +155,8 @@ class Index():
                 return result
     
     def que_base_date(self, ts_code):
-        """查询base_date
+        """
+        查询base_date
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
@@ -920,6 +927,17 @@ def take_head_n(df, nrows):
     nrows=int(nrows)
     result = df.head(nrows)
     return result
+
+def load_source_df(ts_code,source):
+    """
+    根据source来选择不同数据源，返回df；
+    source:<str> e.g. 'close_hfq' defined in indicator.py.SOURCE
+    retrun:<df> trade_date(index); close; high...
+    """
+    try:
+        SOURCE[source]
+    #---------------close_hfq 收盘后复权---------------
+    if source == ''
 
 # def get_stock_list(return_df = True):
 #     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
