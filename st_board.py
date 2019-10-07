@@ -16,6 +16,14 @@ sub_path_2nd_daily = r"\daily_data" #日线数据
 sub_path_config = r"\config" #配置文件
 sub_path_al = r"\assets_lists" #资产列表
 sub_path_result = r".\plot_result" #分析模板运行结果
+sub_idt = r"\idt_data" #存放指标的结果，下按idt_type不同再分目录
+
+SUBTYPE = {'D':'day',
+           'W':'week',
+           'M':'month'}
+
+SOURCE = {'close_hfq':'收盘后复权',
+          }
 
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
@@ -363,7 +371,7 @@ class Stock():
             #---[drop]通过将df_factor头部的index定位到df_stock中行号x；x=0 无操作；x>0 drop df_stock前x行; 无法定位，倒查定位到df_factor中y，y>=0 无操作，无法定位 报错
             fq_head_in_stock = None
             try:
-                fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)
+                fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str) #fq头在stock中的位置
             except KeyError:
                 stock_head_index_str, =df_stock.head(1).index.values
                 try:
@@ -373,7 +381,7 @@ class Stock():
                     add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args) #df_stock和df_fq(复权）相互查询不到第一条index的定位
                     return
             #print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
-            if fq_head_in_stock != None:
+            if fq_head_in_stock is not None:
                 if fq_head_in_stock > 0:
                     df_stock.drop(df_stock.index[:fq_head_in_stock],inplace=True)
             #---[/drop]
@@ -420,7 +428,7 @@ class Stock():
                 dfq_head_in_stock = df_stock.index.get_loc(dfq_head_index_str)
             except KeyError:
                 log_args = [ts_code,dfq_head_index_str]
-                add_log(10, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date', log_args)
+                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date', log_args)
                 return
             if dfq_head_in_stock == 0:
                 log_args = [ts_code]
@@ -928,16 +936,30 @@ def take_head_n(df, nrows):
     result = df.head(nrows)
     return result
 
-def load_source_df(ts_code,source):
+def load_source_df(ts_code,source,nrows=None):
     """
-    根据source来选择不同数据源，返回df；
-    source:<str> e.g. 'close_hfq' defined in indicator.py.SOURCE
+    根据source来选择不同数据源，返回df；数据源需要事先下载到csv，本函数不做补全
+    source:<str> e.g. 'close_hfq' defined in SOURCE
+    nrows: <int> 指定读入最近n个周期的记录,None=全部
     retrun:<df> trade_date(index); close; high...
     """
     try:
         SOURCE[source]
+    except KeyError:
+        log_args = [ts_code,source]
+        add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+        return
     #---------------close_hfq 收盘后复权---------------
-    if source == ''
+    if source == 'close_hfq':
+        result = Stock.load_stock_dfq(ts_code=ts_code,nrows=nrows)[['close']]
+        return result
+    #---------------无匹配，报错---------------
+    else:
+        log_args = [ts_code,source]
+        add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
+        return
+
+
 
 # def get_stock_list(return_df = True):
 #     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
