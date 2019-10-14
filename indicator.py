@@ -35,6 +35,8 @@ class Indicator():
         self.df_idt = None #df存放指标的结果数据 index; result
         self.idt_type = None #指标的类型，如MA
         self.source = None #数据源，如'close_hfq'收盘后复权
+        self.file_name = None
+        self.file_path = None
         print("[L15] 未完")
 
     def load_sources(self,nrows=None):
@@ -50,10 +52,27 @@ class Indicator():
     
     def load_idt(self,nrows=None):
         """
-        将历史指标的数据载入，并补全到和source同时间
+        将历史指标的数据载入;
         """
-
-        print("[L20] 未完")
+        file_path = self.file_path #用到的file_path需要在具体的继承子类中定义
+        try:
+            df_idt = pd.read_csv(file_path,dtype={'trade_date':str},index_col='trade_date',nrows=nrows)
+        except FileNotFoundError:
+            log_args = [file_path]
+            add_log(30, '[fn]Indicator.load_idt() file "{0[0]}" not exist', log_args)
+            return None
+        self.df_idt = df_idt
+        return self.df_idt
+    
+    def update_idt(self):
+        """
+        将self.df_idt补全到和source同时间
+        """
+        df_idt = self.load_idt()
+        if isinstance(df_idt, pd.DataFram):
+            print('[L73] 查df_idt头idx_str,从df_source源中计算补齐到和df_source同时间，未完')
+        else:
+            print('[L75] 重头开始计算，未完')
     
     def calc_idt(self):
         """
@@ -96,12 +115,15 @@ class Ma(Indicator):
         self.period = period
         print("[L97] 补period类型异常")
         self.file_name = 'idt_' + ts_code + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + file_name
         self.subtype = subtype
 
     def _calc_res(self):
         """
         计算idt_df要补完的数据
         """
+        df_source = self.load_sources()
+
         print('[L111] 未完')
 
 if __name__ == '__main__':
