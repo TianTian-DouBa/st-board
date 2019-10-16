@@ -123,8 +123,22 @@ class Ma(Indicator):
         计算idt_df要补完的数据
         """
         df_source = self.load_sources()
-
-        print('[L111] 未完')
+        df_idt = self.load_idt()
+        idt_head_index_str, = df_idt.head(1).index.values
+        try:
+            idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+            return
+        #try:
+        if idt_head_in_source > 0:
+            df_source.drop(df_source.index[:idt_head_in_source + period - 1],inplace=True)
+            _df_idt_append = pd.DataFrame(columns=['trade_date','MA5'])
+            _df_idt_append.set_index('trade_date',inplace=True)
+            _df_idt_append.index = df_source.index[:idt_head_in_source]
+            _df_idt.MA5 = TBD
+        print('[L141] 未完')
 
 if __name__ == '__main__':
     start_time = datetime.now()
