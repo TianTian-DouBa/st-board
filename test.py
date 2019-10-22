@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from XF_common.XF_KXJS import reverse_df
 
 if __name__ == "__main__":
     #print("Hello Raspberrypi")
@@ -19,6 +20,18 @@ if __name__ == "__main__":
     print("head_df1_str=",head_df1_str)
     pos = df0.index.get_loc(head_df1_str)
     print("pos=",pos)
+    print('-------------------drop not useful items-------------------')
+    n = 3 #e.g. ma2
+    df0.drop(df0.index[pos+n-1:],inplace = True)
+    print("n={}".format(n))
+    print(df0)
+    print('-------------------reversed df-------------------')
+    for idx in reversed(df0.index):
+        print(idx, df0.source[idx])
+    print(reverse_df(df0))
+    print('-------------------iter df-------------------')
+    
+    print(reverse_df(df0))
 
 
 
