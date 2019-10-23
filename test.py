@@ -21,17 +21,39 @@ if __name__ == "__main__":
     pos = df0.index.get_loc(head_df1_str)
     print("pos=",pos)
     print('-------------------drop not useful items-------------------')
-    n = 3 #e.g. ma2
+    n = 2 #e.g. ma2
     df0.drop(df0.index[pos+n-1:],inplace = True)
     print("n={}".format(n))
     print(df0)
     print('-------------------reversed df-------------------')
     for idx in reversed(df0.index):
         print(idx, df0.source[idx])
+    print("***")
     print(reverse_df(df0))
-    print('-------------------iter df-------------------')
-    
-    print(reverse_df(df0))
+    print('-------------------calculate MA-------------------')
+    df_source = df0
+    values = []
+    rvs_rslt = []
+    for idx in reversed(df0.index):
+        values.append(df0.source[idx])
+        if len(values) > n:
+            del values[0]
+        if len(values) == n:
+            rvs_rslt.append(np.average(values))
+    iter_rslt = reversed(rvs_rslt)
+    result = list(iter_rslt)
+    print(result)
+    #df_source = df_source.iloc[:len(df_source)-n+1]
+    df_idx = df_source.index[:len(df_source)-n+1]
+    print("***")
+    #print(df_source)
+    print(df_idx)
+    _column_name = 'MA' + str(n)
+    _data = {_column_name:result}
+    df_idt = pd.DataFrame(_data,index=df_idx)
+    print("***df_idt")
+    print(df_idt)
+
 
 
 
