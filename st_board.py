@@ -25,6 +25,9 @@ SUBTYPE = {'D':'day',
 SOURCE = {'close_hfq':'收盘后复权',
           }
 
+SOURCE_TO_COLUMN = {'close_hfq':'close',
+                    }
+
 STATUS_WORD = {0:'-bad-',
                1:'-good-',
                3:'-uncertain-'}
@@ -944,14 +947,15 @@ def load_source_df(ts_code,source,nrows=None):
     retrun:<df> trade_date(index); close; high...
     """
     try:
-        SOURCE[source]
+        #SOURCE[source]
+        column_name = SOURCE_TO_COLUMN[source]
     except KeyError:
         log_args = [ts_code,source]
         add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
         return
     #---------------close_hfq 收盘后复权---------------
     if source == 'close_hfq':
-        result = Stock.load_stock_dfq(ts_code=ts_code,nrows=nrows)[['close']]
+        result = Stock.load_stock_dfq(ts_code=ts_code,nrows=nrows)[[column_name]]
         return result
     #---------------无匹配，报错---------------
     else:

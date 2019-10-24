@@ -35,7 +35,8 @@ if __name__ == "__main__":
     values = []
     rvs_rslt = []
     for idx in reversed(df0.index):
-        values.append(df0.source[idx])
+        column_name = 'source'
+        values.append(df0[column_name][idx])
         if len(values) > n:
             del values[0]
         if len(values) == n:

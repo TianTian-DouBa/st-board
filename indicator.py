@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
-from st_board import Raw_Data, SUBTYPE, SOURCE
+from st_board import Raw_Data, SUBTYPE, SOURCE_TO_COLUMN
 from st_board import load_source_df
 from st_board import sub_path, sub_idt
 
@@ -32,12 +32,12 @@ class Indicator():
         update_csv:<bool> True: update the csv; False: keep the original csv as it is
         """
         self.ts_code = ts_code
-        self.df_idt = None #df存放指标的结果数据 index; result
-        self.idt_type = None #指标的类型，如MA
-        self.source = None #数据源，如'close_hfq'收盘后复权
+        self.df_idt = None #<df>存放指标的结果数据
+        self.idt_type = None #<str>指标的类型，如'MA'
+        self.source = None #<str>数据源，如'close_hfq'收盘后复权
         self.file_name = None
         self.file_path = None
-        print("[L15] 未完")
+        print("[L40] 未完")
 
     def load_sources(self,nrows=None):
         """
@@ -76,7 +76,7 @@ class Indicator():
     
     def calc_idt(self):
         """
-        计算补完df_idt数据
+        调用self._calc_res()补完df_idt数据
         """
         print('[Note] Indicator.calc_idt() 需要分别在各指标类中重构')
 
@@ -113,9 +113,10 @@ class Ma(Indicator):
         Indicator.__init__(self,ts_code=ts_code,reload=reload,fill=fill,update_csv=update_csv)
         self.idt_type = 'MA'
         self.period = period
-        print("[L97] 补period类型异常")
+        #print("[L97] 补period类型异常")
+        self.source = 'close_hfq'
         self.file_name = 'idt_' + ts_code + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + file_name
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -124,28 +125,69 @@ class Ma(Indicator):
         """
         df_source = self.load_sources()
         df_idt = self.load_idt()
-        idt_head_index_str, = df_idt.head(1).index.values
-        try:
-            idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
-        except KeyError:
-            log_args = [ts_code]
-            add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
-            return
-        #try:
-        if idt_head_in_source > 0:
-            df_source.drop(df_source.index[:idt_head_in_source + period - 1],inplace=True)
-            _df_idt_append = pd.DataFrame(columns=['trade_date','MA5'])
-            _df_idt_append.set_index('trade_date',inplace=True)
-            _df_idt_append.index = df_source.index[:idt_head_in_source]
-            _df_idt.MA5 = TBD
-        print('[L141] 未完')
+        if isinstance(df_idt, pd.DataFrame):
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
+            except KeyError:
+                log_args = [ts_code]
+                add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [ts_code]
+                add_log(40, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                period=self.period
+                df_source.drop(df_source.index[:idt_head_in_source + period - 1],inplace=True)
+                values = []
+                rvs_rslt = []
+                try:
+                    source_column_name = SOURCE_TO_COLUMN[self.source]
+                except KeyError:
+                    log_args = [ts_code,source]
+                    add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                    return
+                for idx in reversed(df_source.index):
+                    values.append(df_source[source_column_name][idx])
+                    if len(values) > period:
+                        del values[0]
+                    if len(values) == period:
+                        rvs_rslt.append(np.average(values))
+            else:
+                try:
+                    source_column_name = SOURCE_TO_COLUMN[self.source]
+                except KeyError:
+                    log_args = [ts_code,source]
+                    add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                    return
+                for idx in reversed(df_source.index):
+                    values.append(df_source[source_column_name][idx])
+                    if len(values) > period:
+                        del values[0]
+                    if len(values) == period:
+                        rvs_rslt.append(np.average(values))
+            iter_rslt = reversed(rvs_rslt)
+            rslt = list(iter_rslt)
+            index_source = df_source.index[:len(df_source)-period+1]
+            idt_column_name = 'MA' + str(period)
+            data = {idt_column_name:rslt}
+            df_idt_append = pd.DataFram(data,index=index_source)
+            return df_idt_append
+    
+    def calc_idt(self):
+        """
+        调用self._calc_res()补完df_idt数据
+        """
+        self.df_idt = self._calc_res()
 
 if __name__ == '__main__':
     start_time = datetime.now()
     raw_data = Raw_Data(pull=False)
     #------------------test---------------------
-    ma1 = Ma(ts_code='000002.SZ',period=10)
-    print(dir(ma1))
+    ma10 = Ma(ts_code='000002.SZ',period=10)
+    ma10.calc_idt()
+    print(ma10.idt_df)
 
     end_time = datetime.now()
     duration = end_time - start_time
