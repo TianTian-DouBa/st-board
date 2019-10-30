@@ -34,12 +34,89 @@ class Raw_Data():
         """
         pull: True=get from Tushare; False=load from file
         """
-        self.trade_calendar = Trade_Calendar(pull)
+        self.trade_calendar = None #交易日日历
+        self.init_trade_calendar(pull)
+        self.all_assets_list = None #全资产代码列表
+        self.load_all_assets_list()
         self.index = Index_Basic(pull) #指数相关数据
         self.stock = Stock_Basic(pull) #个股相关数据
-        self.load_all_assets_list()
+
         #self.stock_list = None
     
+    def init_trade_calendar(self, pull=False):
+        """
+        初始化.trade_calendar
+        """
+        if pull == True:
+            self.get_trade_calendar()
+        else:
+            self.load_trade_calendar()
+    
+    def load_trade_calendar(self):
+        """
+        load trade_calendar.csv文件，读入self.trade_calendar
+        """
+        file_name = "trade_calendar.csv"
+        file_path = sub_path + '\\' + file_name
+        try:
+            self.trade_calendar = pd.read_csv(file_path)
+        except FileNotFoundError:
+            log_args = [file_path]
+            add_log(20, '[fn]Raw_Data.load_trade_calendar(). file "{0[0]}" not found', log_args)
+            self.trade_calendar = None
+
+    def get_trade_calendar(self):
+        """
+        获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
+        日历会更新到当年的年底
+        """
+        file_name = "trade_calendar.csv"
+        file_path = sub_path + '\\' + file_name
+        self.trade_calendar = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
+        self.trade_calendar.to_csv(file_path, encoding="utf-8")
+
+    def valid_trade_calendar(self):
+        """
+        将来考虑增加按最新日期验证有效性
+        return: True if valid, None if invalid
+        """
+        if isinstance(self.trade_calendar, pd.DataFrame):
+            if len(self.trade_calendar) > 2:
+                return True
+
+    def last_trade_day(self, dt_str = None):
+        """
+        查询指定日最近的交易日，返回日期字符串
+        dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+                None 代表当日
+        return: <string> in 'YYYYMMDD' e.g.'20190719'
+        """
+        if self.valid_trade_calendar() is None:
+            add_log(20, '[fn]Raw_Data.last_trade_day() trade_calendar invalid')
+            return
+        if dt_str == None:
+            dt = datetime.now()
+            dt_str = dt.strftime("%Y%m%d")
+        if isinstance(dt_str,str) and (len(dt_str) == 8):
+            tdf = self.df.set_index(['cal_date'])
+            try:
+                is_open = tdf.loc[dt_str]['is_open']
+                if is_open == 1:
+                    return dt_str
+                elif is_open == 0:
+                    pretrade_date = tdf.loc[dt_str]['pretrade_date']
+                    return pretrade_date
+                else:
+                    return None
+            except KeyError:
+                 log_args = [dt_str]
+                 add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+                 return None
+        else:
+            log_args = [dt_str]
+            add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+            return None
+
     def valid_ts_code(self, ts_code):
         """验证在raw_data内ts_code是否有效,
         return: <bool> True=valid
@@ -222,74 +299,6 @@ class Index_Basic():
             _frames.append(self._sw)
         if len(_frames) > 0:
             self.index_basic_df = pd.concat(_frames, ignore_index=True, sort=False)
-
-class Trade_Calendar():
-    """    """
-    def __init__(self, pull=False):
-        self.df = None #交易日数据
-        if pull == True:
-            self.get()
-        else:
-            self.load()
-    
-    def load(self):
-        """load trade_calendar.csv文件，读入self.df
-        """
-        file_name = "trade_calendar.csv"
-        try:
-            self.df = pd.read_csv(sub_path + '\\' + file_name)
-        except FileNotFoundError:
-            add_log(20, '[fn]Trade_Calendar.load(). file not found')
-            self.df = None
-        return
-    
-    def get(self):
-        """获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
-        日历会更新到当年的年底"""
-        file_name = "trade_calendar.csv"
-        self.df = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
-        self.df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-        return
-    
-    def valid(self):
-        """to valid trade_calendar
-        return: True or False"""
-        if isinstance(self.df,pd.DataFrame):
-            return True
-        else:
-            return False
-    
-    def last_trade_day(self, dt_str = None):
-        """查询指定日最近的交易日，返回日期字符串
-        dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
-                None 代表当日
-        return: <string> in 'YYYYMMDD' e.g.'20190719'
-        """
-        if not self.valid():
-            add_log(20, '[fn]Trade_Calendar.last_trade_day() df not valid')
-            return None
-        if dt_str == None:
-            dt = datetime.now()
-            dt_str = dt.strftime("%Y%m%d")
-        if isinstance(dt_str,str) and (len(dt_str) == 8):
-            tdf = self.df.set_index(['cal_date'])
-            try:
-                is_open = tdf.loc[dt_str]['is_open']
-                if is_open == 1:
-                    return dt_str
-                elif is_open == 0:
-                    pretrade_date = tdf.loc[dt_str]['pretrade_date']
-                    return pretrade_date
-                else:
-                    return None
-            except KeyError:
-                 log_args = [dt_str]
-                 add_log(20, '[fn]Trade_Calendar.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
-                 return None
-        else:
-            log_args = [dt_str]
-            add_log(20, '[fn]Trade_Calendar.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
-            return None
 
 class Stock_Basic():
     """股票类的资产"""

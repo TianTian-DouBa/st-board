@@ -73,6 +73,7 @@ class Indicator():
         """
         df_idt = self._calc_res()
         if isinstance(df_idt, pd.DataFrame):
+            print("[L76] 拼接部分未完成")
             if st_board.valid_file_path(self.file_path):
                 df_idt.to_csv(self.file_path)
             else:
@@ -148,7 +149,10 @@ class Ma(Indicator):
                 add_log(40, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                df_source.drop(df_source.index[:idt_head_in_source + period - 1],inplace=True)
+                df_source.drop(df_source.index[idt_head_in_source + period - 1:],inplace=True)
+                print("[L152]--------------df_source, begin----------------")
+                print(df_source)
+                print("[L152]--------------df_source, end----------------")
                 values = []
                 rvs_rslt = []
                 try:
@@ -184,6 +188,9 @@ class Ma(Indicator):
         idt_column_name = 'MA' + str(period)
         data = {idt_column_name:rslt}
         df_idt_append = pd.DataFrame(data,index=index_source)
+        print("[L187]--------------df_idt_append, begin----------------")
+        print(df_idt_append)
+        print("[L189]--------------df_idt_append, end----------------")
         return df_idt_append
 
 if __name__ == '__main__':
