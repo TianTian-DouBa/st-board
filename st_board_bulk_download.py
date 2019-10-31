@@ -1113,8 +1113,8 @@ if __name__ == "__main__":
     #ttt = index.get_index_daily('399003.SZ',reload=False)
     # #------------------------批量下载数据-----------------------
     #download_path = r"download_all"
-    #download_path = r"dl_stocks"
-    download_path = r"try_001"
+    download_path = r"dl_stocks"
+    #download_path = r"try_001"
     #download_path = r"user_001"
     bulk_download(download_path,reload=False) #批量下载数据
     #download_path = r"dl_stocks"
@@ -1196,8 +1196,8 @@ if __name__ == "__main__":
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
     # Stock.calc_dfq('600419.SH',reload=False)
-    #al_file_str = r"dl_stocks"
-    al_file_str = r"try_001"
+    al_file_str = r"dl_stocks"
+    #al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     end_time = datetime.now()
     duration = end_time - start_time

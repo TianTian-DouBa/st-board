@@ -24,7 +24,7 @@ def valid_date_str_fmt(date_str):
     if isinstance(date_str,str):
         if len(date_str) == 8:
             return True
-    return False
+    return
 
 def today_str():
     """
@@ -495,7 +495,8 @@ class All_Assets_List():
 
     @staticmethod
     def rebuild_all_assets_list(que_from_ts = False):
-        """重头开始构建全资产列表
+        """
+        重头开始构建全资产列表
         que_from_ts: <bool> F：从文件读 T:从tushare 接口读
         """
         global raw_data
@@ -616,7 +617,7 @@ class All_Assets_List():
     @staticmethod
     def query_category_str (ts_code):
         """
-        query the category string
+        根据all_assets_list中的type, stype1, stype2字段来返回category
         ts_code: <str> e.g. '000001.SZ'
         return: None, if no match
                 <str> e.g. 'index_sw'; 'stock'
@@ -668,7 +669,7 @@ class Stock():
     @staticmethod
     def load_stock_daily(ts_code,nrows=None):
         """
-        从文件读入指数日线数据
+        从文件读入股票日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
@@ -688,7 +689,7 @@ class Stock():
     @staticmethod
     def load_stock_daily_basic(ts_code,nrows=None):
         """
-        从文件读入指数日线指标数据
+        从文件读入股票日线指标数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
@@ -913,39 +914,6 @@ QUE_LIMIT = {'index_sse':8000,
              'stock':4000,
              'stock_daily_basic':8000,
              'adj_factor':8000}
-
-# def get_stock_list(return_df = True):
-#     """获取TuShare股票列表保存到stock_list.csv文件,按需反馈DataFram
-#     retrun_df:<bool> 是返回DataFrame数据，否返回None
-#     """
-#     file_name = "stock_list.csv"
-#     df = ts_pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,exchange,curr_type,list_date,delist_date')
-#     df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-#     if return_df != True:
-#         df = None
-#     return df
-
-# def load_stock_list():
-#     """从保存的stock_list.csv文件中,读入返回DataFram"""
-#     file_name = "stock_list.csv"
-#     try:
-#         df = pd.read_csv(sub_path + '\\' + file_name)
-#     except FileNotFoundError:
-#         add_log(20, '[fn]load_stock_list(). file not found')
-#         df = None
-#     return df
-
-# def get_daily_basic(return_df = True):
-#     """获取TuShare最近交易日的每日指标，保存到daily_basic.csv文件,按需反馈DataFram
-#     retrun_df:<bool> 是返回DataFrame数据，否返回None
-#     """
-#     file_name = "daily_basic.csv"
-#     _trade_date = '20190712'
-#     df = ts_pro.daily_basic(ts_code='', trade_date=_trade_date, fields='ts_code,trade_date,close,turnover_rate,turnover_rate_f,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_share,float_share,free_share,total_mv,circ_mv')
-#     df.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-#     if return_df != True:
-#         df = None
-#     return df
 
 class Plot_Utility():
     """存放绘图出报告用的公用工具"""

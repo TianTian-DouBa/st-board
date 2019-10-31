@@ -367,4 +367,3 @@ class Stock_Basic():
 
 global raw_data
 raw_data = Raw_Data(pull=False)
-print("raw_data:{}".format(repr(raw_data)))
