@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import time
+import weakref
 from st_common import raw_data
 from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
@@ -645,8 +646,48 @@ class All_Assets_List():
             return
         return category
 
-class Stock():
+class Asset():
+    """
+    资产的基类
+    """
+    def __init__(self,ts_code):
+        self.ts_code = ts_code
+    
+    def add_indicator(self,idt_name,idt_class,**kwargs):
+        """
+        添加Indicator的实例
+        idt_name: 指标名 <str> e.g. 'ma10'
+        idt_class: 指标类 <Class> e.g. Ma
+        """
+        if isinstance(idt_name,str):
+            par_asset = weakref.ref(self) #用par_asset()应用原对象
+            #print("[L664]", par_asset())
+            idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
+            setattr(self,idt_name,idt)
+            #locals()[idt_name] = "hahaho"
+            #locals()['self.'+idt_name] = locals()[cls_name](ts_code=self.ts_code,par_asset=par_asset,**kwargs)
+            try:
+                idt = getattr(self,idt_name)
+                print(type(idt))
+                print(isinstance(idt,Indicator))
+                print(isinstance(idt,Ma))
+                if isinstance(idt,Indicator):
+                    print("11 ", idt)
+                else:
+                    log_args = [self.ts_code, idt_name]
+                    add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
+            except Exception as e:
+                print("[L670] 待用明确的except替换")
+                log_args = [self.ts_code, idt_name,e.__class__.__name__]
+                add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
+        else:
+            log_args = [self.ts_code, idt_name]
+            add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, idt_name:{0[1]} invalid.', log_args)
+    
+class Stock(Asset):
     """股票类的资产"""
+    def __init__(self,ts_code):
+        Asset.__init__(self, ts_code=ts_code)
 
     @staticmethod
     def load_adj_factor(ts_code,nrows=None):
@@ -1165,7 +1206,17 @@ if __name__ == "__main__":
     # print(df2['close'])
     # Stock.calc_dfq('600419.SH',reload=False)
     al_file_str = r"dl_stocks"
-    bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
+    #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
+    # print("----------------Indicator-----------------------")
+    from indicator import Indicator, Ma
+    stock1 = Stock(ts_code='000002.SZ')
+    stock1.add_indicator('ma10',Ma,period=10)
+    stock1.ma10.calc_idt()
+    print(stock1.ma10.df_idt)
+    stock2 = Stock(ts_code='000001.SZ')
+    stock2.add_indicator('ma20',Ma,period=20)
+    stock2.ma20.calc_idt()
+    print(stock2.ma20.df_idt)
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))

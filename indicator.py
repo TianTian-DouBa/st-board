@@ -7,14 +7,15 @@ from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_W
 #from st_common import Raw_Data, raw_data_init, SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
-from st_board import load_source_df
+#from st_board import load_source_df, Stock, Index
 import st_board
+import weakref
 
 class Indicator():
     """
     指标的基本类
     """
-    def __new__(cls,ts_code,reload=False,fill=True,update_csv=True):
+    def __new__(cls,ts_code,par_asset,reload=False,fill=True,update_csv=True):
         """
         检验ts_code的有效性
         """
@@ -27,7 +28,7 @@ class Indicator():
             add_log(10, '[fn]Indicator.__new__() ts_code "{0[0]}" invalid, instance not created', log_args)
             return
 
-    def __init__(self,ts_code,reload=False,fill=True,update_csv=True):
+    def __init__(self,ts_code,par_asset,reload=False,fill=True,update_csv=True):
         """
         ts_code:<str> e.g. '000001.SH'
         reload:<bool> True: igonre the csv, generate the df from the begining
@@ -40,6 +41,7 @@ class Indicator():
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
         self.file_name = None
         self.file_path = None
+        self.par_asset = par_asset #<Asset>父asset对象
 
     def load_sources(self,nrows=None):
         """
@@ -48,6 +50,7 @@ class Indicator():
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         retrun:<df> trade_date(index); close; high..., None if failed
         """
+        from st_board import load_source_df
         df_source = load_source_df(ts_code=self.ts_code,source=self.source)
         return df_source
     
@@ -99,12 +102,13 @@ class Indicator():
         计算idt_df要补完的数据
         """
         print('[Note] Indicator._calc_res() 需要分别在各指标类中重构')
+        return False #清除VS_CODE报的问题
         
 class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls,ts_code,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ma> if valid; None if invalid 
@@ -116,15 +120,15 @@ class Ma(Indicator):
             add_log(10, '[fn]Ma.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
         period = int(period)
-        obj = super().__new__(cls, ts_code=ts_code)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
         return obj
 
-    def __init__(self,ts_code,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,reload=reload,fill=fill,update_csv=update_csv)
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,fill=fill,update_csv=update_csv)
         self.idt_type = 'MA'
         self.period = period
         #print("[L97] 补period类型异常")
@@ -145,11 +149,11 @@ class Ma(Indicator):
             try:
                 idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
             except KeyError:
-                log_args = [ts_code]
+                log_args = [self.ts_code]
                 add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
                 return
             if idt_head_in_source == 0:
-                log_args = [ts_code]
+                log_args = [self.ts_code]
                 add_log(40, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
@@ -159,7 +163,7 @@ class Ma(Indicator):
                 try:
                     source_column_name = SOURCE_TO_COLUMN[self.source]
                 except KeyError:
-                    log_args = [ts_code,source]
+                    log_args = [self.ts_code,self.source]
                     add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
                     return
                 for idx in reversed(df_source.index):
@@ -172,7 +176,7 @@ class Ma(Indicator):
             try:
                 source_column_name = SOURCE_TO_COLUMN[self.source]
             except KeyError:
-                log_args = [ts_code,source]
+                log_args = [self.ts_code,self.source]
                 add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
                 return
             values = []
@@ -194,11 +198,13 @@ class Ma(Indicator):
 if __name__ == '__main__':
     start_time = datetime.now()
     #raw_data_init()
+    from st_board import Stock, Index
     global raw_data
     #------------------test---------------------
-    ma10 = Ma(ts_code='000002.SZ',period=10)
-    ma10.calc_idt()
-    print(ma10.df_idt)
+    stock1 = Stock(ts_code='000002.SZ')
+    stock1.add_indicator('ma10',Ma,period=10)
+    stock1.ma10.calc_idt()
+    print(stock1.ma10.df_idt)
 
     end_time = datetime.now()
     duration = end_time - start_time
