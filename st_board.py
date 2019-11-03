@@ -668,11 +668,8 @@ class Asset():
             #locals()['self.'+idt_name] = locals()[cls_name](ts_code=self.ts_code,par_asset=par_asset,**kwargs)
             try:
                 idt = getattr(self,idt_name)
-                print(type(idt))
-                print(isinstance(idt,Indicator))
-                print(isinstance(idt,Ma))
                 if isinstance(idt,Indicator):
-                    print("11 ", idt)
+                    pass
                 else:
                     log_args = [self.ts_code, idt_name]
                     add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
@@ -1208,15 +1205,19 @@ if __name__ == "__main__":
     al_file_str = r"dl_stocks"
     #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     # print("----------------Indicator-----------------------")
-    from indicator import Indicator, Ma
+    from indicator import Indicator, Ma, Ema
     stock1 = Stock(ts_code='000002.SZ')
     stock1.add_indicator('ma10',Ma,period=10)
     stock1.ma10.calc_idt()
-    print(stock1.ma10.df_idt)
+    stock1.add_indicator('ema12',Ema,period=12)
+    stock1.ema12.calc_idt()
+    print(stock1.ema12.df_idt)
     stock2 = Stock(ts_code='000001.SZ')
     stock2.add_indicator('ma20',Ma,period=20)
     stock2.ma20.calc_idt()
-    print(stock2.ma20.df_idt)
+    stock2.add_indicator('ema12',Ema,period=12)
+    stock2.ema12.calc_idt()
+    print(stock2.ema12.df_idt)
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))

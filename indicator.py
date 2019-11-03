@@ -92,7 +92,7 @@ class Indicator():
         elif df_append is None:
             pass #keep self.df_idt as it is
         else:
-            log_args = [self.ts_code, type(df_idt)]
+            log_args = [self.ts_code, type(self.df_idt)]
             add_log(10,"[fn]Indicator.calc_idt() ts_code:{0[0]}, type(df_append):{0[1]}, unknown problem", log_args)
             pass #keep self.df_idt as it is
 
@@ -132,7 +132,7 @@ class Ma(Indicator):
         self.idt_type = 'MA'
         self.period = period
         #print("[L97] 补period类型异常")
-        self.source = 'close_hfq'
+        self.source = source
         self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
@@ -191,6 +191,106 @@ class Ma(Indicator):
         rslt = list(iter_rslt)
         index_source = df_source.index[:len(df_source)-period+1]
         idt_column_name = 'MA' + str(period)
+        data = {idt_column_name:rslt}
+        df_idt_append = pd.DataFrame(data,index=index_source)
+        return df_idt_append
+
+class Ema(Indicator):
+    """
+    指数移动平均线
+    """
+    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins Ema> if valid; None if invalid 
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code,subtype]
+            add_log(10, '[fn]Ema.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        period = int(period)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
+        return obj
+    
+    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+        """
+        period:<int> 周期数
+        subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
+        """
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,fill=fill,update_csv=update_csv)
+        self.idt_type = 'EMA'
+        self.period = period
+        self.source = source
+        self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+    
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period=self.period
+        if isinstance(df_idt, pd.DataFrame):
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Ema._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Ema._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                df_source.drop(df_source.index[idt_head_in_source + 1:],inplace=True)
+                rvs_rslt = []
+                i = 0
+                try:
+                    source_column_name = SOURCE_TO_COLUMN[self.source]
+                except KeyError:
+                    log_args = [self.ts_code,self.source]
+                    add_log(20, '[fn]Ema._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                    return
+                for idx in reversed(df_source.index):
+                    if i==0:
+                        idt_column_name = 'EMA' + str(period)
+                        past_ema = df_idt[idt_column_name][idx]
+                        rvs_rslt.append(df_idt[idt_column_name][idx])
+                        i += 1
+                    else:
+                        # Y=[2*X+(N-1)*Y’]/(N+1)
+                        today_ema = (2 * df_source[source_column_name][idx] + (period - 1) * past_ema) / (period + 1)
+                        past_ema = today_ema
+                        rvs_rslt.append(today_ema)
+        else: #.csv file not exist
+            try:
+                source_column_name = SOURCE_TO_COLUMN[self.source]
+            except KeyError:
+                log_args = [self.ts_code,self.source]
+                add_log(20, '[fn]Ema._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                return
+            rvs_rslt = []
+            i = 0
+            for idx in reversed(df_source.index):
+                if i==0:
+                    past_ema = df_source[source_column_name][idx]
+                    rvs_rslt.append(df_source[source_column_name][idx])
+                    i += 1
+                else:
+                    # Y=[2*X+(N-1)*Y’]/(N+1)
+                    today_ema = (2 * df_source[source_column_name][idx] + (period - 1) * past_ema) / (period + 1)
+                    past_ema = today_ema
+                    rvs_rslt.append(today_ema)
+        del rvs_rslt[0]
+        iter_rslt = reversed(rvs_rslt)
+        rslt = list(iter_rslt)
+        index_source = df_source.index[:-1]
+        idt_column_name = 'EMA' + str(period)
         data = {idt_column_name:rslt}
         df_idt_append = pd.DataFrame(data,index=index_source)
         return df_idt_append
