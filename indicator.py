@@ -15,7 +15,7 @@ class Indicator():
     """
     指标的基本类
     """
-    def __new__(cls,ts_code,par_asset,reload=False,fill=True,update_csv=True):
+    def __new__(cls,ts_code,par_asset,reload=False,update_csv=True):
         """
         检验ts_code的有效性
         """
@@ -28,11 +28,10 @@ class Indicator():
             add_log(10, '[fn]Indicator.__new__() ts_code "{0[0]}" invalid, instance not created', log_args)
             return
 
-    def __init__(self,ts_code,par_asset,reload=False,fill=True,update_csv=True):
+    def __init__(self,ts_code,par_asset,reload=False,update_csv=True):
         """
         ts_code:<str> e.g. '000001.SH'
         reload:<bool> True: igonre the csv, generate the df from the begining
-        fill:<bool> True: according to the source date fill the df up to date
         update_csv:<bool> True: update the csv; False: keep the original csv as it is
         """
         self.ts_code = ts_code
@@ -108,7 +107,7 @@ class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ma> if valid; None if invalid 
@@ -123,12 +122,12 @@ class Ma(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
         return obj
 
-    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,fill=fill,update_csv=update_csv)
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
         self.idt_type = 'MA'
         self.period = period
         #print("[L97] 补period类型异常")
@@ -199,7 +198,7 @@ class Ema(Indicator):
     """
     指数移动平均线
     """
-    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ema> if valid; None if invalid 
@@ -214,12 +213,12 @@ class Ema(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
         return obj
     
-    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,fill=True,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,fill=fill,update_csv=update_csv)
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
         self.idt_type = 'EMA'
         self.period = period
         self.source = source
@@ -294,6 +293,41 @@ class Ema(Indicator):
         data = {idt_column_name:rslt}
         df_idt_append = pd.DataFrame(data,index=index_source)
         return df_idt_append
+
+class Macd(Indicator):
+    """
+    MACD
+    """
+    def __new__(cls,ts_code,par_asset,long_n=26,short_n=12,dea_n=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins Macd> if valid; None if invalid 
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code,subtype]
+            add_log(10, '[fn]Macd.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        long_n = int(long_n)
+        short_n = int(short_n)
+        dea_n = int(dea_n)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
+        return obj
+
+    def __init__(self,ts_code,par_asset,long_n=26,short_n=12,dea_n=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+        """
+        subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
+        """
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
+        self.idt_type = 'MACD'
+        self.long_n = long_n
+        self.short_n = short_n
+        self.dea_n = dea_n
+        self.source = source
+        self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(long_n) + '_' + str(short_n) + '_' + str(dea_n) + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
 
 if __name__ == '__main__':
     start_time = datetime.now()

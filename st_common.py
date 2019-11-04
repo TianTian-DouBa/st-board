@@ -1,6 +1,10 @@
 import tushare as ts
 import pandas as pd
 import numpy as np
+from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+from datetime import datetime,timedelta
+
+ts_pro = ts.pro_api()
 
 sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data" #日线数据
@@ -98,7 +102,7 @@ class Raw_Data():
             dt = datetime.now()
             dt_str = dt.strftime("%Y%m%d")
         if isinstance(dt_str,str) and (len(dt_str) == 8):
-            tdf = self.df.set_index(['cal_date'])
+            tdf = self.trade_calendar.set_index(['cal_date'])
             try:
                 is_open = tdf.loc[dt_str]['is_open']
                 if is_open == 1:
@@ -242,6 +246,7 @@ class Index_Basic():
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
+        from st_board import valid_date_str_fmt
         try:
             result = self.idx_ts_code.loc[ts_code]['list_date']
         except KeyError:
@@ -269,6 +274,7 @@ class Index_Basic():
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
+        from st_board import valid_date_str_fmt
         try:
             result = self.idx_ts_code.loc[ts_code]['base_date']
         except KeyError:
@@ -349,6 +355,7 @@ class Stock_Basic():
         return:<str> e.g. '19930503'
         ts_code:<str> e.g. '000001.SH'
         """
+        from st_board import valid_date_str_fmt
         try:
             result = self.basic.loc[ts_code]['list_date']
         except KeyError: 
