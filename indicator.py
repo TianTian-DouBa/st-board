@@ -40,7 +40,7 @@ class Indicator():
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
         self.file_name = None
         self.file_path = None
-        self.par_asset = par_asset #<Asset>父asset对象
+        self.par_asset = weakref.ref(par_asset) #<Asset>父asset对象
 
     def load_sources(self,nrows=None):
         """
@@ -67,6 +67,21 @@ class Indicator():
         self.df_idt = df_idt
         return self.df_idt
     
+    def valid_utd(self):
+        """
+        validate if self.df_idt up to df_source date
+        return: True: up to date; 
+                None: invalid or not up to date
+        """
+        df_source_head = self.load_sources(nrows=1)
+        source_date = df_source_head.index[0]
+        idt_date = self.df_idt.head(1).index
+        if idt_date == source_date:
+            return True
+        else:
+            log_args = [self.ts_code,self.idt_name,idt_date,source_date]
+            add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not uptodate. idt:{0[2]} source:{0[3]}', log_args)
+
     def calc_idt(self):
         """
         调用self._calc_res()补完df_idt数据
@@ -94,7 +109,6 @@ class Indicator():
             log_args = [self.ts_code, type(self.df_idt)]
             add_log(10,"[fn]Indicator.calc_idt() ts_code:{0[0]}, type(df_append):{0[1]}, unknown problem", log_args)
             pass #keep self.df_idt as it is
-
 
     def _calc_res(self):
         """
@@ -328,6 +342,20 @@ class Macd(Indicator):
         self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(long_n) + '_' + str(short_n) + '_' + str(dea_n) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
+    
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        long_n = self.long_n
+        short_n = self.short_n
+        dea_n = self.dea_n
+
+        if not self.par_asset.valid_idt_utd:
+            pass
+        print('[L359] continue here')
 
 if __name__ == '__main__':
     start_time = datetime.now()
@@ -335,10 +363,6 @@ if __name__ == '__main__':
     from st_board import Stock, Index
     global raw_data
     #------------------test---------------------
-    stock1 = Stock(ts_code='000002.SZ')
-    stock1.add_indicator('ma10',Ma,period=10)
-    stock1.ma10.calc_idt()
-    print(stock1.ma10.df_idt)
 
     end_time = datetime.now()
     duration = end_time - start_time

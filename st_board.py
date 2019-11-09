@@ -681,6 +681,29 @@ class Asset():
             log_args = [self.ts_code, idt_name]
             add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, idt_name:{0[1]} invalid.', log_args)
     
+    def valid_idt_utd(self,idt_name):
+        """
+        validate if self.[ins]Indicator up to df_source date
+        idt_name: <str> e.g. 'ema12_close_hfq'
+        return: True: up to date; 
+                None: invalid or not uptodate
+        """
+        from indicator import Indicator
+        if hasattr(self,idt_name):
+            idt = getattr(self,idt_name)
+            if isinstance(idt,Indicator):
+                result = idt.valid_utd()
+                return result
+            else:
+                log_args = [self.ts_code, idt_name]
+                add_log(20, '[fn]Asset.valid_idt_utd() ts_code:{0[0]}, idt_name:{0[1]} is not an Indicator.', log_args)
+                return
+        else:
+            log_args = [self.ts_code, idt_name]
+            add_log(20, '[fn]Asset.valid_idt_utd() ts_code:{0[0]}, idt_name:{0[1]} does not exist.', log_args)
+            return
+
+
 class Stock(Asset):
     """股票类的资产"""
     def __init__(self,ts_code):
@@ -1204,20 +1227,41 @@ if __name__ == "__main__":
     # Stock.calc_dfq('600419.SH',reload=False)
     al_file_str = r"dl_stocks"
     #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
-    # print("----------------Indicator-----------------------")
+    # print("===================Indicator===================")
     from indicator import Indicator, Ma, Ema
+    print('------stock1.ma10_close_hfq--------')
     stock1 = Stock(ts_code='000002.SZ')
-    stock1.add_indicator('ma10',Ma,period=10)
-    stock1.ma10.calc_idt()
-    stock1.add_indicator('ema12',Ema,period=12)
-    stock1.ema12.calc_idt()
-    print(stock1.ema12.df_idt)
-    stock2 = Stock(ts_code='000001.SZ')
-    stock2.add_indicator('ma20',Ma,period=20)
-    stock2.ma20.calc_idt()
-    stock2.add_indicator('ema12',Ema,period=12)
-    stock2.ema12.calc_idt()
-    print(stock2.ema12.df_idt)
+    kwargs = {'idt_name': 'ma10_close_hfq',
+              'idt_class': Ma,
+              'period': 10}
+    stock1.add_indicator(**kwargs)
+    stock1.ma10_close_hfq.calc_idt()
+    ma10 = stock1.ma10_close_hfq.df_idt
+    print(ma10)
+
+    print('------stock1.ema26_close_hfq--------')
+    kwargs = {'idt_name': 'ema26_close_hfq',
+              'idt_class': Ema,
+              'period': 26}
+    stock1.add_indicator(**kwargs)
+    stock1.ema26_close_hfq.calc_idt()
+    ema26 = stock1.ema26_close_hfq.df_idt
+    print(ema26)
+
+    print('------stock1.ema12_close_hfq--------')
+    kwargs = {'idt_name': 'ema12_close_hfq',
+              'idt_class': Ema,
+              'period': 12}
+    stock1.add_indicator(**kwargs)
+    stock1.ema12_close_hfq.calc_idt()
+    ema12 = stock1.ema12_close_hfq.df_idt
+    print(ema12)
+
+    print('------valid Indicator up to soruce date--------')
+    print('uptodate ma10:',stock1.valid_idt_utd('ma10_close_hfq'))
+    print('uptodate ema12:',stock1.valid_idt_utd('ema12_close_hfq'))
+    print('uptodate ema26:',stock1.valid_idt_utd('ema26_close_hfq'))
+
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))
