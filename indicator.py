@@ -38,6 +38,7 @@ class Indicator():
         self.df_idt = None #<df>存放指标的结果数据
         self.idt_type = None #<str>指标的类型，如'MA'
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
+        self.update_csv = update_csv
         self.file_name = None
         self.file_path = None
         self.par_asset = weakref.ref(par_asset) #<Asset>父asset对象
@@ -93,13 +94,14 @@ class Indicator():
                 df_idt = pd.concat(_frames,sort=False)
             else:
                 df_idt = df_append
-            if st_board.valid_file_path(self.file_path):
-                df_idt.to_csv(self.file_path)
-                log_args = [self.ts_code, self.file_path]
-                add_log(40,"[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, saved", log_args)
-            else:
-                log_args = [self.ts_code, self.file_path]
-                add_log(20,"[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, invalid", log_args)
+            if self.update_csv:
+                if st_board.valid_file_path(self.file_path):
+                    df_idt.to_csv(self.file_path)
+                    log_args = [self.ts_code, self.file_path]
+                    add_log(40,"[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, saved", log_args)
+                else:
+                    log_args = [self.ts_code, self.file_path]
+                    add_log(20,"[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, invalid", log_args)
             self.df_idt = df_idt
             log_args = [self.ts_code, self.file_name[:-4], len(df_idt)]
             add_log(40,"[fn]Indicator.calc_idt() ts_code:{0[0]}, {0[1]} updated; items:{0[2]}", log_args)
@@ -352,10 +354,43 @@ class Macd(Indicator):
         long_n = self.long_n
         short_n = self.short_n
         dea_n = self.dea_n
+        parent = self.par_asset()
 
-        if not self.par_asset.valid_idt_utd:
-            pass
-        print('[L359] continue here')
+        idt_ema_long_name = 'ema' + str(long_n) + '_' + self.source
+        idt_ema_short_name = 'ema' + str(short_n) + '_' + self.source
+
+        #------valid pre-idts uptodate------
+        if parent.valid_idt_utd != True:
+            #idt_ema_long
+            if hasattr(parent,idt_ema_long_name):
+                idt_ema_long = getattr(parent,idt_ema_long_name)
+                if idt_ema_long.valid_utd() != True:
+                    idt_ema_long.calc_idt()
+            else:
+                kwargs = {'idt_name': idt_ema_long_name,
+                          'idt_class': Ema,
+                          'period': long_n,
+                          'source': self.source,
+                          'update_csv': False}
+                parent.add_indicator(**kwargs)
+                idt_ema_long = getattr(parent,idt_ema_long_name)
+                idt_ema_long.calc_idt()
+            #idt_ema_short
+            if hasattr(parent,idt_ema_short_name):
+                idt_ema_short = getattr(parent,idt_ema_short_name)
+                if idt_ema_short.valid_utd() != True:
+                    idt_ema_short.calc_idt()
+            else:
+                kwargs = {'idt_name': idt_ema_short_name,
+                          'idt_class': Ema,
+                          'period': short_n,
+                          'source': self.source,
+                          'update_csv': False}
+                parent.add_indicator(**kwargs)
+                idt_ema_short = getattr(parent,idt_ema_short_name)
+                idt_ema_short.calc_idt()
+        df_ema_long = idt_ema_long.df_idt
+        df_ema_short = idt_ema_short.df_idt
 
 if __name__ == '__main__':
     start_time = datetime.now()
