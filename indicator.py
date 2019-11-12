@@ -15,7 +15,7 @@ class Indicator():
     """
     指标的基本类
     """
-    def __new__(cls,ts_code,par_asset,reload=False,update_csv=True):
+    def __new__(cls,ts_code,par_asset,reload=False,update_csv=True,subtype='D'):
         """
         检验ts_code的有效性
         """
@@ -28,13 +28,14 @@ class Indicator():
             add_log(10, '[fn]Indicator.__new__() ts_code "{0[0]}" invalid, instance not created', log_args)
             return
 
-    def __init__(self,ts_code,par_asset,reload=False,update_csv=True):
+    def __init__(self,ts_code,par_asset,reload=False,update_csv=True,subtype='D'):
         """
         ts_code:<str> e.g. '000001.SH'
         reload:<bool> True: igonre the csv, generate the df from the begining
         update_csv:<bool> True: update the csv; False: keep the original csv as it is
         """
         self.ts_code = ts_code
+        self.subtype = subtype
         self.df_idt = None #<df>存放指标的结果数据
         self.idt_type = None #<str>指标的类型，如'MA'
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
@@ -74,14 +75,18 @@ class Indicator():
         return: True: up to date; 
                 None: invalid or not up to date
         """
-        df_source_head = self.load_sources(nrows=1)
-        source_date = df_source_head.index[0]
-        idt_date = self.df_idt.head(1).index
-        if idt_date == source_date:
-            return True
+        if isinstance(self.df_idt,pd.DataFrame):
+            df_source_head = self.load_sources(nrows=1)
+            source_date = df_source_head.index[0]
+            idt_date = self.df_idt.head(1).index
+            if idt_date == source_date:
+                return True
+            else:
+                log_args = [self.ts_code,self.idt_name,idt_date,source_date]
+                add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not uptodate. idt:{0[2]} source:{0[3]}', log_args)
         else:
-            log_args = [self.ts_code,self.idt_name,idt_date,source_date]
-            add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not uptodate. idt:{0[2]} source:{0[3]}', log_args)
+            log_args = [self.ts_code,self.idt_name]
+            add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not loaded', log_args)
 
     def calc_idt(self):
         """
@@ -118,6 +123,15 @@ class Indicator():
         """
         print('[Note] Indicator._calc_res() 需要分别在各指标类中重构')
         return False #清除VS_CODE报的问题
+    
+    # @staticmethod
+    # def idt_name(period=self.period):
+    #     """
+    #     返回indicator的idt_name,基类Indicator中返回含只含一个周期参数period的名字；
+    #     多周期参数的话如macd的需要在各子类中改写此函数
+    #     return: <str> e.g. 
+    #     """
+    #     self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
         
 class Ma(Indicator):
     """
@@ -148,7 +162,9 @@ class Ma(Indicator):
         self.period = period
         #print("[L97] 补period类型异常")
         self.source = source
-        self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
+        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
 
@@ -238,7 +254,9 @@ class Ema(Indicator):
         self.idt_type = 'EMA'
         self.period = period
         self.source = source
-        self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
+        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
     
@@ -336,12 +354,13 @@ class Macd(Indicator):
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
         Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
-        self.idt_type = 'MACD'
+        self.idt_type = 'macd'
         self.long_n = long_n
         self.short_n = short_n
         self.dea_n = dea_n
         self.source = source
-        self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(long_n) + '_' + str(short_n) + '_' + str(dea_n) + '.csv'
+        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(long_n) + '_' + str(short_n) + '_' + str(dea_n)
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
     

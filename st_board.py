@@ -664,8 +664,6 @@ class Asset():
             #print("[L664]", par_asset())
             idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
             setattr(self,idt_name,idt)
-            #locals()[idt_name] = "hahaho"
-            #locals()['self.'+idt_name] = locals()[cls_name](ts_code=self.ts_code,par_asset=par_asset,**kwargs)
             try:
                 idt = getattr(self,idt_name)
                 if isinstance(idt,Indicator):
@@ -1271,7 +1269,8 @@ if __name__ == "__main__":
               'dea_n': 9}
     stock1.add_indicator(**kwargs)
     macd = stock1.macd26_12_9_close_hfq
-    macd.calc_idt()
+    if macd.valid_utd() != True:
+        macd.calc_idt()
 
     ema12 = stock1.ema12_close_hfq.df_idt
     ema26 = stock1.ema26_close_hfq.df_idt
