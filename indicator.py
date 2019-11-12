@@ -11,11 +11,56 @@ from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import st_board
 import weakref
 
+def idt_name(dict_attrs):
+    """
+    返回indicator的idt_name
+    return: <dict> of attributs for initialize the indicator
+    """
+    IDT_CLASS = {'ma': Macd,
+                 'ema': Ema,
+                 'macd': Macd}
+
+    if isinstance(dict_attrs,dict):
+        idt_name = ""
+        idt_type = dict_attrs["idt_type"]
+        idt_class = IDT_CLASS[idt_type]
+        idt_name = idt_name + idt_type
+        try:
+            source = dict_attrs["source"]
+            if source != 'close_hfq':
+                idt_name = idt_name + '_' + source
+        except KeyError:
+            pass
+        try:
+            subtype = dict_attrs["subtype"]
+            if subtype.lower() != 'd':
+                idt_name = idt_name + '_' + subtype.lower()
+        except KeyError:
+            pass
+        try:
+            period = dict_attrs["period"]
+            idt_name = idt_name + '_' + str(period)
+        except KeyError:
+            pass
+        for k,v in dict_attrs.items():
+            if k.endswith("_n1"):
+                idt_name = idt_name + '_' + str(v)
+            if k.endswith("_n2"):
+                idt_name = idt_name + '_' + str(v)
+            if k.endswith("_n3"):
+                idt_name = idt_name + '_' + str(v)
+        dict_attrs['idt_name'] = idt_name
+        dict_attrs['idt_class'] = idt_class
+        return dict_attrs
+    else:
+        log_args = [type(dict_attrs)]
+        add_log(20, '[fn]idt_name() input type:{0[0]} is not <dict>', log_args)
+
 class Indicator():
     """
     指标的基本类
     """
-    def __new__(cls,ts_code,par_asset,reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,reload=False,update_csv=True,subtype='D'):
         """
         检验ts_code的有效性
         """
@@ -28,7 +73,7 @@ class Indicator():
             add_log(10, '[fn]Indicator.__new__() ts_code "{0[0]}" invalid, instance not created', log_args)
             return
 
-    def __init__(self,ts_code,par_asset,reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,reload=False,update_csv=True,subtype='D'):
         """
         ts_code:<str> e.g. '000001.SH'
         reload:<bool> True: igonre the csv, generate the df from the begining
@@ -36,8 +81,8 @@ class Indicator():
         """
         self.ts_code = ts_code
         self.subtype = subtype
+        self.idt_type = idt_type
         self.df_idt = None #<df>存放指标的结果数据
-        self.idt_type = None #<str>指标的类型，如'MA'
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
         self.update_csv = update_csv
         self.file_name = None
@@ -123,21 +168,12 @@ class Indicator():
         """
         print('[Note] Indicator._calc_res() 需要分别在各指标类中重构')
         return False #清除VS_CODE报的问题
-    
-    # @staticmethod
-    # def idt_name(period=self.period):
-    #     """
-    #     返回indicator的idt_name,基类Indicator中返回含只含一个周期参数period的名字；
-    #     多周期参数的话如macd的需要在各子类中改写此函数
-    #     return: <str> e.g. 
-    #     """
-    #     self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
         
 class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ma> if valid; None if invalid 
@@ -149,16 +185,16 @@ class Ma(Indicator):
             add_log(10, '[fn]Ma.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
         period = int(period)
-        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
-        self.idt_type = 'MA'
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,idt_type=idt_type,reload=reload,update_csv=update_csv)
+        self.idt_type = 'ma'
         self.period = period
         #print("[L97] 补period类型异常")
         self.source = source
@@ -230,7 +266,7 @@ class Ema(Indicator):
     """
     指数移动平均线
     """
-    def __new__(cls,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ema> if valid; None if invalid 
@@ -242,16 +278,16 @@ class Ema(Indicator):
             add_log(10, '[fn]Ema.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
         period = int(period)
-        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
     
-    def __init__(self,ts_code,par_asset,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
-        self.idt_type = 'EMA'
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,idt_type=idt_type,reload=reload,update_csv=update_csv)
+        self.idt_type = 'ema'
         self.period = period
         self.source = source
         self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
@@ -332,7 +368,7 @@ class Macd(Indicator):
     """
     MACD
     """
-    def __new__(cls,ts_code,par_asset,long_n=26,short_n=12,dea_n=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Macd> if valid; None if invalid 
@@ -343,23 +379,23 @@ class Macd(Indicator):
             log_args = [ts_code,subtype]
             add_log(10, '[fn]Macd.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
-        long_n = int(long_n)
-        short_n = int(short_n)
-        dea_n = int(dea_n)
-        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset)
+        long_n1 = int(long_n1)
+        short_n2 = int(short_n2)
+        dea_n3 = int(dea_n3)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,long_n=26,short_n=12,dea_n=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,reload=reload,update_csv=update_csv)
+        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,idt_type=idt_type,reload=reload,update_csv=update_csv)
         self.idt_type = 'macd'
-        self.long_n = long_n
-        self.short_n = short_n
-        self.dea_n = dea_n
+        self.long_n1 = long_n1
+        self.short_n2 = short_n2
+        self.dea_n3 = dea_n3
         self.source = source
-        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(long_n) + '_' + str(short_n) + '_' + str(dea_n)
+        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(long_n1) + '_' + str(short_n2) + '_' + str(dea_n3)
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
@@ -370,13 +406,14 @@ class Macd(Indicator):
         """
         df_source = self.load_sources()
         df_idt = self.load_idt()
-        long_n = self.long_n
-        short_n = self.short_n
-        dea_n = self.dea_n
+        long_n1 = self.long_n1
+        short_n2 = self.short_n2
+        dea_n3 = self.dea_n3
         parent = self.par_asset()
 
-        idt_ema_long_name = 'ema' + str(long_n) + '_' + self.source
-        idt_ema_short_name = 'ema' + str(short_n) + '_' + self.source
+        print('[L414] change indicators idt_name')
+        idt_ema_long_name = 'ema' + str(long_n1) + '_' + self.source
+        idt_ema_short_name = 'ema' + str(short_n2) + '_' + self.source
 
         #------valid pre-idts uptodate------
         if parent.valid_idt_utd != True:
@@ -386,11 +423,12 @@ class Macd(Indicator):
                 if idt_ema_long.valid_utd() != True:
                     idt_ema_long.calc_idt()
             else:
-                kwargs = {'idt_name': idt_ema_long_name,
-                          'idt_class': Ema,
-                          'period': long_n,
+                _kwargs = {
+                          'idt_type': 'ema',
+                          'period': long_n1,
                           'source': self.source,
                           'update_csv': False}
+                kwargs = idt_name(_kwargs)
                 parent.add_indicator(**kwargs)
                 idt_ema_long = getattr(parent,idt_ema_long_name)
                 idt_ema_long.calc_idt()
@@ -400,9 +438,9 @@ class Macd(Indicator):
                 if idt_ema_short.valid_utd() != True:
                     idt_ema_short.calc_idt()
             else:
-                kwargs = {'idt_name': idt_ema_short_name,
-                          'idt_class': Ema,
-                          'period': short_n,
+                kwargs = {
+                          'idt_type': 'ema',
+                          'period': short_n2,
                           'source': self.source,
                           'update_csv': False}
                 parent.add_indicator(**kwargs)

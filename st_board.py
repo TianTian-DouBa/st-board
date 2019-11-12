@@ -1226,7 +1226,7 @@ if __name__ == "__main__":
     al_file_str = r"dl_stocks"
     #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     # print("===================Indicator===================")
-    from indicator import Indicator, Ma, Ema, Macd
+    from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
     # stock5 = Stock(ts_code='000002.SZ')
     # kwargs = {'idt_name': 'ma10_close_hfq',
@@ -1262,13 +1262,13 @@ if __name__ == "__main__":
 
     print('------MACD--------')
     stock1 = Stock(ts_code='000002.SZ')
-    kwargs = {'idt_name': 'macd26_12_9_close_hfq',
-              'idt_class': Macd,
-              'long_n': 26,
-              'short_n': 12,
-              'dea_n': 9}
+    _kwargs = {'idt_type': 'macd',
+               'long_n1': 26,
+               'short_n2': 12,
+               'dea_n3': 9}
+    kwargs = idt_name(_kwargs)
     stock1.add_indicator(**kwargs)
-    macd = stock1.macd26_12_9_close_hfq
+    macd = stock1.macd_26_12_9
     if macd.valid_utd() != True:
         macd.calc_idt()
 
