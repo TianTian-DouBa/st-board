@@ -168,6 +168,23 @@ class Indicator():
         """
         print('[Note] Indicator._calc_res() 需要分别在各指标类中重构')
         return False #清除VS_CODE报的问题
+    
+    def _idt_name(self):
+        """
+        常规单周期参数indicator返回idt_name,非常规多周期参数命名需要在[ins]Indicator中重构
+        """
+        #e.g. ma_close_m_13 or ma_20
+        if hasattr(self, 'period'):
+            idt_name = self.idt_type
+            if self.source != 'close_hfq':
+                idt_name = idt_name + '_' + self.source
+            if self.subtype.lower() != 'd':
+                idt_name = idt_name + '_' + self.subtype.lower()
+            idt_name = idt_name + '_' + str(self.period)
+            return idt_name
+        else:
+            log_args = [self.subtype]
+            add_log(20, '[fn]Indicator._idt_name() subtype:{0[0]} no period [fn]需要在[ins]重构', log_args)
         
 class Ma(Indicator):
     """
@@ -198,7 +215,7 @@ class Ma(Indicator):
         self.period = period
         #print("[L97] 补period类型异常")
         self.source = source
-        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
+        self.idt_name = self._idt_name()
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
@@ -290,7 +307,7 @@ class Ema(Indicator):
         self.idt_type = 'ema'
         self.period = period
         self.source = source
-        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(period)
+        self.idt_name = self._idt_name()
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
@@ -395,7 +412,7 @@ class Macd(Indicator):
         self.short_n2 = short_n2
         self.dea_n3 = dea_n3
         self.source = source
-        self.idt_name = self.idt_type + '_' + self.source + '_' + subtype + '_' + str(long_n1) + '_' + str(short_n2) + '_' + str(dea_n3)
+        self.idt_name = self._idt_name()
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
@@ -411,9 +428,20 @@ class Macd(Indicator):
         dea_n3 = self.dea_n3
         parent = self.par_asset()
 
-        print('[L414] change indicators idt_name')
-        idt_ema_long_name = 'ema' + str(long_n1) + '_' + self.source
-        idt_ema_short_name = 'ema' + str(short_n2) + '_' + self.source
+        _kwargs = {
+                    'idt_type': 'ema',
+                    'period': long_n1,
+                    'source': self.source,
+                    'update_csv': False}
+        kwargs_long = idt_name(_kwargs)
+        idt_ema_long_name = kwargs_long['idt_name']
+        _kwargs = {
+                    'idt_type': 'ema',
+                    'period': short_n2,
+                    'source': self.source,
+                    'update_csv': False}
+        kwargs_short = idt_name(_kwargs)
+        idt_ema_short_name = kwargs_short['idt_name']
 
         #------valid pre-idts uptodate------
         if parent.valid_idt_utd != True:
@@ -423,13 +451,7 @@ class Macd(Indicator):
                 if idt_ema_long.valid_utd() != True:
                     idt_ema_long.calc_idt()
             else:
-                _kwargs = {
-                          'idt_type': 'ema',
-                          'period': long_n1,
-                          'source': self.source,
-                          'update_csv': False}
-                kwargs = idt_name(_kwargs)
-                parent.add_indicator(**kwargs)
+                parent.add_indicator(**kwargs_long)
                 idt_ema_long = getattr(parent,idt_ema_long_name)
                 idt_ema_long.calc_idt()
             #idt_ema_short
@@ -438,16 +460,25 @@ class Macd(Indicator):
                 if idt_ema_short.valid_utd() != True:
                     idt_ema_short.calc_idt()
             else:
-                kwargs = {
-                          'idt_type': 'ema',
-                          'period': short_n2,
-                          'source': self.source,
-                          'update_csv': False}
-                parent.add_indicator(**kwargs)
+                parent.add_indicator(**kwargs_short)
                 idt_ema_short = getattr(parent,idt_ema_short_name)
                 idt_ema_short.calc_idt()
         df_ema_long = idt_ema_long.df_idt
         df_ema_short = idt_ema_short.df_idt
+        print('[L468] to be continued macd后续计算')
+    
+    def _idt_name(self):
+        """
+        Macd重构返回idt_name
+        """
+        #e.g. macd_close_m_13 or macd_26_12_9
+        idt_name = self.idt_type
+        if self.source != 'close_hfq':
+            idt_name = idt_name + '_' + self.source
+        if self.subtype.lower() != 'd':
+            idt_name = idt_name + '_' + self.subtype.lower()
+        idt_name = idt_name + '_' + str(self.long_n1) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
+        return idt_name
 
 if __name__ == '__main__':
     start_time = datetime.now()

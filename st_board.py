@@ -1272,8 +1272,8 @@ if __name__ == "__main__":
     if macd.valid_utd() != True:
         macd.calc_idt()
 
-    ema12 = stock1.ema12_close_hfq.df_idt
-    ema26 = stock1.ema26_close_hfq.df_idt
+    ema12 = stock1.ema_12.df_idt
+    ema26 = stock1.ema_26.df_idt
 
     end_time = datetime.now()
     duration = end_time - start_time
