@@ -16,7 +16,7 @@ def idt_name(dict_attrs):
     返回indicator的idt_name
     return: <dict> of attributs for initialize the indicator
     """
-    IDT_CLASS = {'ma': Macd,
+    IDT_CLASS = {'ma': Ma,
                  'ema': Ema,
                  'macd': Macd}
 
@@ -85,6 +85,7 @@ class Indicator():
         self.df_idt = None #<df>存放指标的结果数据
         self.source = None #<str>数据源，如'close_hfq'收盘后复权
         self.update_csv = update_csv
+        self.idt_name = None
         self.file_name = None
         self.file_path = None
         self.par_asset = weakref.ref(par_asset) #<Asset>父asset对象
@@ -380,6 +381,40 @@ class Ema(Indicator):
         data = {idt_column_name:rslt}
         df_idt_append = pd.DataFrame(data,index=index_source)
         return df_idt_append
+    
+    @staticmethod
+    def idt_bare(sr_data, period):
+        """
+        中间变量ema计算
+        sr_data: <pd.Series> 原数据，从新到旧排列
+        period: <int> 周期数
+        return: <pd.Series> 从新到旧排列
+        """
+        print('[392]---------------------')
+        print(sr_data)
+        print('[392]-------end--------------')
+        if isinstance(sr_data,pd.Series):
+            rvs_rslt = []
+            i = 0
+            for idx in reversed(sr_data.index):
+                if i==0:
+                    past_ema = sr_data[idx]
+                    rvs_rslt.append(sr_data[idx])
+                    i += 1
+                else:
+                    # Y=[2*X+(N-1)*Y’]/(N+1)
+                    today_ema = (2 * sr_data[idx] + (period - 1) * past_ema) / (period + 1)
+                    past_ema = today_ema
+                    rvs_rslt.append(today_ema)
+            del rvs_rslt[0]
+            iter_rslt = reversed(rvs_rslt)
+            rslt = list(iter_rslt)
+            index_source = sr_data.index[:-1]
+            sr_result = pd.Series(rslt,index=index_source)
+            return sr_result
+        else:
+            log_args = [type(sr_data)]
+            add_log(20, '[fn]idt_bare() sr_data type:{0[0]} is not pd.Series', log_args)
 
 class Macd(Indicator):
     """
@@ -427,25 +462,33 @@ class Macd(Indicator):
         short_n2 = self.short_n2
         dea_n3 = self.dea_n3
         parent = self.par_asset()
+        df_ema_long = None #前置idt
+        df_ema_short = None #前置idt
 
-        _kwargs = {
-                    'idt_type': 'ema',
-                    'period': long_n1,
-                    'source': self.source,
-                    'update_csv': False}
-        kwargs_long = idt_name(_kwargs)
-        idt_ema_long_name = kwargs_long['idt_name']
-        _kwargs = {
-                    'idt_type': 'ema',
-                    'period': short_n2,
-                    'source': self.source,
-                    'update_csv': False}
-        kwargs_short = idt_name(_kwargs)
-        idt_ema_short_name = kwargs_short['idt_name']
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_ema_long, df_ema_short
+            """
+            nonlocal df_ema_long, df_ema_short
+            #前置指标名idt_name计算
+            _kwargs = {
+                        'idt_type': 'ema',
+                        'period': long_n1,
+                        'source': self.source,
+                        'update_csv': False}
+            kwargs_long = idt_name(_kwargs)
+            idt_ema_long_name = kwargs_long['idt_name']
+            _kwargs = {
+                        'idt_type': 'ema',
+                        'period': short_n2,
+                        'source': self.source,
+                        'update_csv': False}
+            kwargs_short = idt_name(_kwargs)
+            idt_ema_short_name = kwargs_short['idt_name']
 
-        #------valid pre-idts uptodate------
-        if parent.valid_idt_utd != True:
-            #idt_ema_long
+            #------valid pre-idts uptodate------
             if hasattr(parent,idt_ema_long_name):
                 idt_ema_long = getattr(parent,idt_ema_long_name)
                 if idt_ema_long.valid_utd() != True:
@@ -463,9 +506,49 @@ class Macd(Indicator):
                 parent.add_indicator(**kwargs_short)
                 idt_ema_short = getattr(parent,idt_ema_short_name)
                 idt_ema_short.calc_idt()
-        df_ema_long = idt_ema_long.df_idt
-        df_ema_short = idt_ema_short.df_idt
-        print('[L468] to be continued macd后续计算')
+            if n is None:
+                df_ema_long = idt_ema_long.df_idt
+                df_ema_short = idt_ema_short.df_idt
+            else:
+                df_ema_long = idt_ema_long.df_idt.head(n)
+                df_ema_short = idt_ema_short.df_idt.head(n)
+
+        #---------主要部分开始------------
+        last_dea = None
+        if isinstance(df_idt, pd.DataFrame):
+            #------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str) #idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Macd._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Macd._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source + 1)#前置指标处理
+                last_dea = self.df_idt.iloc[0]['DEA']
+        else:
+            #----------重头生成df_idt----------
+            _pre_idt_hdl()
+        sr_diff_append = pd.Series()
+        short_col_name = 'EMA' + str(short_n2)
+        long_col_name = 'EMA' + str(long_n1)
+        # print('[L538]', df_ema_short)
+        # print('[L539]', df_ema_long)
+        sr_diff_append = df_ema_short[short_col_name] - df_ema_long[long_col_name]
+        if last_dea is not None:
+            sr_diff_append.iloc[-1] = last_dea
+        sr_dea_append = Ema.idt_bare(sr_diff_append,dea_n3)
+        sr_diff_append = sr_diff_append[:-1]
+        sr_osc_append = 2*(sr_diff_append - sr_dea_append)
+        _frames = [sr_diff_append,sr_dea_append,sr_osc_append]
+        df_append = pd.concat(_frames,sort=False,axis=1)
+        df_append.columns = ('DIFF','DEA','OSC')
+        return df_append
     
     def _idt_name(self):
         """

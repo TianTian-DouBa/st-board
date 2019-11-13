@@ -661,13 +661,12 @@ class Asset():
         """
         if isinstance(idt_name,str):
             par_asset = weakref.ref(self) #用par_asset()应用原对象
-            #print("[L664]", par_asset())
             idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
             setattr(self,idt_name,idt)
             try:
                 idt = getattr(self,idt_name)
                 if isinstance(idt,Indicator):
-                    pass
+                    idt.calc_idt()
                 else:
                     log_args = [self.ts_code, idt_name]
                     add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
@@ -675,6 +674,7 @@ class Asset():
                 print("[L670] 待用明确的except替换")
                 log_args = [self.ts_code, idt_name,e.__class__.__name__]
                 add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
+                return
         else:
             log_args = [self.ts_code, idt_name]
             add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, idt_name:{0[1]} invalid.', log_args)
@@ -1228,23 +1228,24 @@ if __name__ == "__main__":
     # print("===================Indicator===================")
     from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
-    # stock5 = Stock(ts_code='000002.SZ')
-    # kwargs = {'idt_name': 'ma10_close_hfq',
-    #           'idt_class': Ma,
-    #           'period': 10}
-    # stock1.add_indicator(**kwargs)
-    # stock1.ma10_close_hfq.calc_idt()
-    # ma10 = stock1.ma10_close_hfq.df_idt
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {'idt_type': 'ema',
+    #         'period': 10}
+    # kwargs = idt_name(_kwargs)
+    # stock5.add_indicator(**kwargs)
+    # stock5.ema_10.calc_idt()
+    # ma10 = stock5.ema_10.df_idt
     # print(ma10)
 
-    # print('------stock1.ema26_close_hfq--------')
-    # kwargs = {'idt_name': 'ema26_close_hfq',
-    #           'idt_class': Ema,
-    #           'period': 26}
-    # stock5.add_indicator(**kwargs)
-    # stock5.ema26_close_hfq.calc_idt()
-    # ema26 = stock5.ema26_close_hfq.df_idt
-    # print(ema26)
+    print('------stock1.ema26_close_hfq--------')
+    stock5 = Stock(ts_code='000001.SZ')
+    _kwargs = {
+              'idt_type': 'ema',
+              'period': 26}
+    kwargs = idt_name(_kwargs)
+    stock5.add_indicator(**kwargs)
+    ema26 = stock5.ema_26.df_idt
+    print(ema26)
 
     # print('------stock1.ema12_close_hfq--------')
     # kwargs = {'idt_name': 'ema12_close_hfq',
@@ -1272,8 +1273,8 @@ if __name__ == "__main__":
     if macd.valid_utd() != True:
         macd.calc_idt()
 
-    ema12 = stock1.ema_12.df_idt
-    ema26 = stock1.ema_26.df_idt
+    #ema12 = stock1.ema_12.df_idt
+    #ema26 = stock1.ema_26.df_idt
 
     end_time = datetime.now()
     duration = end_time - start_time
