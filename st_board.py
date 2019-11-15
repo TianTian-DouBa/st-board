@@ -646,6 +646,35 @@ class All_Assets_List():
             return
         return category
 
+    @staticmethod
+    def load_al_file(al_file=None):
+        r"""
+        load al_file into assets
+        al_file:None = create empty <df>; <str> = path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
+        """
+        file_path = None
+        if al_file is None:
+            df_al = pd.DataFrame(columns=['ts_code','selected'])
+            df_al.set_index('ts_code',inplace=True)
+            add_log(40, '[fns]All_Assets_List.load_al_file() empty <df> created')
+        elif isinstance(al_file,str):
+            if len(al_file)>0:        
+                file_name = 'al_' + al_file + '.csv'
+                file_path = sub_path + sub_path_al + '\\' + file_name
+            if file_path == None:
+                log_args = [al_file]
+                add_log(10, '[fns]All_Assets_List.load_al_file(). invalid al_file string: {0[0]}', log_args)
+                return
+            try:
+                df_al = pd.read_csv(file_path, index_col='ts_code')
+            except FileNotFoundError:
+                log_args = [file_path]
+                add_log(10, '[fns]All_Assets_List.load_al_file(). al_file "{0[0]}" not exist',log_args)
+                return
+        return al_file
+        log_args = [len(df_al)]
+        add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -sucess, items:"{0[0]}"',log_args)
+
 class Asset():
     """
     资产的基类
@@ -700,7 +729,6 @@ class Asset():
             log_args = [self.ts_code, idt_name]
             add_log(20, '[fn]Asset.valid_idt_utd() ts_code:{0[0]}, idt_name:{0[1]} does not exist.', log_args)
             return
-
 
 class Stock(Asset):
     """股票类的资产"""
@@ -1125,6 +1153,69 @@ class Plot_Assets_Racing():
         plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
         plt.show()
 
+class Strategy():
+    """
+    量化策略
+    """
+    def __init__(self,name):
+        """
+        name: <str> strategy name
+        """
+        print('L1160 to be continued')
+        self.name = name
+        self.pools ={} #dict of pools {execute order: pool #1, ...}
+    
+    def add_pool(self,desc=""):
+        """
+        add the pool to the strategy
+        """
+        def _get_pool_next_order():
+            k_max = 0
+            for k in self.pools.keys():
+                k_max = max(k,k_max)
+            if k_max is None:
+                result = 10
+            else:
+                result = (k_max // 10 + 1) * 10
+            return result
+        
+        next_order = _get_pool_next_order()
+        self.pools[next_order]=Pool(desc=desc)
+    
+    def chg_pool_order(self, org_order, new_order):
+        """
+        change the execution order of the pool
+        org_order: <int> original order
+        new_order: <int> new order to set
+        """
+        print('[L1191] to be continued')
+    
+    def pools_brief(self):
+        """
+        printout the brief of pools
+        """
+        print("----Strategy: <{}> pools brief:----".format(self.name))
+        print("Order: Description")
+        for k, v in sorted(self.pools.items()):
+            print("{:>5}: {:<50}".format(k,v.desc))
+        print("Number of pools: {}".format(len(self.pools)))
+
+class Pool():
+    """
+    股票池
+    """
+    def __init__(self, desc="", al_file=None):
+        r"""
+        exc_order: execution order <int>
+        al_file:None = create empty <df>; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        """
+        self.desc = desc
+        df_al = All_Assets_List.load_al_file(al_file)
+        
+    
+
+
+
 if __name__ == "__main__":
     #global raw_data
     start_time = datetime.now()
@@ -1226,7 +1317,7 @@ if __name__ == "__main__":
     al_file_str = r"dl_stocks"
     #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     # print("===================Indicator===================")
-    from indicator import idt_name, Indicator, Ma, Ema, Macd
+    # from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
     # stock5 = Stock(ts_code='000001.SZ')
     # _kwargs = {'idt_type': 'ema',
@@ -1237,15 +1328,15 @@ if __name__ == "__main__":
     # ma10 = stock5.ema_10.df_idt
     # print(ma10)
 
-    print('------stock1.ema26_close_hfq--------')
-    stock5 = Stock(ts_code='000001.SZ')
-    _kwargs = {
-              'idt_type': 'ema',
-              'period': 26}
-    kwargs = idt_name(_kwargs)
-    stock5.add_indicator(**kwargs)
-    ema26 = stock5.ema_26.df_idt
-    print(ema26)
+    # print('------stock1.ema26_close_hfq--------')
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {
+    #           'idt_type': 'ema',
+    #           'period': 26}
+    # kwargs = idt_name(_kwargs)
+    # stock5.add_indicator(**kwargs)
+    # ema26 = stock5.ema_26.df_idt
+    # print(ema26)
 
     # print('------stock1.ema12_close_hfq--------')
     # kwargs = {'idt_name': 'ema12_close_hfq',
@@ -1261,22 +1352,28 @@ if __name__ == "__main__":
     # print('uptodate ema12:',stock1.valid_idt_utd('ema12_close_hfq'))
     # print('uptodate ema26:',stock1.valid_idt_utd('ema26_close_hfq'))
 
-    print('------MACD--------')
-    stock1 = Stock(ts_code='000002.SZ')
-    _kwargs = {'idt_type': 'macd',
-               'long_n1': 26,
-               'short_n2': 12,
-               'dea_n3': 9}
-    kwargs = idt_name(_kwargs)
-    stock1.add_indicator(**kwargs)
-    macd = stock1.macd_26_12_9
-    if macd.valid_utd() != True:
-        macd.calc_idt()
+    # print('------MACD--------')
+    # stock1 = Stock(ts_code='000002.SZ')
+    # _kwargs = {'idt_type': 'macd',
+    #            'long_n1': 26,
+    #            'short_n2': 12,
+    #            'dea_n3': 9}
+    # kwargs = idt_name(_kwargs)
+    # stock1.add_indicator(**kwargs)
+    # macd = stock1.macd_26_12_9
+    # if macd.valid_utd() != True:
+    #     macd.calc_idt()
 
-    #ema12 = stock1.ema_12.df_idt
-    #ema26 = stock1.ema_26.df_idt
+    # #ema12 = stock1.ema_12.df_idt
+    # #ema26 = stock1.ema_26.df_idt
 
-    end_time = datetime.now()
-    duration = end_time - start_time
-    print('duration={}'.format(duration))
-    
+    # end_time = datetime.now()
+    # duration = end_time - start_time
+    # print('duration={}'.format(duration))
+    print("===================Strategy===================")
+    print('------Strategy and Pool--------')
+    stg = Strategy('test strategy')
+    stg.add_pool("pool#1")
+    stg.add_pool("pool#2")
+    stg.add_pool("pool#3")
+    stg.pools_brief()

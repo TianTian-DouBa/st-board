@@ -385,8 +385,8 @@ class Ema(Indicator):
     @staticmethod
     def idt_bare(sr_data, period):
         """
-        中间变量ema计算
-        sr_data: <pd.Series> 原数据，从新到旧排列
+        中间变量ema计算，
+        sr_data: <pd.Series> 原数据，从新到旧排列；如果数据是截取的原数据的后段，sr_data的最老一个值要用ema老结果的最新值替换来保证衔接正确！
         period: <int> 周期数
         return: <pd.Series> 从新到旧排列
         """
@@ -541,7 +541,7 @@ class Macd(Indicator):
         # print('[L539]', df_ema_long)
         sr_diff_append = df_ema_short[short_col_name] - df_ema_long[long_col_name]
         if last_dea is not None:
-            sr_diff_append.iloc[-1] = last_dea
+            sr_diff_append.iloc[-1] = last_dea #用原记录里最新的值替换待处理数据源的最老的值
         sr_dea_append = Ema.idt_bare(sr_diff_append,dea_n3)
         sr_diff_append = sr_diff_append[:-1]
         sr_osc_append = 2*(sr_diff_append - sr_dea_append)
