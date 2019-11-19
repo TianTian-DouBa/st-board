@@ -340,24 +340,6 @@ def bulk_download(al_file, reload=False):
             category = All_Assets_List.query_category_str(ts_code)
             if category == None:
                 continue
-            # name,_type,stype1,stype2 = raw_data.all_assets_list.loc[ts_code][['name','type','stype1','stype2']]
-            # category = None #资产的类别，传给下游[fn]处理
-            # #--------------申万指数---------------
-            # if _type == 'index' and stype1=='SW':
-            #     category = 'index_sw'
-            # #--------------上证指数---------------
-            # if _type == 'index' and stype1=='SSE':
-            #     category = 'index_sse'
-            # #--------------深圳指数---------------
-            # if _type == 'index' and stype1=='SZSE':
-            #     category = 'index_szse'
-            # #--------------个股---------------
-            # if _type == 'stock':
-            #     category = 'stock'
-            # #--------------其它类型(未完成)----------
-            # if category == None:
-            #     log_args = [ts_code]
-            #     add_log(20, '[fn]bulk_download(). No matched category for "{0[0]}"',log_args)
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if reload==True or (not os.path.exists(file_path)):
@@ -671,7 +653,7 @@ class All_Assets_List():
                 log_args = [file_path]
                 add_log(10, '[fns]All_Assets_List.load_al_file(). al_file "{0[0]}" not exist',log_args)
                 return
-        return al_file
+        return df_al
         log_args = [len(df_al)]
         add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -sucess, items:"{0[0]}"',log_args)
 
@@ -1165,7 +1147,7 @@ class Strategy():
         self.name = name
         self.pools ={} #dict of pools {execute order: pool #1, ...}
     
-    def add_pool(self,desc=""):
+    def add_pool(self,**kwargs):
         """
         add the pool to the strategy
         """
@@ -1180,7 +1162,7 @@ class Strategy():
             return result
         
         next_order = _get_pool_next_order()
-        self.pools[next_order]=Pool(desc=desc)
+        self.pools[next_order]=Pool(**kwargs)
     
     def chg_pool_order(self, org_order, new_order):
         """
@@ -1188,7 +1170,17 @@ class Strategy():
         org_order: <int> original order
         new_order: <int> new order to set
         """
-        print('[L1191] to be continued')
+        if new_order in self.pools:
+            log_args = [new_order]
+            add_log(20, '[fn]Strategy.chg_pool_order(). new_order:{0[0]} was in the dict already. Order not changed',log_args)
+        else:
+            try:
+                pool = self.pools[org_order]
+                del self.pools[org_order]
+                self.pools[new_order] = pool
+            except KeyError:
+                log_args = [org_order]
+                add_log(20, '[fn]Strategy.chg_pool_order(). org_order:{0[0]} was not exist. Order not changed',log_args)
     
     def pools_brief(self):
         """
@@ -1197,6 +1189,7 @@ class Strategy():
         print("----Strategy: <{}> pools brief:----".format(self.name))
         print("Order: Description")
         for k, v in sorted(self.pools.items()):
+            #print("key: ",k,"    desc: ",v.desc)
             print("{:>5}: {:<50}".format(k,v.desc))
         print("Number of pools: {}".format(len(self.pools)))
 
@@ -1207,11 +1200,38 @@ class Pool():
     def __init__(self, desc="", al_file=None):
         r"""
         exc_order: execution order <int>
-        al_file:None = create empty <df>; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
         """
         self.desc = desc
-        df_al = All_Assets_List.load_al_file(al_file)
+        self.assets = {}
+        self.init_assets(al_file)
         
+    def init_assets(self, al_file=None):
+        """
+        init self.assets
+        al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        """
+        if al_file is None:
+            self.assets = {}
+            return
+        df_al = All_Assets_List.load_al_file(al_file)
+        print('[L1218] {}'.format(df_al))
+        for index, row in df_al.iterrows():
+            if row['selected'] == 'T' or row['selected'] == 't':
+                ts_code = index
+                category = All_Assets_List.query_category_str(ts_code)
+                #根据category不同，实例化对应的Asset
+                if category == None:
+                    continue
+                elif category ==  'stock':
+                    if ts_code in self.assets:
+                        log_args = [ts_code]
+                        add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip',log_args)
+                    else:
+                        self.assets[ts_code] = Stock(ts_code)
+                #----other categorys are to be implemented here-----
+                else:
+                    print('[L1228] other categorys are to be implemented')
     
 
 
@@ -1373,7 +1393,8 @@ if __name__ == "__main__":
     print("===================Strategy===================")
     print('------Strategy and Pool--------')
     stg = Strategy('test strategy')
-    stg.add_pool("pool#1")
-    stg.add_pool("pool#2")
-    stg.add_pool("pool#3")
+    stg.add_pool(desc="pool#1",al_file='try_001')
+    stg.add_pool(desc="pool#2")
+    stg.add_pool(desc="pool#3")
     stg.pools_brief()
+    print(stg.pools[10].assets.keys())
