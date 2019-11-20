@@ -1397,4 +1397,6 @@ if __name__ == "__main__":
     stg.add_pool(desc="pool#2")
     stg.add_pool(desc="pool#3")
     stg.pools_brief()
+    pool_10 = stg.pools[10]
+    st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
