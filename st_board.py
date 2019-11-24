@@ -1145,7 +1145,7 @@ class Strategy():
         """
         print('L1160 to be continued')
         self.name = name
-        self.pools ={} #dict of pools {execute order: pool #1, ...}
+        self.pools = {} #dict of pools {execute order: pool #1, ...}
     
     def add_pool(self,**kwargs):
         """
@@ -1207,7 +1207,7 @@ class Pool():
         self.init_assets(al_file)
         
     def init_assets(self, al_file=None):
-        """
+        r"""
         init self.assets
         al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
         """
@@ -1215,13 +1215,18 @@ class Pool():
             self.assets = {}
             return
         df_al = All_Assets_List.load_al_file(al_file)
-        print('[L1218] {}'.format(df_al))
+        #print('[L1218] {}'.format(df_al))
         for index, row in df_al.iterrows():
-            if row['selected'] == 'T' or row['selected'] == 't':
+            #print('[L1220] index:{} ;selected:{}'.format(index, row['selected']))
+            #print('[L1221]', repr(row['selected']))
+            selected = row['selected'].strip().upper()
+            if selected == 'T':
                 ts_code = index
                 category = All_Assets_List.query_category_str(ts_code)
                 #根据category不同，实例化对应的Asset
                 if category == None:
+                    log_args = [ts_code]
+                    add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip',log_args)
                     continue
                 elif category ==  'stock':
                     if ts_code in self.assets:
@@ -1229,9 +1234,13 @@ class Pool():
                         add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip',log_args)
                     else:
                         self.assets[ts_code] = Stock(ts_code)
+                        log_args = [ts_code]
+                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added',log_args)
                 #----other categorys are to be implemented here-----
                 else:
                     print('[L1228] other categorys are to be implemented')
+            else:
+                print('[L1241] jumped to here')
     
 
 
@@ -1387,9 +1396,7 @@ if __name__ == "__main__":
     # #ema12 = stock1.ema_12.df_idt
     # #ema26 = stock1.ema_26.df_idt
 
-    # end_time = datetime.now()
-    # duration = end_time - start_time
-    # print('duration={}'.format(duration))
+
     print("===================Strategy===================")
     print('------Strategy and Pool--------')
     stg = Strategy('test strategy')
@@ -1400,3 +1407,7 @@ if __name__ == "__main__":
     pool_10 = stg.pools[10]
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print('duration={}'.format(duration))
