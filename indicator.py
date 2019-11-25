@@ -13,8 +13,23 @@ import weakref
 
 def idt_name(dict_attrs):
     """
-    返回indicator的idt_name
-    return: <dict> of attributs for initialize the indicator
+    dict_attr: <dict> 输入的必要参数
+        e.g.
+        {'idt_type': 'macd',
+         'long_n1': 26,
+         'short_n2': 12,
+         'dea_n3': 9,
+         'source': 'close',
+         'subtype': 'w',
+         'update_csv': False}
+         
+    return: <dict> of attributs for initialize the indicator, 函数的主要部分是对其中idt_name键值的计算
+        e.g.
+        {'idt_type' : 'macd',
+         'idt_name' : 'macd_close_w_26_12_9',
+         'source' : 'close',
+         'subtype' : 'w',
+         'idt_class' : Macd}
     """
     IDT_CLASS = {'ma': Ma,
                  'ema': Ema,
