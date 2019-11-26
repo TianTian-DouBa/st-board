@@ -31,9 +31,6 @@ def idt_name(dict_attrs):
          'subtype' : 'w',
          'idt_class' : Macd}
     """
-    IDT_CLASS = {'ma': Ma,
-                 'ema': Ema,
-                 'macd': Macd}
 
     if isinstance(dict_attrs,dict):
         idt_name = ""
@@ -577,6 +574,10 @@ class Macd(Indicator):
             idt_name = idt_name + '_' + self.subtype.lower()
         idt_name = idt_name + '_' + str(self.long_n1) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
         return idt_name
+
+IDT_CLASS = {'ma': Ma,
+             'ema': Ema,
+             'macd': Macd}
 
 if __name__ == '__main__':
     start_time = datetime.now()

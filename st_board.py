@@ -1241,9 +1241,48 @@ class Pool():
                     print('[L1228] other categorys are to be implemented')
             else:
                 print('[L1241] jumped to here')
-    
 
+class Condition():
+    """
+    判断条件
+    """
+    def __init__(self,para1_kwargs,para2_kwargs,ops):
+        """
+        paraN_kwargs: <dict> refer idt_name()
+        ops: <str> e.g. '>', '<=', '='...
+        """
+        self.para1 = Para(para1_kwargs)
+        self.para2 = Para(para2_kwargs)
+        self.result = None #<fn> return condiction result
+        print('[L1257] to be continued')
 
+        if ops == '>':
+            pass
+
+class Para():
+    """
+    Parameter的缩写
+    Condition中比较用的元参数
+    """
+    def __new__(cls,kwargs):
+        """
+        检验<dict>kwargs的有效性
+        """
+        from indicator import IDT_CLASS
+        if 'idt_type' in kwargs:
+            if kwargs['idt_type'] in IDT_CLASS:
+                obj = super().__new__(cls)
+                return obj
+        log_args = [kwargs]
+        add_log(10, '[fn]Para.__new__() kwargs "{0[0]}" invalid, instance not created', log_args)
+
+    def __init__(self,kwargs):
+        """
+        kwargs: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
+        """
+        from indicator import idt_name
+        self.idt_init_dict = idt_name(kwargs)
+        self.idt_name = self.idt_init_dict['idt_name']
 
 if __name__ == "__main__":
     #global raw_data
