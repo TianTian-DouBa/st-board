@@ -402,9 +402,6 @@ class Ema(Indicator):
         period: <int> 周期数
         return: <pd.Series> 从新到旧排列
         """
-        print('[392]---------------------')
-        print(sr_data)
-        print('[392]-------end--------------')
         if isinstance(sr_data,pd.Series):
             rvs_rslt = []
             i = 0

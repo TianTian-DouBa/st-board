@@ -1151,7 +1151,7 @@ class Strategy():
         """
         add the pool to the strategy
         """
-        def _get_pool_next_order():
+        def _get_next_order():
             k_max = 0
             for k in self.pools.keys():
                 k_max = max(k,k_max)
@@ -1161,7 +1161,7 @@ class Strategy():
                 result = (k_max // 10 + 1) * 10
             return result
         
-        next_order = _get_pool_next_order()
+        next_order = _get_next_order()
         self.pools[next_order]=Pool(**kwargs)
     
     def chg_pool_order(self, org_order, new_order):
@@ -1205,6 +1205,7 @@ class Pool():
         self.desc = desc
         self.assets = {}
         self.init_assets(al_file)
+        self.conditions = []
         
     def init_assets(self, al_file=None):
         r"""
@@ -1242,6 +1243,14 @@ class Pool():
             else:
                 print('[L1241] jumped to here')
 
+    def add_condition(self,kwargs1,kwargs2,ops):
+        """
+        add the condition to the pool
+        kwargsN: <dict> refer idt_name()
+        ops: <str> e.g. '>', '<=', '='...
+        """
+        self.conditions.append(Condition(kwargs1,kwargs2,ops))
+
 class Condition():
     """
     判断条件
@@ -1253,11 +1262,18 @@ class Condition():
         """
         self.para1 = Para(para1_kwargs)
         self.para2 = Para(para2_kwargs)
-        self.result = None #<fn> return condiction result
-        print('[L1257] to be continued')
+        self.calcer = None #<fn> calculator
 
         if ops == '>':
-            pass
+            self.calcer = lambda p1, p2 : p1 > p2
+        elif ops == '<':
+            self.calcer = lambda p1, p2 : p1 < p2
+        elif ops == '>=':
+            self.calcer = lambda p1, p2 : p1 >= p2
+        elif ops == '<=':
+            self.calcer = lambda p1, p2 : p1 <= p2
+        elif ops == '=':
+            self.calcer = lambda p1, p2 : p1 == p2
 
 class Para():
     """
@@ -1385,7 +1401,7 @@ if __name__ == "__main__":
     al_file_str = r"dl_stocks"
     #bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     # print("===================Indicator===================")
-    # from indicator import idt_name, Indicator, Ma, Ema, Macd
+    from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
     # stock5 = Stock(ts_code='000001.SZ')
     # _kwargs = {'idt_type': 'ema',
@@ -1446,6 +1462,28 @@ if __name__ == "__main__":
     pool_10 = stg.pools[10]
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
+    print('------Condition--------')
+    kwargs1={'idt_type':'ma',
+             'period':20}
+    kwargs2={'idt_type':'macd',
+             'long_n1':26,
+             'short_n2':12,
+             'dea_n3':9}
+    pool_10.add_condition(kwargs1,kwargs2,'>')
+    # _kwargs = {'idt_type': 'macd',
+    #            'long_n1': 26,
+    #            'short_n2': 12,
+    #            'dea_n3': 9}
+    # kwargs = idt_name(_kwargs)
+    # st_002.add_indicator(**kwargs)
+
+    kwargs1 = pool_10.conditions[0].para1.idt_init_dict
+    print(kwargs1)
+    st_002.add_indicator(**kwargs1)
+
+    kwargs2 = pool_10.conditions[0].para2.idt_init_dict
+    print(kwargs2)
+    st_002.add_indicator(**kwargs2)
 
     end_time = datetime.now()
     duration = end_time - start_time
