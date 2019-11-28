@@ -203,7 +203,7 @@ class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ma> if valid; None if invalid 
@@ -218,7 +218,7 @@ class Ma(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
@@ -228,7 +228,8 @@ class Ma(Indicator):
         self.period = period
         #print("[L97] 补period类型异常")
         self.source = source
-        self.idt_name = self._idt_name()
+        #self.idt_name = self._idt_name()
+        self.idt_name = idt_name
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
@@ -296,7 +297,7 @@ class Ema(Indicator):
     """
     指数移动平均线
     """
-    def __new__(cls,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ema> if valid; None if invalid 
@@ -311,7 +312,7 @@ class Ema(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
     
-    def __init__(self,ts_code,par_asset,idt_type,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
@@ -320,7 +321,7 @@ class Ema(Indicator):
         self.idt_type = 'ema'
         self.period = period
         self.source = source
-        self.idt_name = self._idt_name()
+        self.idt_name = idt_name
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
@@ -429,7 +430,7 @@ class Macd(Indicator):
     """
     MACD
     """
-    def __new__(cls,ts_code,par_asset,idt_type,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls,ts_code,par_asset,idt_type,idt_name,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Macd> if valid; None if invalid 
@@ -446,7 +447,7 @@ class Macd(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,idt_type,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self,ts_code,par_asset,idt_type,idt_name,long_n1=26,short_n2=12,dea_n3=9,source='close_hfq',reload=False,update_csv=True,subtype='D'):
         """
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
@@ -456,7 +457,8 @@ class Macd(Indicator):
         self.short_n2 = short_n2
         self.dea_n3 = dea_n3
         self.source = source
-        self.idt_name = self._idt_name()
+        #self.idt_name = self._idt_name()
+        self.idt_name = idt_name
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
@@ -559,18 +561,18 @@ class Macd(Indicator):
         df_append.columns = ('DIFF','DEA','OSC')
         return df_append
     
-    def _idt_name(self):
-        """
-        Macd重构返回idt_name
-        """
-        #e.g. macd_close_m_13 or macd_26_12_9
-        idt_name = self.idt_type
-        if self.source != 'close_hfq':
-            idt_name = idt_name + '_' + self.source
-        if self.subtype.lower() != 'd':
-            idt_name = idt_name + '_' + self.subtype.lower()
-        idt_name = idt_name + '_' + str(self.long_n1) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
-        return idt_name
+    # def _idt_name(self):
+    #     """
+    #     Macd重构返回idt_name
+    #     """
+    #     #e.g. macd_close_m_13 or macd_26_12_9
+    #     idt_name = self.idt_type
+    #     if self.source != 'close_hfq':
+    #         idt_name = idt_name + '_' + self.source
+    #     if self.subtype.lower() != 'd':
+    #         idt_name = idt_name + '_' + self.subtype.lower()
+    #     idt_name = idt_name + '_' + str(self.long_n1) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
+    #     return idt_name
 
 IDT_CLASS = {'ma': Ma,
              'ema': Ema,

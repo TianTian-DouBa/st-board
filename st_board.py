@@ -664,31 +664,31 @@ class Asset():
     def __init__(self,ts_code):
         self.ts_code = ts_code
     
-    def add_indicator(self,idt_name,idt_class,**kwargs):
+    def add_indicator(self,idt_class,**kwargs):
         """
         添加Indicator的实例
-        idt_name: 指标名 <str> e.g. 'ma10'
+        idt_name: 指标名 <str> e.g. 'ma_10'
         idt_class: 指标类 <Class> e.g. Ma
         """
-        if isinstance(idt_name,str):
-            par_asset = weakref.ref(self) #用par_asset()应用原对象
-            idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
-            setattr(self,idt_name,idt)
-            try:
-                idt = getattr(self,idt_name)
-                if isinstance(idt,Indicator):
-                    idt.calc_idt()
-                else:
-                    log_args = [self.ts_code, idt_name]
-                    add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
-            except Exception as e:
-                print("[L670] 待用明确的except替换")
-                log_args = [self.ts_code, idt_name,e.__class__.__name__]
-                add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
-                return
-        else:
-            log_args = [self.ts_code, idt_name]
-            add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, idt_name:{0[1]} invalid.', log_args)
+        idt_name = kwargs['idt_name']
+        par_asset = weakref.ref(self) #用par_asset()应用原对象
+        print('[L675] before instance Indicator')
+        idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
+        print('[L677] exit instance Indicator')
+        setattr(self,idt_name,idt)
+        try:
+            idt = getattr(self,idt_name)
+            if isinstance(idt,Indicator):
+                idt.calc_idt()
+            else:
+                log_args = [self.ts_code, idt_name]
+                add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
+        except Exception as e:
+            print("[L670] 待用明确的except替换")
+            log_args = [self.ts_code, idt_name,e.__class__.__name__]
+            add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
+            return
+        print('[L692] exit add_indicator()')
     
     def valid_idt_utd(self,idt_name):
         """
@@ -1413,14 +1413,15 @@ if __name__ == "__main__":
     # print(ma10)
 
     # print('------stock1.ema26_close_hfq--------')
-    # stock5 = Stock(ts_code='000001.SZ')
-    # _kwargs = {
-    #           'idt_type': 'ema',
-    #           'period': 26}
-    # kwargs = idt_name(_kwargs)
-    # stock5.add_indicator(**kwargs)
-    # ema26 = stock5.ema_26.df_idt
-    # print(ema26)
+    stock5 = Stock(ts_code='000001.SZ')
+    _kwargs = {
+              'idt_type': 'ema',
+              'period': 26}
+    kwargs = idt_name(_kwargs)
+    print('[L1424] kwargs:',kwargs)
+    stock5.add_indicator(**kwargs)
+    ema26 = stock5.ema_26.df_idt
+    print(ema26)
 
     # print('------stock1.ema12_close_hfq--------')
     # kwargs = {'idt_name': 'ema12_close_hfq',
@@ -1443,8 +1444,10 @@ if __name__ == "__main__":
     #            'short_n2': 12,
     #            'dea_n3': 9}
     # kwargs = idt_name(_kwargs)
+    # print('[L1446]---kwargs:',kwargs)
     # stock1.add_indicator(**kwargs)
     # macd = stock1.macd_26_12_9
+    # print('[L1448]---')
     # if macd.valid_utd() != True:
     #     macd.calc_idt()
 
@@ -1470,19 +1473,19 @@ if __name__ == "__main__":
              'short_n2':12,
              'dea_n3':9}
     pool_10.add_condition(kwargs1,kwargs2,'>')
-    # _kwargs = {'idt_type': 'macd',
-    #            'long_n1': 26,
-    #            'short_n2': 12,
-    #            'dea_n3': 9}
-    # kwargs = idt_name(_kwargs)
-    # st_002.add_indicator(**kwargs)
+    _kwargs = {'idt_type': 'macd',
+               'long_n1': 26,
+               'short_n2': 12,
+               'dea_n3': 9}
+    kwargs = idt_name(_kwargs)
+    st_002.add_indicator(**kwargs)
 
     kwargs1 = pool_10.conditions[0].para1.idt_init_dict
-    print(kwargs1)
+    print('[L1484] kwargs1:',kwargs1)
     st_002.add_indicator(**kwargs1)
 
     kwargs2 = pool_10.conditions[0].para2.idt_init_dict
-    print(kwargs2)
+    print('[L1488] kwargs2:',kwargs2)
     st_002.add_indicator(**kwargs2)
 
     end_time = datetime.now()
