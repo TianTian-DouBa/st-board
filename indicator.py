@@ -507,7 +507,7 @@ class Macd(Indicator):
             else:
                 parent.add_indicator(**kwargs_long)
                 idt_ema_long = getattr(parent,idt_ema_long_name)
-                idt_ema_long.calc_idt()
+                #idt_ema_long.calc_idt() #add_indicator()里自带calc_idt()
             #idt_ema_short
             if hasattr(parent,idt_ema_short_name):
                 idt_ema_short = getattr(parent,idt_ema_short_name)
@@ -516,7 +516,7 @@ class Macd(Indicator):
             else:
                 parent.add_indicator(**kwargs_short)
                 idt_ema_short = getattr(parent,idt_ema_short_name)
-                idt_ema_short.calc_idt()
+                #idt_ema_short.calc_idt() #add_indicator()里自带calc_idt()
             if n is None:
                 df_ema_long = idt_ema_long.df_idt
                 df_ema_short = idt_ema_short.df_idt
