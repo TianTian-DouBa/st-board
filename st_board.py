@@ -1,4 +1,3 @@
-import tushare as ts
 import pandas as pd
 import numpy as np
 import os
@@ -11,6 +10,7 @@ from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
+import tushare as ts
 from pandas.plotting import register_matplotlib_converters
 
 ts_pro = ts.pro_api()
@@ -1263,6 +1263,8 @@ class Condition():
         self.para1 = Para(para1_kwargs)
         self.para2 = Para(para2_kwargs)
         self.calcer = None #<fn> calculator
+        self.result = None #True of False, condition result of sesult_time
+        self.result_time = None #<str> e.g. '20191209'
 
         if ops == '>':
             self.calcer = lambda p1, p2 : p1 > p2
@@ -1292,10 +1294,16 @@ class Para():
         log_args = [kwargs]
         add_log(10, '[fn]Para.__new__() kwargs "{0[0]}" invalid, instance not created', log_args)
 
-    def __init__(self,kwargs):
+    def __init__(self, kwargs):
         """
         kwargs: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
         """
+        self.field = None #<str> string of the indicator result csv column name
+        if 'field' in kwargs:
+            self.field = kwargs['field']
+            del kwargs['field']
+        else:
+            self.field = 'default'
         from indicator import idt_name
         self.idt_init_dict = idt_name(kwargs)
         self.idt_name = self.idt_init_dict['idt_name']
@@ -1472,7 +1480,8 @@ if __name__ == "__main__":
     kwargs2={'idt_type':'macd',
              'long_n1':26,
              'short_n2':12,
-             'dea_n3':9}
+             'dea_n3':9,
+             'field':'MACD'}
     pool_10.add_condition(kwargs1,kwargs2,'>')
     _kwargs = {'idt_type': 'macd',
                'long_n1': 26,
@@ -1488,7 +1497,7 @@ if __name__ == "__main__":
     kwargs2 = pool_10.conditions[0].para2.idt_init_dict
     print('[L1488] kwargs2:',kwargs2)
     st_002.add_indicator(**kwargs2)
-
+    print('后续进行Condition的result计算[fn]编写；改写一致化indicator结果csv表头的列名')
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))
