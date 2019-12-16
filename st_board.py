@@ -1406,7 +1406,7 @@ if __name__ == "__main__":
     # df2.set_index('trade_date',inplace=True)
     # print(df2['close'])
     # Stock.calc_dfq('600419.SH',reload=False)
-    #al_file_str = r"dl_stocks"
+    # al_file_str = r"dl_stocks"
     al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
     # print("===================Indicator===================")
@@ -1441,7 +1441,7 @@ if __name__ == "__main__":
     # ema12 = stock1.ema12_close_hfq.df_idt
     # print(ema12)
 
-    # print('------valid Indicator up to soruce date--------')
+    # print('------valid Indicator up to source date--------')
     # print('uptodate ma10:',stock1.valid_idt_utd('ma10_close_hfq'))
     # print('uptodate ema12:',stock1.valid_idt_utd('ema12_close_hfq'))
     # print('uptodate ema26:',stock1.valid_idt_utd('ema26_close_hfq'))

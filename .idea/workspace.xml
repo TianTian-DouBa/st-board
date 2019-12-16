@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/indicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/indicator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -48,6 +46,14 @@
       <option name="presentableId" value="Default" />
       <updated>1575809416392</updated>
     </task>
+    <task id="LOCAL-00001" summary="update">
+      <created>1576504034137</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1576504034137</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -63,10 +69,18 @@
       </map>
     </option>
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update" />
+    <option name="LAST_COMMIT_MESSAGE" value="update" />
+  </component>
   <component name="WindowStateProjectService">
-    <state x="595" y="442" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1576504002188">
+    <state x="383" y="118" key="CommitChangelistDialog2" timestamp="1576504053057">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="595" y="442" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1576504002188" />
+    <state x="383" y="118" key="CommitChangelistDialog2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1576504053057" />
+    <state x="595" y="442" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1576504299620">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state x="595" y="442" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1576504299620" />
   </component>
 </project>
