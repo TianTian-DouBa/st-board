@@ -1463,11 +1463,10 @@ if __name__ == "__main__":
     # #ema12 = stock1.ema_12.df_idt
     # #ema26 = stock1.ema_26.df_idt
 
-
     print("===================Strategy===================")
     print('------Strategy and Pool--------')
     stg = Strategy('test strategy')
-    stg.add_pool(desc="pool#1",al_file='try_001')
+    stg.add_pool(desc="pool#1", al_file='try_001')
     stg.add_pool(desc="pool#2")
     stg.add_pool(desc="pool#3")
     stg.pools_brief()
@@ -1475,14 +1474,14 @@ if __name__ == "__main__":
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
     print('------Condition--------')
-    kwargs1={'idt_type':'ma',
-             'period':20}
-    kwargs2={'idt_type':'macd',
-             'long_n1':26,
-             'short_n2':12,
-             'dea_n3':9,
-             'field':'MACD'}
-    pool_10.add_condition(kwargs1,kwargs2,'>')
+    kwargs1 = {'idt_type': 'ma',
+               'period': 20}
+    kwargs2 = {'idt_type': 'macd',
+               'long_n1': 26,
+               'short_n2': 12,
+               'dea_n3': 9,
+               'field': 'MACD'}
+    pool_10.add_condition(kwargs1, kwargs2, '>')
     _kwargs = {'idt_type': 'macd',
                'long_n1': 26,
                'short_n2': 12,
@@ -1491,11 +1490,11 @@ if __name__ == "__main__":
     st_002.add_indicator(**kwargs)
 
     kwargs1 = pool_10.conditions[0].para1.idt_init_dict
-    print('[L1484] kwargs1:',kwargs1)
+    print('[L1484] kwargs1:', kwargs1)
     st_002.add_indicator(**kwargs1)
 
     kwargs2 = pool_10.conditions[0].para2.idt_init_dict
-    print('[L1488] kwargs2:',kwargs2)
+    print('[L1488] kwargs2:', kwargs2)
     st_002.add_indicator(**kwargs2)
     print('后续进行Condition的result计算[fn]编写；改写一致化indicator结果csv表头的列名')
     end_time = datetime.now()
