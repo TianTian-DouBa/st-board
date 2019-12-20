@@ -477,128 +477,128 @@ class All_Assets_List():
     """处理全资产列表"""
 
     @staticmethod
-    def rebuild_all_assets_list(que_from_ts = False):
+    def rebuild_all_assets_list(que_from_ts=False):
         """
         重头开始构建全资产列表
         que_from_ts: <bool> F：从文件读 T:从tushare 接口读
         """
         global raw_data
-        file_name = "all_assets_list_rebuild.csv" #不同名避免误操作
+        file_name = "all_assets_list_rebuild.csv"  # 不同名避免误操作
         file_path_al = sub_path + sub_path_config + '\\' + file_name
-        df_al = pd.DataFrame(columns=['ts_code','valid','selected','name','type','stype1','stype2'])
+        df_al = pd.DataFrame(columns=['ts_code', 'valid', 'selected', 'name', 'type', 'stype1', 'stype2'])
         df_al = df_al.set_index('ts_code')
-        #--------------SW 指数---------------
-        if que_from_ts == True:
-            df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
-            df_l1=df_l1[['index_code','industry_name']]
-            df_l2=df_l2[['index_code','industry_name']]
-            df_l3=df_l3[['index_code','industry_name']]
+        # --------------SW 指数---------------
+        if que_from_ts is True:
+            df_l1, df_l2, df_l3 = Index.get_sw_index_classify()
+            df_l1 = df_l1[['index_code', 'industry_name']]
+            df_l2 = df_l2[['index_code', 'industry_name']]
+            df_l3 = df_l3[['index_code', 'industry_name']]
         else:     
             file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
             file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
             file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
             try:
                 _file_path = file_path_sw_l1
-                df_l1 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+                df_l1 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
                 _file_path = file_path_sw_l2
-                df_l2 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+                df_l2 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
                 _file_path = file_path_sw_l3
-                df_l3 = pd.read_csv(_file_path,usecols=['index_code','industry_name'])
+                df_l3 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
             except FileNotFoundError:
                 log_args = [_file_path]
-                add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+                add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found', log_args)
                 return
-        df_l1.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l1.rename(columns={'index_code': 'ts_code', 'industry_name': 'name'}, inplace=True)
         df_l1['valid'] = 'T'
         df_l1['selected'] = 'T'
         df_l1['type'] = 'index'
         df_l1['stype1'] = 'SW'
         df_l1['stype2'] = 'L1'
-        df_l1.set_index('ts_code',inplace=True)
-        df_l2.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l1.set_index('ts_code', inplace=True)
+        df_l2.rename(columns={'index_code': 'ts_code', 'industry_name': 'name'}, inplace=True)
         df_l2['valid'] = 'T'
         df_l2['selected'] = 'T'
         df_l2['type'] = 'index'
         df_l2['stype1'] = 'SW'
         df_l2['stype2'] = 'L2'
-        df_l2.set_index('ts_code',inplace=True)
-        df_l3.rename(columns={'index_code':'ts_code','industry_name':'name'},inplace = True)
+        df_l2.set_index('ts_code', inplace=True)
+        df_l3.rename(columns={'index_code': 'ts_code', 'industry_name': 'name'}, inplace=True)
         df_l3['valid'] = 'T'
         df_l3['selected'] = 'T'
         df_l3['type'] = 'index'
         df_l3['stype1'] = 'SW'
         df_l3['stype2'] = 'L3'
-        df_l3.set_index('ts_code',inplace=True)
-        _frame = [df_al,df_l1,df_l2,df_l3]
-        df_al = pd.concat(_frame,sort=False)
+        df_l3.set_index('ts_code', inplace=True)
+        _frame = [df_al, df_l1, df_l2, df_l3]
+        df_al = pd.concat(_frame, sort=False)
 
-        #--------------上交所指数---------------
-        if que_from_ts == True:
+        # --------------上交所指数---------------
+        if que_from_ts is True:
             raw_data.index.get_index_basic()
         _file_path = sub_path + '\\' + 'index_basic_sse.csv'        
         try:
-            df_sse = pd.read_csv(_file_path,usecols=['ts_code','name'])
+            df_sse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
             log_args = [_file_path]
-            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found', log_args)
             return
         df_sse['valid'] = 'T'
         df_sse['selected'] = 'T'
         df_sse['type'] = 'index'
         df_sse['stype1'] = 'SSE'
         df_sse['stype2'] = ''
-        df_sse.set_index('ts_code',inplace=True)
+        df_sse.set_index('ts_code', inplace=True)
         _file_path = sub_path + '\\' + 'index_basic_szse.csv'        
         try:
-            df_szse = pd.read_csv(_file_path,usecols=['ts_code','name'])
+            df_szse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
             log_args = [_file_path]
-            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found', log_args)
             return
         df_szse['valid'] = 'T'
         df_szse['selected'] = 'T'
         df_szse['type'] = 'index'
         df_szse['stype1'] = 'SZSE'
         df_szse['stype2'] = ''
-        df_szse.set_index('ts_code',inplace=True)
-        _frame = [df_al,df_sse,df_szse]
-        df_al = pd.concat(_frame,sort=False)
-        #--------------个股---------------
-        if que_from_ts == True:
+        df_szse.set_index('ts_code', inplace=True)
+        _frame = [df_al, df_sse, df_szse]
+        df_al = pd.concat(_frame, sort=False)
+        # --------------个股---------------
+        if que_from_ts is True:
             raw_data.stock.get_stock_basic()
         file_name = 'stock_basic.csv'
         _file_path = sub_path + '\\' + file_name    
         try:
-            df = pd.read_csv(_file_path,usecols=['ts_code','name'],index_col='ts_code')
+            df = pd.read_csv(_file_path, usecols=['ts_code', 'name'], index_col='ts_code')
         except FileNotFoundError:
             log_args = [_file_path]
-            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found',log_args)
+            add_log(10, '[fn]rebuild_all_assets_list(). file "{0[0]}" not found', log_args)
             return
         df['valid'] = 'T'
         df['selected'] = 'T'
         df['type'] = 'stock'
-        #df['stype1'] = ''
-        #df['stype2'] = ''
-        df.loc[df.index.str.startswith('600'),'stype1'] = 'SHZB' #上海主板
-        df.loc[df.index.str.startswith('601'),'stype1'] = 'SHZB'
-        df.loc[df.index.str.startswith('602'),'stype1'] = 'SHZB'
-        df.loc[df.index.str.startswith('603'),'stype1'] = 'SHZB'
-        df.loc[df.index.str.startswith('688'),'stype1'] = 'KCB' #科创板
-        df.loc[df.index.str.startswith('000'),'stype1'] = 'SZZB' #深圳主板
-        df.loc[df.index.str.startswith('001'),'stype1'] = 'SZZB'
-        df.loc[df.index.str.startswith('002'),'stype1'] = 'ZXB' #中小板
-        df.loc[df.index.str.startswith('003'),'stype1'] = 'ZXB'
-        df.loc[df.index.str.startswith('004'),'stype1'] = 'ZXB'
-        df.loc[df.index.str.startswith('300'),'stype1'] = 'CYB' #创业板
+        # df['stype1'] = ''
+        # df['stype2'] = ''
+        df.loc[df.index.str.startswith('600'), 'stype1'] = 'SHZB'  # 上海主板
+        df.loc[df.index.str.startswith('601'), 'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('602'), 'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('603'), 'stype1'] = 'SHZB'
+        df.loc[df.index.str.startswith('688'), 'stype1'] = 'KCB'  # 科创板
+        df.loc[df.index.str.startswith('000'), 'stype1'] = 'SZZB'  # 深圳主板
+        df.loc[df.index.str.startswith('001'), 'stype1'] = 'SZZB'
+        df.loc[df.index.str.startswith('002'), 'stype1'] = 'ZXB'  # 中小板
+        df.loc[df.index.str.startswith('003'), 'stype1'] = 'ZXB'
+        df.loc[df.index.str.startswith('004'), 'stype1'] = 'ZXB'
+        df.loc[df.index.str.startswith('300'), 'stype1'] = 'CYB'  # 创业板
         df['stype2'] = ''
-        _frame = [df_al,df]
-        df_al = pd.concat(_frame,sort=False)
-        #--------------结尾---------------
-        df_al.to_csv(file_path_al,encoding="utf-8")    
+        _frame = [df_al, df]
+        df_al = pd.concat(_frame, sort=False)
+        # --------------结尾---------------
+        df_al.to_csv(file_path_al, encoding="utf-8")
         return
     
     @staticmethod
-    def query_category_str (ts_code):
+    def query_category_str(ts_code):
         """
         根据all_assets_list中的type, stype1, stype2字段来返回category
         ts_code: <str> e.g. '000001.SZ'
@@ -606,25 +606,25 @@ class All_Assets_List():
                 <str> e.g. 'index_sw'; 'stock'
         """
         global raw_data
-        name,_type,stype1,stype2 = raw_data.all_assets_list.loc[ts_code][['name','type','stype1','stype2']]
-        category = None #资产的类别，传给下游[fn]处理
-        #--------------申万指数---------------
-        if _type == 'index' and stype1=='SW':
+        name, _type, stype1, stype2 = raw_data.all_assets_list.loc[ts_code][['name', 'type', 'stype1', 'stype2']]
+        category = None  # 资产的类别，传给下游[fn]处理
+        # --------------申万指数---------------
+        if _type == 'index' and stype1 == 'SW':
             category = 'index_sw'
-        #--------------上证指数---------------
-        elif _type == 'index' and stype1=='SSE':
+        # --------------上证指数---------------
+        elif _type == 'index' and stype1 == 'SSE':
             category = 'index_sse'
-        #--------------深圳指数---------------
-        elif _type == 'index' and stype1=='SZSE':
+        # --------------深圳指数---------------
+        elif _type == 'index' and stype1 == 'SZSE':
             category = 'index_szse'
-        #--------------个股---------------
-        #'stock_daily_basic'和'adj_factor'不在此处理
+        # --------------个股---------------
+        # 'stock_daily_basic'和'adj_factor'不在此处理
         elif _type == 'stock': 
             category = 'stock'
-        #--------------其它类型(未完成)----------
+        # --------------其它类型(未完成)----------
         else:
             log_args = [ts_code]
-            add_log(20, '[fn]All_Assets_List.query_category_str(). No matched category for "{0[0]}"',log_args)
+            add_log(20, '[fn]All_Assets_List.query_category_str(). No matched category for "{0[0]}"', log_args)
             return
         return category
 
@@ -637,13 +637,13 @@ class All_Assets_List():
         file_path = None
         if al_file is None:
             df_al = pd.DataFrame(columns=['ts_code','selected'])
-            df_al.set_index('ts_code',inplace=True)
+            df_al.set_index('ts_code', inplace=True)
             add_log(40, '[fns]All_Assets_List.load_al_file() empty <df> created')
-        elif isinstance(al_file,str):
-            if len(al_file)>0:        
+        elif isinstance(al_file, str):
+            if len(al_file) > 0:
                 file_name = 'al_' + al_file + '.csv'
                 file_path = sub_path + sub_path_al + '\\' + file_name
-            if file_path == None:
+            if file_path is None:
                 log_args = [al_file]
                 add_log(10, '[fns]All_Assets_List.load_al_file(). invalid al_file string: {0[0]}', log_args)
                 return
@@ -651,34 +651,35 @@ class All_Assets_List():
                 df_al = pd.read_csv(file_path, index_col='ts_code')
             except FileNotFoundError:
                 log_args = [file_path]
-                add_log(10, '[fns]All_Assets_List.load_al_file(). al_file "{0[0]}" not exist',log_args)
+                add_log(10, '[fns]All_Assets_List.load_al_file(). al_file "{0[0]}" not exist', log_args)
                 return
         return df_al
         log_args = [len(df_al)]
-        add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -sucess, items:"{0[0]}"',log_args)
+        add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -success, items:"{0[0]}"', log_args)
+
 
 class Asset():
     """
     资产的基类
     """
-    def __init__(self,ts_code):
+    def __init__(self, ts_code):
         self.ts_code = ts_code
     
-    def add_indicator(self,idt_class,**kwargs):
+    def add_indicator(self, idt_class, **kwargs):
         """
         添加Indicator的实例
         idt_name: 指标名 <str> e.g. 'ma_10'
         idt_class: 指标类 <Class> e.g. Ma
         """
         idt_name = kwargs['idt_name']
-        par_asset = weakref.ref(self) #用par_asset()应用原对象
-        print('[L675] before instance Indicator')
-        idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(),**kwargs)
-        print('[L677] exit instance Indicator')
-        setattr(self,idt_name,idt)
+        par_asset = weakref.ref(self)  # 用par_asset()应用原对象
+        # print('[L675] before instance Indicator')
+        idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(), **kwargs)
+        # print('[L677] exit instance Indicator')
+        setattr(self, idt_name, idt)
         try:
-            idt = getattr(self,idt_name)
-            if isinstance(idt,Indicator):
+            idt = getattr(self, idt_name)
+            if isinstance(idt, Indicator):
                 idt.calc_idt()
             else:
                 log_args = [self.ts_code, idt_name]
@@ -690,7 +691,7 @@ class Asset():
             return
         print('[L692] exit add_indicator()')
     
-    def valid_idt_utd(self,idt_name):
+    def valid_idt_utd(self, idt_name):
         """
         validate if self.[ins]Indicator up to df_source date
         idt_name: <str> e.g. 'ema12_close_hfq'
@@ -698,9 +699,9 @@ class Asset():
                 None: invalid or not uptodate
         """
         from indicator import Indicator
-        if hasattr(self,idt_name):
-            idt = getattr(self,idt_name)
-            if isinstance(idt,Indicator):
+        if hasattr(self, idt_name):
+            idt = getattr(self, idt_name)
+            if isinstance(idt, Indicator):
                 result = idt.valid_utd()
                 return result
             else:
@@ -711,6 +712,7 @@ class Asset():
             log_args = [self.ts_code, idt_name]
             add_log(20, '[fn]Asset.valid_idt_utd() ts_code:{0[0]}, idt_name:{0[1]} does not exist.', log_args)
             return
+
 
 class Stock(Asset):
     """股票类的资产"""
@@ -1193,7 +1195,8 @@ class Strategy():
             print("{:>5}: {:<50}".format(k,v.desc))
         print("Number of pools: {}".format(len(self.pools)))
 
-class Pool():
+
+class Pool:
     """
     股票池
     """
@@ -1216,18 +1219,18 @@ class Pool():
             self.assets = {}
             return
         df_al = All_Assets_List.load_al_file(al_file)
-        #print('[L1218] {}'.format(df_al))
+        # print('[L1218] {}'.format(df_al))
         for index, row in df_al.iterrows():
-            #print('[L1220] index:{} ;selected:{}'.format(index, row['selected']))
-            #print('[L1221]', repr(row['selected']))
+            # print('[L1220] index:{} ;selected:{}'.format(index, row['selected']))
+            # print('[L1221]', repr(row['selected']))
             selected = row['selected'].strip().upper()
             if selected == 'T':
                 ts_code = index
                 category = All_Assets_List.query_category_str(ts_code)
-                #根据category不同，实例化对应的Asset
-                if category == None:
+                # 根据category不同，实例化对应的Asset
+                if category is None:
                     log_args = [ts_code]
-                    add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip',log_args)
+                    add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip', log_args)
                     continue
                 elif category ==  'stock':
                     if ts_code in self.assets:
@@ -1243,95 +1246,105 @@ class Pool():
             else:
                 print('[L1241] jumped to here')
 
-    def add_condition(self,kwargs1,kwargs2,ops):
+    def add_condition(self, pre_args1, pre_args2, ops):
         """
         add the condition to the pool
-        kwargsN: <dict> refer idt_name()
+        pre_argsN: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.conditions.append(Condition(kwargs1,kwargs2,ops))
+        self.conditions.append(Condition(pre_args1, pre_args2, ops))
 
-class Condition():
+
+class Condition:
     """
     判断条件
     """
-    def __init__(self,para1_kwargs,para2_kwargs,ops):
+    def __init__(self, pre_args1, pre_args2, ops):
         """
-        paraN_kwargs: <dict> refer idt_name()
+        pre_argsN: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.para1 = Para(para1_kwargs)
-        self.para2 = Para(para2_kwargs)
-        self.calcer = None #<fn> calculator
-        self.result = None #True of False, condition result of sesult_time
-        self.result_time = None #<str> e.g. '20191209'
+        self.para1 = Para(pre_args1)
+        self.para2 = Para(pre_args2)
+        self.calcer = None  # <fn> calculator
+        self.result = None  # True of False, condition result of result_time
+        self.result_time = None  # <str> e.g. '20191209'
 
         if ops == '>':
-            self.calcer = lambda p1, p2 : p1 > p2
+            self.calcer = lambda p1, p2: p1 > p2
         elif ops == '<':
-            self.calcer = lambda p1, p2 : p1 < p2
+            self.calcer = lambda p1, p2: p1 < p2
         elif ops == '>=':
-            self.calcer = lambda p1, p2 : p1 >= p2
+            self.calcer = lambda p1, p2: p1 >= p2
         elif ops == '<=':
-            self.calcer = lambda p1, p2 : p1 <= p2
+            self.calcer = lambda p1, p2: p1 <= p2
         elif ops == '=':
-            self.calcer = lambda p1, p2 : p1 == p2
+            self.calcer = lambda p1, p2: p1 == p2
 
-class Para():
+
+class Para:
     """
     Parameter的缩写
     Condition中比较用的元参数
     """
-    def __new__(cls,kwargs):
+    def __new__(cls, pre_args):
         """
         检验<dict>kwargs的有效性
         """
         from indicator import IDT_CLASS
-        if 'idt_type' in kwargs:
-            if kwargs['idt_type'] in IDT_CLASS:
+        if 'idt_type' in pre_args:
+            idt_type = pre_args['idt_type']
+            if (idt_type == 'const') or (idt_type in IDT_CLASS):
                 obj = super().__new__(cls)
                 return obj
-        log_args = [kwargs]
+        log_args = [pre_args]
         add_log(10, '[fn]Para.__new__() kwargs "{0[0]}" invalid, instance not created', log_args)
 
-    def __init__(self, kwargs):
+    def __init__(self, pre_args):
         """
-        kwargs: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
+        pre_args: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
         """
-        self.field = None #<str> string of the indicator result csv column name
-        if 'field' in kwargs:
-            self.field = kwargs['field']
-            del kwargs['field']
-        else:
-            self.field = 'default'
         from indicator import idt_name
-        self.idt_init_dict = idt_name(kwargs)
-        self.idt_name = self.idt_init_dict['idt_name']
+        idt_type = pre_args['idt_type']
+        if idt_type == 'const':
+            self.idt_name = 'const'
+            self.idt_type = 'const'
+            self.const_value = pre_args['const_value']
+        else:
+            self.field = None  # <str> string of the indicator result csv column name
+            if 'field' in pre_args:
+                self.field = pre_args['field']
+                del pre_args['field']
+            else:
+                self.field = 'default'
+            self.idt_init_dict = idt_name(pre_args)
+            self.idt_name = self.idt_init_dict['idt_name']
+
 
 if __name__ == "__main__":
-    #global raw_data
+    # global raw_data
     start_time = datetime.now()
-    #df = get_stock_list()
-    #df = load_stock_list()
-    #df = get_daily_basic()
-    #cl = get_trade_calendar()
-    #last_trad_day_str()
-    #raw_data = Raw_Data(pull=False)
-    #c = raw_data.trade_calendar
-    #index = raw_data.index
-    #zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
-    #ttt = index.get_index_daily('399003.SZ',reload=False)
+    # df = get_stock_list()
+    # df = load_stock_list()
+    # df = get_daily_basic()
+    # cl = get_trade_calendar()
+    # last_trad_day_str()
+    # raw_data = Raw_Data(pull=False)
+    # c = raw_data.trade_calendar
+    # index = raw_data.index
+    # zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
+    # ttt = index.get_index_daily('399003.SZ',reload=False)
     # #------------------------批量下载数据-----------------------
-    #download_path = r"download_all"
-    #download_path = r"dl_stocks"
+    # download_path = r"download_all"
+    # download_path = r"dl_stocks"
     download_path = r"try_001"
-    #download_path = r"user_001"
+    # download_path = r"user_001"
     bulk_download(download_path,reload=False) #批量下载数据
-    #download_path = r"dl_stocks"
+    # download_path = r"dl_stocks"
     bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
-    #ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
-    #ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
-    #Plot.try_plot()
+    # ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
+    # ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
+    # Plot.try_plot()
     # #------------------------资产赛跑-----------------------
     # num_samples=30
     # df = Index.load_sw_daily('801003.SI',num_samples)
@@ -1408,7 +1421,7 @@ if __name__ == "__main__":
     # Stock.calc_dfq('600419.SH',reload=False)
     # al_file_str = r"dl_stocks"
     al_file_str = r"try_001"
-    bulk_calc_dfq(al_file_str,reload=False) #批量计算复权
+    bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
     # print("===================Indicator===================")
     from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
@@ -1422,15 +1435,15 @@ if __name__ == "__main__":
     # print(ma10)
 
     # print('------stock1.ema26_close_hfq--------')
-    stock5 = Stock(ts_code='000001.SZ')
-    _kwargs = {
-              'idt_type': 'ema',
-              'period': 26}
-    kwargs = idt_name(_kwargs)
-    print('[L1424] kwargs:',kwargs)
-    stock5.add_indicator(**kwargs)
-    ema26 = stock5.ema_26.df_idt
-    print(ema26)
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {
+    #           'idt_type': 'ema',
+    #           'period': 26}
+    # kwargs = idt_name(_kwargs)
+    # print('[L1424] kwargs:', kwargs)
+    # stock5.add_indicator(**kwargs)
+    # ema26 = stock5.ema_26.df_idt
+    # print(ema26)
 
     # print('------stock1.ema12_close_hfq--------')
     # kwargs = {'idt_name': 'ema12_close_hfq',
@@ -1473,7 +1486,7 @@ if __name__ == "__main__":
     pool_10 = stg.pools[10]
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
-    print('------Condition--------')
+    print('------Add Conditions--------')
     kwargs1 = {'idt_type': 'ma',
                'period': 20}
     kwargs2 = {'idt_type': 'macd',
@@ -1482,12 +1495,25 @@ if __name__ == "__main__":
                'dea_n3': 9,
                'field': 'MACD'}
     pool_10.add_condition(kwargs1, kwargs2, '>')
-    _kwargs = {'idt_type': 'macd',
-               'long_n1': 26,
-               'short_n2': 12,
-               'dea_n3': 9}
-    kwargs = idt_name(_kwargs)
-    st_002.add_indicator(**kwargs)
+
+    kwargs1 = {'idt_type': 'ma',
+               'period': 5}
+    kwargs2 = {'idt_type': 'const',
+               'const_value': 30}
+    pool_10.add_condition(kwargs1, kwargs2, '<')
+
+    kwargs1 = {'idt_type': 'ema',
+               'period': 10}
+    kwargs2 = {'idt_type': 'const',
+               'const_value': 8}
+    pool_10.add_condition(kwargs1, kwargs2, '>=')
+
+    # _kwargs = {'idt_type': 'macd',
+    #            'long_n1': 26,
+    #            'short_n2': 12,
+    #            'dea_n3': 9}
+    # kwargs = idt_name(_kwargs)
+    # st_002.add_indicator(**kwargs)
 
     kwargs1 = pool_10.conditions[0].para1.idt_init_dict
     print('[L1484] kwargs1:', kwargs1)
@@ -1496,7 +1522,7 @@ if __name__ == "__main__":
     kwargs2 = pool_10.conditions[0].para2.idt_init_dict
     print('[L1488] kwargs2:', kwargs2)
     st_002.add_indicator(**kwargs2)
-    print('后续进行Condition的result计算[fn]编写；改写一致化indicator结果csv表头的列名')
+    print('后续进行Condition的result计算[fn]编写')
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))

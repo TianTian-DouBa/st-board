@@ -12,61 +12,74 @@ import st_board
 import weakref
 
 
-def idt_name(dict_attrs):
+def idt_name(pre_args):
     """
-    dict_attr: <dict> 输入的必要参数
+    pre_args: <dict> 创建para的必要输入参数
         e.g.
         {'idt_type': 'macd',
          'long_n1': 26,
          'short_n2': 12,
          'dea_n3': 9,
+         'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
          'source': 'close',
          'subtype': 'w',
          'update_csv': False}
+         or
+         {'idt_type': 'const',
+          'const_value': 30}
          
     return: <dict> of attributes for initialize the indicator, 函数的主要部分是对其中idt_name键值的计算
         e.g.
-        {'idt_type' : 'macd',
-         'idt_name' : 'macd_close_w_26_12_9',
-         'source' : 'close',
-         'subtype' : 'w',
-         'idt_class' : Macd}
+        {'idt_type': 'macd',
+         'idt_name': 'macd_close_w_26_12_9',
+         'source': 'close',
+         'subtype': 'w',
+         ‘field': 'DEA',
+         'idt_class': Macd}
+         or
+         {'idt_type': 'const',
+          'idt_name': 'const',
+          'const_value': 30}
     """
 
-    if isinstance(dict_attrs, dict):
-        idt_name = ""
-        idt_type = dict_attrs["idt_type"]
-        idt_class = IDT_CLASS[idt_type]
-        idt_name = idt_name + idt_type
-        try:
-            source = dict_attrs["source"]
-            if source != 'close_hfq':
-                idt_name = idt_name + '_' + source
-        except KeyError:
-            pass
-        try:
-            subtype = dict_attrs["subtype"]
-            if subtype.lower() != 'd':
-                idt_name = idt_name + '_' + subtype.lower()
-        except KeyError:
-            pass
-        try:
-            period = dict_attrs["period"]
-            idt_name = idt_name + '_' + str(period)
-        except KeyError:
-            pass
-        for k,v in dict_attrs.items():
-            if k.endswith("_n1"):
-                idt_name = idt_name + '_' + str(v)
-            if k.endswith("_n2"):
-                idt_name = idt_name + '_' + str(v)
-            if k.endswith("_n3"):
-                idt_name = idt_name + '_' + str(v)
-        dict_attrs['idt_name'] = idt_name
-        dict_attrs['idt_class'] = idt_class
-        return dict_attrs
+    if isinstance(pre_args, dict):
+        idt_type = pre_args["idt_type"]
+        if idt_type == 'const':  # para为常量的情况
+            pre_args['idt_name'] = 'const'
+            return pre_args
+        else:
+            idt_name = ""
+            idt_class = IDT_CLASS[idt_type]
+            idt_name = idt_name + idt_type
+            try:
+                source = pre_args["source"]
+                if source != 'close_hfq':
+                    idt_name = idt_name + '_' + source
+            except KeyError:
+                pass
+            try:
+                subtype = pre_args["subtype"]
+                if subtype.lower() != 'd':
+                    idt_name = idt_name + '_' + subtype.lower()
+            except KeyError:
+                pass
+            try:
+                period = pre_args["period"]
+                idt_name = idt_name + '_' + str(period)
+            except KeyError:
+                pass
+            for k,v in pre_args.items():
+                if k.endswith("_n1"):
+                    idt_name = idt_name + '_' + str(v)
+                if k.endswith("_n2"):
+                    idt_name = idt_name + '_' + str(v)
+                if k.endswith("_n3"):
+                    idt_name = idt_name + '_' + str(v)
+            pre_args['idt_name'] = idt_name
+            pre_args['idt_class'] = idt_class
+            return pre_args
     else:
-        log_args = [type(dict_attrs)]
+        log_args = [type(pre_args)]
         add_log(20, '[fn]idt_name() input type:{0[0]} is not <dict>', log_args)
 
 
@@ -206,7 +219,7 @@ class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ma> if valid; None if invalid 
@@ -214,19 +227,19 @@ class Ma(Indicator):
         try:
             SUBTYPE[subtype]
         except KeyError:
-            log_args = [ts_code,subtype]
+            log_args = [ts_code, subtype]
             add_log(10, '[fn]Ma.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
         period = int(period)
-        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,idt_type=idt_type,reload=reload,update_csv=update_csv)
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
         self.idt_type = 'ma'
         self.period = period
         # print("[L97] 补period类型异常")
