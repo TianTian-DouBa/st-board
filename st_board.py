@@ -689,7 +689,7 @@ class Asset():
             log_args = [self.ts_code, idt_name,e.__class__.__name__]
             add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
             return
-        print('[L692] exit add_indicator()')
+        # print('[L692] exit add_indicator()')
     
     def valid_idt_utd(self, idt_name):
         """
@@ -716,11 +716,11 @@ class Asset():
 
 class Stock(Asset):
     """股票类的资产"""
-    def __init__(self,ts_code):
+    def __init__(self, ts_code):
         Asset.__init__(self, ts_code=ts_code)
 
     @staticmethod
-    def load_adj_factor(ts_code,nrows=None):
+    def load_adj_factor(ts_code, nrows=None):
         """
         从文件读入复权因子
         nrows: <int> 指定读入最近n个周期的记录,None=全部
@@ -730,7 +730,7 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','adj_factor'],index_col='trade_date',nrows=nrows)
+            result = pd.read_csv(file_path,dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -738,7 +738,7 @@ class Stock(Asset):
             return
 
     @staticmethod
-    def load_stock_daily(ts_code,nrows=None):
+    def load_stock_daily(ts_code, nrows=None):
         """
         从文件读入股票日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
@@ -748,9 +748,9 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','close','open','high','low','pre_close','change','pct_chg','vol','amount'],index_col='trade_date',nrows=nrows)
-            result['vol']=result['vol'].astype(np.int64)
-            #待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+            result['vol'] = result['vol'].astype(np.int64)
+            # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
         else:
             log_args = [ts_code]
@@ -1137,26 +1137,27 @@ class Plot_Assets_Racing():
         plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
         plt.show()
 
-class Strategy():
+
+class Strategy:
     """
     量化策略
     """
-    def __init__(self,name):
+    def __init__(self, name):
         """
         name: <str> strategy name
         """
-        print('L1160 to be continued')
+        # print('L1160 to be continued')
         self.name = name
-        self.pools = {} #dict of pools {execute order: pool #1, ...}
+        self.pools = {}  # dict of pools {execute order: pool #1, ...}
     
-    def add_pool(self,**kwargs):
+    def add_pool(self, **kwargs):
         """
         add the pool to the strategy
         """
         def _get_next_order():
             k_max = 0
             for k in self.pools.keys():
-                k_max = max(k,k_max)
+                k_max = max(k, k_max)
             if k_max is None:
                 result = 10
             else:
@@ -1164,7 +1165,7 @@ class Strategy():
             return result
         
         next_order = _get_next_order()
-        self.pools[next_order]=Pool(**kwargs)
+        self.pools[next_order] = Pool(**kwargs)
     
     def chg_pool_order(self, org_order, new_order):
         """
@@ -1174,7 +1175,7 @@ class Strategy():
         """
         if new_order in self.pools:
             log_args = [new_order]
-            add_log(20, '[fn]Strategy.chg_pool_order(). new_order:{0[0]} was in the dict already. Order not changed',log_args)
+            add_log(20, '[fn]Strategy.chg_pool_order(). new_order:{0[0]} was in the dict already. Order not changed', log_args)
         else:
             try:
                 pool = self.pools[org_order]
@@ -1182,7 +1183,7 @@ class Strategy():
                 self.pools[new_order] = pool
             except KeyError:
                 log_args = [org_order]
-                add_log(20, '[fn]Strategy.chg_pool_order(). org_order:{0[0]} was not exist. Order not changed',log_args)
+                add_log(20, '[fn]Strategy.chg_pool_order(). org_order:{0[0]} was not exist. Order not changed', log_args)
     
     def pools_brief(self):
         """
@@ -1191,8 +1192,8 @@ class Strategy():
         print("----Strategy: <{}> pools brief:----".format(self.name))
         print("Order: Description")
         for k, v in sorted(self.pools.items()):
-            #print("key: ",k,"    desc: ",v.desc)
-            print("{:>5}: {:<50}".format(k,v.desc))
+            # print("key: ",k,"    desc: ", v.desc)
+            print("{:>5}: {:<50}".format(k, v.desc))
         print("Number of pools: {}".format(len(self.pools)))
 
 
@@ -1235,16 +1236,16 @@ class Pool:
                 elif category ==  'stock':
                     if ts_code in self.assets:
                         log_args = [ts_code]
-                        add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip',log_args)
+                        add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     else:
                         self.assets[ts_code] = Stock(ts_code)
                         log_args = [ts_code]
-                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added',log_args)
-                #----other categorys are to be implemented here-----
+                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
+                # ----other categories are to be implemented here-----
                 else:
-                    print('[L1228] other categorys are to be implemented')
+                    print('[L1228] other categories are to be implemented')
             else:
-                print('[L1241] jumped to here')
+                print('[L1241] al selected is not "T"')
 
     def add_condition(self, pre_args1, pre_args2, ops):
         """
@@ -1253,6 +1254,12 @@ class Pool:
         ops: <str> e.g. '>', '<=', '='...
         """
         self.conditions.append(Condition(pre_args1, pre_args2, ops))
+
+    def iter_al(self):
+        """
+        iterate the al list in the pool, to add indicators to each asset
+        """
+        print("[L1262] to be continued")
 
 
 class Condition:
@@ -1487,6 +1494,7 @@ if __name__ == "__main__":
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
     print('------Add Conditions--------')
+    # condition_1
     kwargs1 = {'idt_type': 'ma',
                'period': 20}
     kwargs2 = {'idt_type': 'macd',
@@ -1496,6 +1504,7 @@ if __name__ == "__main__":
                'field': 'MACD'}
     pool_10.add_condition(kwargs1, kwargs2, '>')
 
+    # condition_2
     kwargs1 = {'idt_type': 'ma',
                'period': 5}
     kwargs2 = {'idt_type': 'const',
@@ -1515,12 +1524,14 @@ if __name__ == "__main__":
     # kwargs = idt_name(_kwargs)
     # st_002.add_indicator(**kwargs)
 
+    print('------iterate  --------')
+
     kwargs1 = pool_10.conditions[0].para1.idt_init_dict
-    print('[L1484] kwargs1:', kwargs1)
+    # print('[L1484] kwargs1:', kwargs1)
     st_002.add_indicator(**kwargs1)
 
     kwargs2 = pool_10.conditions[0].para2.idt_init_dict
-    print('[L1488] kwargs2:', kwargs2)
+    # print('[L1488] kwargs2:', kwargs2)
     st_002.add_indicator(**kwargs2)
     print('后续进行Condition的result计算[fn]编写')
     end_time = datetime.now()
