@@ -26,7 +26,6 @@ def valid_date_str_fmt(date_str):
     if isinstance(date_str,str):
         if len(date_str) == 8:
             return True
-    return
 
 
 def today_str():
@@ -1265,7 +1264,7 @@ class Pool:
 
     def iter_al(self):
         """
-        iterate the al list in the pool, to add indicators to each asset
+        iterate the al list in the pool, according to the self.conditions to add indicators to each asset
         """
         for asset in self.assets.values():
             for cond in self.conditions:
@@ -1275,6 +1274,60 @@ class Pool:
                 if cond.para2.idt_name != 'const':  # 跳过condition的常量para
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
+
+    def filter_al(self, rule, datetime_='latest'):
+        """
+        filter the self.assets with the condition or filter
+        rule: <Condition> or <Filter>, 过滤的条件
+        datetime_: <str> 'latest' or like '20190723' YYYYMMDD
+        """
+        if datetime_ == 'latest':
+            val_fetcher = lambda df, column_name: df.iloc[0][column_name]  # [fn] 获取最新idt记录值
+            date_fetcher = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+        elif valid_date_str_fmt(datetime_):
+            dt_int = int(datetime_)
+            val_fetcher = lambda df, column_name: df.iloc[df.index.get_loc(dt_int)][column_name]
+        else:
+            log_args = [datetime_]
+            add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
+            return
+
+        # def _fetch_idt_value(df, datetime__, column_name):
+        #     """
+        #     内部函数，根据时间和源<df>获取某时间idt的值
+        #     df: <df> source DataFrame
+        #     column_name: <str> e.g. 'MA', 'MACD', 'DEA'
+        #     """
+        #     if datetime == 'latest':
+        #         print("[L1285] continue here")
+        #     elif valid_date_str_fmt(datetime_):
+        #         print("[L1287] continue here")
+        #     else:
+        #         log_args = [datetime_]
+        #         add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
+        #         return
+
+        if isinstance(rule, Condition):
+            for asset in self.assets.values():
+                # -------------para1---------------------
+                idt_name1 = rule.para1.idt_name
+                if idt_name1 == 'const':
+                    idt_value1 = rule.para1.const_value
+                else:
+                    try:
+                        idt1 = getattr(asset, idt_name1)
+                        idt_df1 = idt1.df_idt
+                        idt_field1 = rule.para1.field
+                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else rule.para1.idt_init_dict['idt_type'].upper()
+                        print('[L1316] column_name1: {}'.format(column_name1))
+                    except Exception as e:  # 待细化
+                        log_args = [asset.ts_code, e.__class__.__name__, e]
+                        add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
+                        continue
+                    idt_value1 = val_fetcher(idt_df1, column_name1)
+                print('[L1328] idt_value1: {}'.format(idt_value1))
+        print('[L1329] to be continued')
+
 
 
 class Condition:
@@ -1444,17 +1497,17 @@ if __name__ == "__main__":
     # al_file_str = r"dl_stocks"
     al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
-    # print("===================Indicator===================")
-    # from indicator import idt_name, Indicator, Ma, Ema, Macd
-    # print('------stock1.ma10_close_hfq--------')
-    # stock5 = Stock(ts_code='000001.SZ')
-    # _kwargs = {'idt_type': 'ema',
-    #         'period': 10}
-    # kwargs = idt_name(_kwargs)
-    # stock5.add_indicator(**kwargs)
-    # stock5.ema_10.calc_idt()
-    # ma10 = stock5.ema_10.df_idt
-    # print(ma10)
+    print("===================Indicator===================")
+    from indicator import idt_name, Indicator, Ma, Ema, Macd
+    print('------stock1.ma10_close_hfq--------')
+    stock5 = Stock(ts_code='000001.SZ')
+    _kwargs = {'idt_type': 'ema',
+               'period': 10}
+    kwargs = idt_name(_kwargs)
+    stock5.add_indicator(**kwargs)
+    stock5.ema_10.calc_idt()
+    ema10 = stock5.ema_10.df_idt
+    print(ema10)
 
     # print('------stock1.ema26_close_hfq--------')
     # stock5 = Stock(ts_code='000001.SZ')
@@ -1549,6 +1602,15 @@ if __name__ == "__main__":
 
     # 自动iterate pool.assets 来添加
     pool_10.iter_al()
+
+    print('------定时间点过滤目标股Pool.filter_al()--------')
+    cond = pool_10.conditions[0]
+    pool_10.filter_al(cond)
+    print('-----')
+    pool_10.filter_al(cond,'20191205')
+
+    print('------临时便利--------')
+    st01 = pool_10.assets['000001.SZ']
 
     print('后续进行Condition的result计算[fn]编写')
     end_time = datetime.now()

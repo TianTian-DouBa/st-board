@@ -168,8 +168,8 @@ class Indicator:
         df_append = self._calc_res()
         if isinstance(df_append, pd.DataFrame):
             if isinstance(self.df_idt, pd.DataFrame):
-                _frames = [df_append,self.df_idt]
-                df_idt = pd.concat(_frames,sort=False)
+                _frames = [df_append, self.df_idt]
+                df_idt = pd.concat(_frames, sort=False)
             else:
                 df_idt = df_append
             if self.update_csv:
@@ -181,7 +181,7 @@ class Indicator:
                     log_args = [self.ts_code, self.file_path]
                     add_log(20, "[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, invalid", log_args)
             self.df_idt = df_idt
-            log_args = [self.ts_code, self.file_name[:-4], len(df_idt)]
+            log_args = [self.ts_code, self.file_name[:-4]]
             add_log(40, "[fn]Indicator.calc_idt() ts_code:{0[0]}, {0[1]} updated; items:{0[2]}", log_args)
         elif df_append is None:
             pass  # keep self.df_idt as it is
@@ -257,7 +257,7 @@ class Ma(Indicator):
         """
         df_source = self.load_sources()
         df_idt = self.load_idt()
-        period=self.period
+        period = self.period
         if isinstance(df_idt, pd.DataFrame):
             idt_head_index_str, = df_idt.head(1).index.values
             try:
@@ -271,7 +271,7 @@ class Ma(Indicator):
                 add_log(40, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                df_source.drop(df_source.index[idt_head_in_source + period - 1:],inplace=True)
+                df_source.drop(df_source.index[idt_head_in_source + period - 1:], inplace=True)
                 values = []
                 rvs_rslt = []
                 try:
@@ -314,7 +314,7 @@ class Ema(Indicator):
     """
     指数移动平均线
     """
-    def __new__(cls,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
         return:<ins Ema> if valid; None if invalid 
@@ -322,25 +322,25 @@ class Ema(Indicator):
         try:
             SUBTYPE[subtype]
         except KeyError:
-            log_args = [ts_code,subtype]
+            log_args = [ts_code, subtype]
             add_log(10, '[fn]Ema.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
         period = int(period)
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self,ts_code,par_asset,idt_type,idt_name,period,source='close_hfq',reload=False,update_csv=True,subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
-        Indicator.__init__(self,ts_code=ts_code,par_asset=par_asset,idt_type=idt_type,reload=reload,update_csv=update_csv)
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
         self.idt_type = 'ema'
         self.period = period
         self.source = source
         self.idt_name = idt_name
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        #self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
+        # self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
         self.file_path = sub_path + sub_idt + '\\' + self.file_name
         self.subtype = subtype
 
