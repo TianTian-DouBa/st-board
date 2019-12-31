@@ -4,12 +4,16 @@
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/indicator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FavoritesManager">
+    <favorites_list name="st-board" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -23,6 +27,34 @@
   </component>
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+  </component>
+  <component name="RunManager">
+    <configuration name="st_board" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="st_board" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/st_board.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.st_board" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="ServiceViewManager">
     <option name="viewStates">
@@ -86,6 +118,38 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="383" y="118" key="CommitChangelistDialog2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1576504312241" />
+    <state width="1584" height="307" key="GridCell.Tab.0.bottom" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.0.center" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.0.left" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.0.right" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.1.bottom" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.1.center" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.1.left" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
+    <state width="1584" height="307" key="GridCell.Tab.1.right" timestamp="1577763810139">
+      <screen x="0" y="0" width="1605" height="1050" />
+    </state>
+    <state width="1584" height="307" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1577763810139" />
     <state x="595" y="442" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1576504299620">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -94,16 +158,5 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="498" y="188" key="refactoring.ChangeSignatureDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1576845168719" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/indicator.py</url>
-          <line>85</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

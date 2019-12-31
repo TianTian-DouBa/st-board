@@ -14,7 +14,8 @@ import tushare as ts
 from pandas.plotting import register_matplotlib_converters
 
 ts_pro = ts.pro_api()
-register_matplotlib_converters() #否则Warning
+register_matplotlib_converters()  # 否则Warning
+
 
 def valid_date_str_fmt(date_str):
     """
@@ -27,13 +28,15 @@ def valid_date_str_fmt(date_str):
             return True
     return
 
+
 def today_str():
     """
     return: <str> today in 'YYYYMMDD' e.g.'20190712'
     """
     dt = datetime.now()
-    today_str = dt.strftime("%Y%m%d")
-    return today_str
+    today_str_ = dt.strftime("%Y%m%d")
+    return today_str_
+
 
 def valid_file_path(file_path):
     r"""
@@ -45,6 +48,7 @@ def valid_file_path(file_path):
         if len(file_path) >= 3:
             return True
 
+
 def date_to_date_str(dt):
     """
     将datetime转化为data_str
@@ -52,6 +56,7 @@ def date_to_date_str(dt):
     return:<str> e.g. '20190723'
     """
     return dt.strftime("%Y%m%d")
+
 
 def date_str_to_date(date_str):
     """
@@ -61,6 +66,7 @@ def date_str_to_date(date_str):
     """
     date = datetime.strptime(date_str,"%Y%m%d")
     return date
+
 
 def download_data(ts_code,category,reload=False):
     r"""
@@ -658,38 +664,40 @@ class All_Assets_List():
         add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -success, items:"{0[0]}"', log_args)
 
 
-class Asset():
+class Asset:
     """
     资产的基类
     """
     def __init__(self, ts_code):
         self.ts_code = ts_code
     
-    def add_indicator(self, idt_class, **kwargs):
+    def add_indicator(self, idt_class, **post_args):
         """
         添加Indicator的实例
         idt_name: 指标名 <str> e.g. 'ma_10'
         idt_class: 指标类 <Class> e.g. Ma
         """
-        idt_name = kwargs['idt_name']
+        from indicator import Indicator
+        idt_name_ = post_args['idt_name']
         par_asset = weakref.ref(self)  # 用par_asset()应用原对象
         # print('[L675] before instance Indicator')
-        idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(), **kwargs)
+        idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(), **post_args)
         # print('[L677] exit instance Indicator')
-        setattr(self, idt_name, idt)
+        setattr(self, idt_name_, idt)
         try:
-            idt = getattr(self, idt_name)
+            idt = getattr(self, idt_name_)
             if isinstance(idt, Indicator):
                 idt.calc_idt()
             else:
-                log_args = [self.ts_code, idt_name]
+                log_args = [self.ts_code, idt_name_]
                 add_log(20, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed.', log_args)
         except Exception as e:
-            print("[L670] 待用明确的except替换")
-            log_args = [self.ts_code, idt_name,e.__class__.__name__]
+            log_args = [self.ts_code, idt_name_, e.__class__.__name__]
             add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
             return
         # print('[L692] exit add_indicator()')
+        log_args = [self.ts_code, idt_name_]
+        add_log(40, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} succeed.', log_args)
     
     def valid_idt_utd(self, idt_name):
         """
@@ -1233,7 +1241,7 @@ class Pool:
                     log_args = [ts_code]
                     add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip', log_args)
                     continue
-                elif category ==  'stock':
+                elif category == 'stock':
                     if ts_code in self.assets:
                         log_args = [ts_code]
                         add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
@@ -1247,32 +1255,39 @@ class Pool:
             else:
                 print('[L1241] al selected is not "T"')
 
-    def add_condition(self, pre_args1, pre_args2, ops):
+    def add_condition(self, pre_args1_, pre_args2_, ops):
         """
         add the condition to the pool
-        pre_argsN: <dict> refer idt_name() pre_args
+        pre_argsN_: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.conditions.append(Condition(pre_args1, pre_args2, ops))
+        self.conditions.append(Condition(pre_args1_, pre_args2_, ops))
 
     def iter_al(self):
         """
         iterate the al list in the pool, to add indicators to each asset
         """
-        print("[L1262] to be continued")
+        for asset in self.assets.values():
+            for cond in self.conditions:
+                if cond.para1.idt_name != 'const':  # 跳过condition的常量para
+                    post_args1 = cond.para1.idt_init_dict
+                    asset.add_indicator(**post_args1)
+                if cond.para2.idt_name != 'const':  # 跳过condition的常量para
+                    post_args2 = cond.para2.idt_init_dict
+                    asset.add_indicator(**post_args2)
 
 
 class Condition:
     """
     判断条件
     """
-    def __init__(self, pre_args1, pre_args2, ops):
+    def __init__(self, pre_args1_, pre_args2_, ops):
         """
-        pre_argsN: <dict> refer idt_name() pre_args
+        pre_argsN_: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.para1 = Para(pre_args1)
-        self.para2 = Para(pre_args2)
+        self.para1 = Para(pre_args1_)
+        self.para2 = Para(pre_args2_)
         self.calcer = None  # <fn> calculator
         self.result = None  # True of False, condition result of result_time
         self.result_time = None  # <str> e.g. '20191209'
@@ -1430,7 +1445,7 @@ if __name__ == "__main__":
     al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
     # print("===================Indicator===================")
-    from indicator import idt_name, Indicator, Ma, Ema, Macd
+    # from indicator import idt_name, Indicator, Ma, Ema, Macd
     # print('------stock1.ma10_close_hfq--------')
     # stock5 = Stock(ts_code='000001.SZ')
     # _kwargs = {'idt_type': 'ema',
@@ -1493,29 +1508,29 @@ if __name__ == "__main__":
     pool_10 = stg.pools[10]
     st_002 = pool_10.assets['000002.SZ']
     print(stg.pools[10].assets.keys())
-    print('------Add Conditions--------')
+    print('------Add Conditions, scripts required for each strategy--------')
     # condition_1
-    kwargs1 = {'idt_type': 'ma',
-               'period': 20}
-    kwargs2 = {'idt_type': 'macd',
-               'long_n1': 26,
-               'short_n2': 12,
-               'dea_n3': 9,
-               'field': 'MACD'}
-    pool_10.add_condition(kwargs1, kwargs2, '>')
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'macd',
+                 'long_n1': 26,
+                 'short_n2': 12,
+                 'dea_n3': 9,
+                 'field': 'MACD'}
+    pool_10.add_condition(pre_args1, pre_args2, '>')
 
     # condition_2
-    kwargs1 = {'idt_type': 'ma',
-               'period': 5}
-    kwargs2 = {'idt_type': 'const',
-               'const_value': 30}
-    pool_10.add_condition(kwargs1, kwargs2, '<')
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 30}
+    pool_10.add_condition(pre_args1, pre_args2, '<')
 
-    kwargs1 = {'idt_type': 'ema',
-               'period': 10}
-    kwargs2 = {'idt_type': 'const',
-               'const_value': 8}
-    pool_10.add_condition(kwargs1, kwargs2, '>=')
+    pre_args1 = {'idt_type': 'ema',
+                 'period': 10}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 8}
+    pool_10.add_condition(pre_args1, pre_args2, '>=')
 
     # _kwargs = {'idt_type': 'macd',
     #            'long_n1': 26,
@@ -1525,14 +1540,16 @@ if __name__ == "__main__":
     # st_002.add_indicator(**kwargs)
 
     print('------iterate  --------')
+    # 手动为asset添加指标
+    # kwargs1 = pool_10.conditions[0].para1.idt_init_dict
+    # st_002.add_indicator(**kwargs1)
+    #
+    # kwargs2 = pool_10.conditions[0].para2.idt_init_dict
+    # st_002.add_indicator(**kwargs2)
 
-    kwargs1 = pool_10.conditions[0].para1.idt_init_dict
-    # print('[L1484] kwargs1:', kwargs1)
-    st_002.add_indicator(**kwargs1)
+    # 自动iterate pool.assets 来添加
+    pool_10.iter_al()
 
-    kwargs2 = pool_10.conditions[0].para2.idt_init_dict
-    # print('[L1488] kwargs2:', kwargs2)
-    st_002.add_indicator(**kwargs2)
     print('后续进行Condition的result计算[fn]编写')
     end_time = datetime.now()
     duration = end_time - start_time

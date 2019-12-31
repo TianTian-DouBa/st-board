@@ -28,7 +28,7 @@ def idt_name(pre_args):
          {'idt_type': 'const',
           'const_value': 30}
          
-    return: <dict> of attributes for initialize the indicator, 函数的主要部分是对其中idt_name键值的计算
+    return: <dict> of attributes for initialize the indicator, called post_args, 函数的主要部分是对其中idt_name键值的计算
         e.g.
         {'idt_type': 'macd',
          'idt_name': 'macd_close_w_26_12_9',
