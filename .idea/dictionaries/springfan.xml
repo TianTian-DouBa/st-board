@@ -2,10 +2,13 @@
   <dictionary name="springfan">
     <words>
       <w>calcer</w>
+      <w>disp</w>
       <w>dtype</w>
       <w>idts</w>
+      <w>iterrows</w>
       <w>macd</w>
       <w>nrows</w>
+      <w>pretrade</w>
       <w>rslt</w>
       <w>shzb</w>
       <w>stype</w>
@@ -13,6 +16,9 @@
       <w>szzb</w>
       <w>tushare</w>
       <w>uptodate</w>
+      <w>weakref</w>
+      <w>xticks</w>
+      <w>ylabel</w>
       <w>yyyymmdd</w>
     </words>
   </dictionary>

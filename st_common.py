@@ -2,56 +2,78 @@ import tushare as ts
 import pandas as pd
 import numpy as np
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 ts_pro = ts.pro_api()
 
 sub_path = r".\data_csv"
-sub_path_2nd_daily = r"\daily_data" #日线数据
-sub_path_config = r"\config" #配置文件
-sub_path_al = r"\assets_lists" #资产列表
-sub_path_result = r".\plot_result" #分析模板运行结果
-sub_idt = r"\idt_data" #存放指标的结果，下按idt_type不同再分目录
+sub_path_2nd_daily = r"\daily_data"  # 日线数据
+sub_path_config = r"\config"  # 配置文件
+sub_path_al = r"\assets_lists"  # 资产列表
+sub_path_result = r".\plot_result"  # 分析模板运行结果
+sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
 
-SUBTYPE = {'D':'day',
-           'W':'week',
-           'M':'month'}
+SUBTYPE = {'D': 'day',
+           'W': 'week',
+           'M': 'month'}
 
-SOURCE = {'close_hfq':'收盘后复权',
+SOURCE = {'close_hfq': '收盘后复权',
           }
 
-SOURCE_TO_COLUMN = {'close_hfq':'close',
+SOURCE_TO_COLUMN = {'close_hfq': 'close',
                     }
 
-STATUS_WORD = {0:'-bad-',
-               1:'-good-',
-               3:'-uncertain-'}
-DOWNLOAD_WORD = {0:'-success-',
-                 1:'-fail-',
-                 3:'-unknow-'}
-DEFAULT_OPEN_DATE_STR = "19901219" #中国股市开始时间？
+STATUS_WORD = {0: '-bad-',
+               1: '-good-',
+               3: '-uncertain-'}
+DOWNLOAD_WORD = {0: '-success-',
+                 1: '-fail-',
+                 3: '-unknown-'}
+DEFAULT_OPEN_DATE_STR = "19901219"  # 中国股市开始时间？
+# 用于dashboard head不同参数的显示格式
+FORMAT_HEAD = {"ts_code": "{:<12}",
+               "trade_date": "{:<10}",
+               "cond_desc": "{:^30}",
+               "cond_result": "{:<6}",
+               "cond_p1_value": "{:^15}",
+               "cond_p2_value": "{:^15}",
+               "cond_p1_date": "{:<14}",
+               "cond_p2_date": "{:<14}",
+               }
+# 用于dashboard record不同参数的显示格式
+FORMAT_FIELDS = {"ts_code": "{:<12}",
+                 "trade_date": "{:^14}",
+                 "cond_desc": "{:<30}",
+                 "cond_result": "{:<6}",
+                 "cond_p1_value": "{:14.2f}",
+                 "cond_p2_value": "{:14.2f}",
+                 "cond_p1_date": "{:^14}",
+                 "cond_p2_date": "{:^14}",
+                 }
+
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
-      
-class Raw_Data():
+
+
+class Raw_Data:
     """存放其它模块计算时所要用的公共数据的基础模块，需要实例化填充数据后使用"""
     def __init__(self, pull=False):
         """
         pull: True=get from Tushare; False=load from file
         """
-        self.trade_calendar = None #交易日日历
+        self.trade_calendar = None  # 交易日日历
         self.init_trade_calendar(pull)
-        self.all_assets_list = None #全资产代码列表
+        self.all_assets_list = None  # 全资产代码列表
         self.load_all_assets_list()
-        self.index = Index_Basic(pull) #指数相关数据
-        self.stock = Stock_Basic(pull) #个股相关数据
+        self.index = Index_Basic(pull)  # 指数相关数据
+        self.stock = Stock_Basic(pull)  # 个股相关数据
 
-        #self.stock_list = None
+        # self.stock_list = None
     
     def init_trade_calendar(self, pull=False):
         """
         初始化.trade_calendar
         """
-        if pull == True:
+        if pull is True:
             self.get_trade_calendar()
         else:
             self.load_trade_calendar()
@@ -98,10 +120,10 @@ class Raw_Data():
         if self.valid_trade_calendar() is None:
             add_log(20, '[fn]Raw_Data.last_trade_day() trade_calendar invalid')
             return
-        if dt_str == None:
+        if dt_str is None:
             dt = datetime.now()
             dt_str = dt.strftime("%Y%m%d")
-        if isinstance(dt_str,str) and (len(dt_str) == 8):
+        if isinstance(dt_str, str) and (len(dt_str) == 8):
             tdf = self.trade_calendar.set_index(['cal_date'])
             try:
                 is_open = tdf.loc[dt_str]['is_open']
@@ -113,9 +135,9 @@ class Raw_Data():
                 else:
                     return None
             except KeyError:
-                 log_args = [dt_str]
-                 add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
-                 return None
+                log_args = [dt_str]
+                add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+                return
         else:
             log_args = [dt_str]
             add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
@@ -125,10 +147,10 @@ class Raw_Data():
         """验证在raw_data内ts_code是否有效,
         return: <bool> True=valid
         """
-        #--------------------Index---------------
+        # --------------------Index---------------
         try:
             name = self.all_assets_list.loc[ts_code]['name']
-            #print("[debug L249] name:{}".format(name))
+            # print("[debug L249] name:{}".format(name))
         except KeyError:
             log_args = [ts_code]
             add_log(30, '[fn]Raw_Data.valid_ts_code(). ts_code "{0[0]}" invalid', log_args)
@@ -149,7 +171,7 @@ class Raw_Data():
     
     def load_all_assets_list(self):
         """
-        从all_asstes_list.csv中读取全代码列表
+        从all_assets_list.csv中读取全代码列表
         """
         file_name = "all_assets_list.csv"
         file_path = sub_path + sub_path_config + '\\' + file_name
@@ -161,7 +183,8 @@ class Raw_Data():
             df = None
         self.all_assets_list = df
 
-class Index_Basic():
+
+class Index_Basic:
     """
     指数相关，包括行业板块指数等
     """
@@ -170,14 +193,14 @@ class Index_Basic():
         pull: True=get from Tushare; False=load from file
         """
         self.index_basic_df = None
-        self.idx_ts_code = None #<df> ts_code indexed
-        self.valid = {'index_basic_sse':STATUS_WORD[3], #上交所
-                      'index_basic_szse':STATUS_WORD[3], #深交所
-                      'index_basic_sw':STATUS_WORD[3]} #申万
+        self.idx_ts_code = None  # <df> ts_code indexed
+        self.valid = {'index_basic_sse':STATUS_WORD[3],  # 上交所
+                      'index_basic_szse':STATUS_WORD[3],  # 深交所
+                      'index_basic_sw':STATUS_WORD[3]}  # 申万
         self._sse = None
         self._szse = None
         self._sw = None
-        if pull == True:
+        if pull is True:
             self.get_index_basic()
         else:
             self.load_index_basic()
@@ -188,17 +211,17 @@ class Index_Basic():
         从ts_pro获取指数的基本信息列表
         待续：获取数据失败时，self.valid对应项的设-bad-处理
         """
-        #上交所指数
+        # 上交所指数
         file_name = "index_basic_sse.csv"
         self._sse = ts_pro.index_basic(market='SSE')
         self.valid['index_basic_sse']=STATUS_WORD[1]
         self._sse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-        #深交所指数
+        # 深交所指数
         file_name = "index_basic_szse.csv"
         self._szse = ts_pro.index_basic(market='SZSE')
         self.valid['index_basic_szse']=STATUS_WORD[1]
         self._szse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
-        #申万指数
+        # 申万指数
         file_name = "index_basic_sw.csv"
         self._sw = ts_pro.index_basic(market='SW')
         self.valid['index_basic_sw']=STATUS_WORD[1]
@@ -210,7 +233,7 @@ class Index_Basic():
         """
         load index_basic.csv文件，读入self.index_basic_df
         """
-        #上交所指数
+        # 上交所指数
         file_name = "index_basic_sse.csv"
         try:
             self._sse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
@@ -219,7 +242,7 @@ class Index_Basic():
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
             self._sse = None
-        #深交所指数
+        # 深交所指数
         file_name = "index_basic_szse.csv"
         try:
             self._szse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
@@ -228,7 +251,7 @@ class Index_Basic():
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
             self._szse = None
-        #申万指数
+        # 申万指数
         file_name = "index_basic_sw.csv"
         try:
             self._sw = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
@@ -297,21 +320,22 @@ class Index_Basic():
     def _update_index_basic_df(self):
         """将self._sse等内部<df>合并读入self.index_basic_df"""
         _frames = []
-        if self.valid['index_basic_sse'] == STATUS_WORD[1]: #good
+        if self.valid['index_basic_sse'] == STATUS_WORD[1]:  # good
             _frames.append(self._sse)
-        if self.valid['index_basic_szse'] == STATUS_WORD[1]: #good
+        if self.valid['index_basic_szse'] == STATUS_WORD[1]:   # good
             _frames.append(self._szse)
-        if self.valid['index_basic_sw'] == STATUS_WORD[1]: #good
+        if self.valid['index_basic_sw'] == STATUS_WORD[1]:  # good
             _frames.append(self._sw)
         if len(_frames) > 0:
             self.index_basic_df = pd.concat(_frames, ignore_index=True, sort=False)
 
-class Stock_Basic():
+
+class Stock_Basic:
     """股票类的资产"""
 
     def __init__(self, pull=False):
         self.basic = None
-        if pull == True:
+        if pull is True:
             self.get_stock_basic()
         else:
             self.load_stock_basic()

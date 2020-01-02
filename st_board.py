@@ -5,8 +5,8 @@ import time
 import weakref
 from st_common import raw_data
 from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt
-from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
-from datetime import datetime,timedelta
+from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
+from datetime import datetime, timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
@@ -23,7 +23,7 @@ def valid_date_str_fmt(date_str):
     date_str:<str> e.g. '20190723' YYYYMMDD
     return:<bool> True=valid
     """
-    if isinstance(date_str,str):
+    if isinstance(date_str, str):
         if len(date_str) == 8:
             return True
 
@@ -43,7 +43,7 @@ def valid_file_path(file_path):
     file_path:<str> e.g. '.\data_csv\daily_data\xxx.csv'
     return: Ture if valid, None if invalid
     """
-    if isinstance(file_path,str):
+    if isinstance(file_path, str):
         if len(file_path) >= 3:
             return True
 
@@ -63,11 +63,11 @@ def date_str_to_date(date_str):
     date_str:<str> e.g. '20190723'
     return:<datetime>
     """
-    date = datetime.strptime(date_str,"%Y%m%d")
+    date = datetime.strptime(date_str, "%Y%m%d")
     return date
 
 
-def download_data(ts_code,category,reload=False):
+def download_data(ts_code, category, reload=False):
     r"""
     通过调用sgmt_daily_index_download下载资产数据到数据文e.g. daily_data\d_<ts_code>.csv文件
     需要在增加资产类别时改写
@@ -82,9 +82,10 @@ def download_data(ts_code,category,reload=False):
         que_limit = QUE_LIMIT[category]
     except KeyError:
         log_args = [ts_code, category]
-        add_log(20, '[fn]download_data(). ts_code: "{0[0]}" category: "{0[1]}" incorrect',log_args)
+        add_log(20, '[fn]download_data(). ts_code: "{0[0]}" category: "{0[1]}" incorrect', log_args)
         return
-    def _category_to_file_name(ts_code,category):
+
+    def _category_to_file_name(ts_code, category):
         """
         ts_code: <str> '399001.SZ'
         category: <str> e.g. 'stock_daily_basic'
@@ -96,41 +97,41 @@ def download_data(ts_code,category,reload=False):
             file_name = 'fq_' + ts_code + '.csv'
         elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
             file_name = 'd_' + ts_code + '.csv'
-        #----------其它类型时修改------------
+        # ----------其它类型时修改------------
         else:
             log_args = [category]
             add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
             return
         return file_name
-    
-    def _category_to_start_date_str(ts_code,category):
+
+    def _category_to_start_date_str(ts_code, category):
         """
         ts_code: <str> '399001.SZ'
         category: <str> e.g. 'adj_factor'
         return: <str> e.g. "20190402"
         """
         global raw_data
-        #-----------index类别--------------
+        # -----------index类别--------------
         if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
             start_date_str = str(raw_data.index.que_base_date(ts_code))
-        #-----------stock类别--------------
+        # -----------stock类别--------------
         elif category == 'stock':
             start_date_str = str(raw_data.stock.que_list_date(ts_code))
-        #-----------stock每日指标类别--------------
+        # -----------stock每日指标类别--------------
         elif category == 'stock_daily_basic':
             start_date_str = str(raw_data.stock.que_list_date(ts_code))
-        #-----------复权因子--------------
+        # -----------复权因子--------------
         elif category == 'adj_factor':
             start_date_str = str(raw_data.stock.que_list_date(ts_code))
-        #-----------其它类型(未完成)--------------
+        # -----------其它类型(未完成)--------------
         else:
-            log_args = [ts_code,category]
+            log_args = [ts_code, category]
             add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
             return
         return start_date_str
 
     if raw_data.valid_ts_code(ts_code):
-        if reload == True: #重头开始下载
+        if reload == True:  # 重头开始下载
             # #-----------index类别--------------
             # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
             #     start_date_str = str(raw_data.index.que_base_date(ts_code))
@@ -148,11 +149,11 @@ def download_data(ts_code,category,reload=False):
             #     log_args = [ts_code,category]
             #     add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
             #     return
-            start_date_str = _category_to_start_date_str(ts_code,category)
+            start_date_str = _category_to_start_date_str(ts_code, category)
             if start_date_str == None:
                 return
             end_date_str = today_str()
-            df = sgmt_download(ts_code,start_date_str,end_date_str,que_limit,category)
+            df = sgmt_download(ts_code, start_date_str, end_date_str, que_limit, category)
             if isinstance(df, pd.DataFrame):
                 # if category == 'stock_daily_basic':
                 #     file_name = 'db_' + ts_code + '.csv'
@@ -165,27 +166,28 @@ def download_data(ts_code,category,reload=False):
                 #     log_args = [category]
                 #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                 #     return
-                file_name = _category_to_file_name(ts_code,category)
+                file_name = _category_to_file_name(ts_code, category)
                 if file_name == None:
                     return
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, file_name, number_of_items]
-                    add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}", log_args)
+                    add_log(40, "[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}",
+                            log_args)
                 return df
             else:
-                log_args = [ts_code,df]
+                log_args = [ts_code, df]
                 add_log(20, '[fn]download_data() fail to get DataFrame from Tushare. ts_code: "{0[0]}" df: ', log_args)
                 return
-        else: #reload != True 读入文件，看最后条目的日期，继续下载数据
+        else:  # reload != True 读入文件，看最后条目的日期，继续下载数据
             loader = LOADER[category]
             df = loader(ts_code)
             if isinstance(df, pd.DataFrame):
                 try:
-                    #last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
+                    # last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
                     last_date_str = str(df.index.values[0])
-                    #print('[L507] {}'.format(last_date_str))
+                    # print('[L507] {}'.format(last_date_str))
                 except IndexError:
                     # #-----------index类别--------------
                     # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
@@ -204,20 +206,20 @@ def download_data(ts_code,category,reload=False):
                     #     log_args = [category]
                     #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                     #     return
-                    last_date_str = _category_to_start_date_str(ts_code,category)
+                    last_date_str = _category_to_start_date_str(ts_code, category)
                     if last_date_str == None:
                         return
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
-                today = date_str_to_date(today_str_) #只保留日期，忽略时间差别
+                today = date_str_to_date(today_str_)  # 只保留日期，忽略时间差别
                 start_date = last_date + timedelta(1)
                 _start_str = date_to_date_str(start_date)
                 _end_str = today_str_
                 if last_date < today:
-                    _df = sgmt_download(ts_code,_start_str,_end_str,que_limit,category)
-                    _frames = [_df,df]
-                    #df=pd.concat(_frames,ignore_index=True,sort=False)
-                    df=pd.concat(_frames,sort=False)
+                    _df = sgmt_download(ts_code, _start_str, _end_str, que_limit, category)
+                    _frames = [_df, df]
+                    # df=pd.concat(_frames,ignore_index=True,sort=False)
+                    df = pd.concat(_frames, sort=False)
                     # if category == 'stock_daily_basic':
                     #     file_name = 'db_' + ts_code + '.csv'
                     # elif category == 'adj_factor':
@@ -229,25 +231,28 @@ def download_data(ts_code,category,reload=False):
                     #     log_args = [category]
                     #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                     #     return
-                    file_name = _category_to_file_name(ts_code,category)
+                    file_name = _category_to_file_name(ts_code, category)
                     if file_name == None:
                         return
                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                     if logable(40):
                         number_of_items = len(df)
-                        log_args = [ts_code, category,file_name, number_of_items]
-                        add_log(40,"[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}", log_args)
+                        log_args = [ts_code, category, file_name, number_of_items]
+                        add_log(40,
+                                "[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}",
+                                log_args)
                     return df
             else:
                 log_args = [ts_code]
                 add_log(20, '[fn]download_data() ts_code "{0[0]}" load csv fail', log_args)
-                return                
+                return
     else:
         log_args = [ts_code]
         add_log(20, '[fn]download_data(). ts_code "{0[0]}" invalid', log_args)
         return
 
-def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
+
+def sgmt_download(ts_code, start_date_str, end_date_str, size, category):
     """
     通过TuShare API分段下载数据
     ts_code: <str> 对象的tushare代码 e.g. '399001.SZ'
@@ -258,17 +263,17 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
     retrun: <df> if success, None if fail
     """
     TRY_TIMES = 20
-    SLEEP_TIME = 20 #in seconds
+    SLEEP_TIME = 20  # in seconds
     try:
         getter = GETTER[category]
     except KeyError:
         log_args = [ts_code, category]
-        add_log(20, '[fn]sgmt_download(). ts_code: "{0[0]}" category: "{0[1]}" incorrect',log_args)
+        add_log(20, '[fn]sgmt_download(). ts_code: "{0[0]}" category: "{0[1]}" incorrect', log_args)
         return
     df = None
     start_date = date_str_to_date(start_date_str)
     end_date = date_str_to_date(end_date_str)
-    duration = (end_date-start_date).days
+    duration = (end_date - start_date).days
     _start_str = start_date_str
     while duration > size:
         _end_time = date_str_to_date(_start_str) + timedelta(size)
@@ -276,8 +281,8 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
         _try = 0
         while _try < TRY_TIMES:
             try:
-                _df = getter(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-            except Exception as e: #ConnectTimeout, 每分钟200:
+                _df = getter(ts_code=ts_code, start_date=_start_str, end_date=_end_str)
+            except Exception as e:  # ConnectTimeout, 每分钟200:
                 time.sleep(SLEEP_TIME)
                 _try += 1
                 log_args = [ts_code, _try, e.__class__.__name__, e]
@@ -285,11 +290,11 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
                 add_log(30, '[fn]sgmt_download(). except_type:{0[2]}; msg:{0[3]}', log_args)
                 continue
             break
-        if not isinstance(df,pd.DataFrame):
+        if not isinstance(df, pd.DataFrame):
             df = _df
         else:
-            _frames = [_df,df]
-            df=pd.concat(_frames,ignore_index=True,sort=False)
+            _frames = [_df, df]
+            df = pd.concat(_frames, ignore_index=True, sort=False)
         _start_time = _end_time + timedelta(1)
         _start_str = date_to_date_str(_start_time)
         duration = duration - size
@@ -298,8 +303,8 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
         _try = 0
         while _try < TRY_TIMES:
             try:
-                _df = getter(ts_code=ts_code,start_date=_start_str,end_date=_end_str)
-            except Exception as e: #ConnectTimeout:
+                _df = getter(ts_code=ts_code, start_date=_start_str, end_date=_end_str)
+            except Exception as e:  # ConnectTimeout:
                 time.sleep(SLEEP_TIME)
                 _try += 1
                 log_args = [ts_code, _try, e.__class__.__name__, e]
@@ -307,12 +312,12 @@ def sgmt_download(ts_code,start_date_str,end_date_str,size,category):
                 add_log(30, '[fn]sgmt_download(). except_type:{0[2]}; msg:{0[3]}', log_args)
                 continue
             break
-        if not isinstance(df,pd.DataFrame):
+        if not isinstance(df, pd.DataFrame):
             df = _df
         else:
-            _frames = [_df,df]
-            df=pd.concat(_frames,ignore_index=True)
-    df.set_index('trade_date',inplace=True)
+            _frames = [_df, df]
+            df = pd.concat(_frames, ignore_index=True)
+    df.set_index('trade_date', inplace=True)
     return df
 
 
@@ -504,7 +509,7 @@ class All_Assets_List:
             df_l1 = df_l1[['index_code', 'industry_name']]
             df_l2 = df_l2[['index_code', 'industry_name']]
             df_l3 = df_l3[['index_code', 'industry_name']]
-        else:     
+        else:
             file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
             file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
             file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
@@ -546,7 +551,7 @@ class All_Assets_List:
         # --------------上交所指数---------------
         if que_from_ts is True:
             raw_data.index.get_index_basic()
-        _file_path = sub_path + '\\' + 'index_basic_sse.csv'        
+        _file_path = sub_path + '\\' + 'index_basic_sse.csv'
         try:
             df_sse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -559,7 +564,7 @@ class All_Assets_List:
         df_sse['stype1'] = 'SSE'
         df_sse['stype2'] = ''
         df_sse.set_index('ts_code', inplace=True)
-        _file_path = sub_path + '\\' + 'index_basic_szse.csv'        
+        _file_path = sub_path + '\\' + 'index_basic_szse.csv'
         try:
             df_szse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -578,7 +583,7 @@ class All_Assets_List:
         if que_from_ts is True:
             raw_data.stock.get_stock_basic()
         file_name = 'stock_basic.csv'
-        _file_path = sub_path + '\\' + file_name    
+        _file_path = sub_path + '\\' + file_name
         try:
             df = pd.read_csv(_file_path, usecols=['ts_code', 'name'], index_col='ts_code')
         except FileNotFoundError:
@@ -607,7 +612,7 @@ class All_Assets_List:
         # --------------结尾---------------
         df_al.to_csv(file_path_al, encoding="utf-8")
         return
-    
+
     @staticmethod
     def query_category_str(ts_code):
         """
@@ -630,7 +635,7 @@ class All_Assets_List:
             category = 'index_szse'
         # --------------个股---------------
         # 'stock_daily_basic'和'adj_factor'不在此处理
-        elif _type == 'stock': 
+        elif _type == 'stock':
             category = 'stock'
         # --------------其它类型(未完成)----------
         else:
@@ -647,7 +652,7 @@ class All_Assets_List:
         """
         file_path = None
         if al_file is None:
-            df_al = pd.DataFrame(columns=['ts_code','selected'])
+            df_al = pd.DataFrame(columns=['ts_code', 'selected'])
             df_al.set_index('ts_code', inplace=True)
             add_log(40, '[fns]All_Assets_List.load_al_file() empty <df> created')
         elif isinstance(al_file, str):
@@ -669,14 +674,14 @@ class All_Assets_List:
         return df_al
 
 
-
 class Asset:
     """
     资产的基类
     """
+
     def __init__(self, ts_code):
         self.ts_code = ts_code
-    
+
     def add_indicator(self, idt_class, **post_args):
         """
         添加Indicator的实例
@@ -704,7 +709,7 @@ class Asset:
         # print('[L692] exit add_indicator()')
         log_args = [self.ts_code, idt_name_]
         add_log(40, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} succeed.', log_args)
-    
+
     def valid_idt_utd(self, idt_name):
         """
         validate if self.[ins]Indicator up to df_source date
@@ -730,6 +735,7 @@ class Asset:
 
 class Stock(Asset):
     """股票类的资产"""
+
     def __init__(self, ts_code):
         Asset.__init__(self, ts_code=ts_code)
 
@@ -744,7 +750,8 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'],
+                                 index_col='trade_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -762,7 +769,9 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                 usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
+                                          'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             result['vol'] = result['vol'].astype(np.int64)
             # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -770,7 +779,7 @@ class Stock(Asset):
             log_args = [ts_code]
             add_log(20, '[fn]Stock.load_stock_daily() ts_code:{0[0]} invalid', log_args)
             return
-    
+
     @staticmethod
     def load_stock_daily_basic(ts_code, nrows=None):
         """
@@ -782,13 +791,17 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'db_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path,dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f', 'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share', 'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                 usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f',
+                                          'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share',
+                                          'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
+                                 nrows=nrows)
             return result
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Stock.load_stock_daily_basic() ts_code "{0[0]}" invalid', log_args)
             return
-    
+
     @staticmethod
     def load_stock_dfq(ts_code, nrows=None):
         """
@@ -800,7 +813,9 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                 usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'],
+                                 index_col='trade_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -816,7 +831,7 @@ class Stock(Asset):
         """
         global raw_data
         df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
-        fq_head_index_str, =df_fq.head(1).index.values
+        fq_head_index_str, = df_fq.head(1).index.values
         # print('[354] latest_date_str:{}'.format(fq_head_index_str))
         df_stock = Stock.load_stock_daily(ts_code)[['close', 'open', 'high', 'low', 'vol', 'amount']]
 
@@ -826,12 +841,13 @@ class Stock(Asset):
             try:
                 fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)  # fq头在stock中的位置
             except KeyError:
-                stock_head_index_str, =df_stock.head(1).index.values
+                stock_head_index_str, = df_stock.head(1).index.values
                 try:
                     df_fq.index.get_loc(stock_head_index_str)
                 except KeyError:
                     log_args = [ts_code]
-                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem',
+                            log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
                     return
             # print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
             if fq_head_in_stock is not None:
@@ -839,15 +855,16 @@ class Stock(Asset):
                     df_stock.drop(df_stock.index[:fq_head_in_stock], inplace=True)
             # ---[/drop]
             with pd.option_context('mode.chained_assignment', None):  # 将包含代码的SettingWithCopyWarning暂时屏蔽
-                df_stock.loc[:, 'adj_factor']=df_fq['adj_factor']
-                df_stock.loc[:, 'dfq_cls']=df_stock['close']*df_stock['adj_factor']
-                df_stock.loc[:, 'dfq_open']=df_stock['open']*df_stock['adj_factor']
-                df_stock.loc[:, 'dfq_high']=df_stock['high']*df_stock['adj_factor']
-                df_stock.loc[:, 'dfq_low']=df_stock['low']*df_stock['adj_factor']
+                df_stock.loc[:, 'adj_factor'] = df_fq['adj_factor']
+                df_stock.loc[:, 'dfq_cls'] = df_stock['close'] * df_stock['adj_factor']
+                df_stock.loc[:, 'dfq_open'] = df_stock['open'] * df_stock['adj_factor']
+                df_stock.loc[:, 'dfq_high'] = df_stock['high'] * df_stock['adj_factor']
+                df_stock.loc[:, 'dfq_low'] = df_stock['low'] * df_stock['adj_factor']
             df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low']]
-            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low'}, inplace=True)
+            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low'},
+                          inplace=True)
             return df_dfq
-        
+
         def _generate_from_begin():
             """
             从头开始创建dfq文件
@@ -876,12 +893,14 @@ class Stock(Asset):
                 add_log(20, '[fn]Stock.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
                 _generate_from_begin()
                 return
-            dfq_head_index_str,  = df_dfq.head(1).index.values
+            dfq_head_index_str, = df_dfq.head(1).index.values
             try:
                 dfq_head_in_stock = df_stock.index.get_loc(dfq_head_index_str)
             except KeyError:
                 log_args = [ts_code, dfq_head_index_str]
-                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date', log_args)
+                add_log(20,
+                        '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_stock, df_stock maybe not up to date',
+                        log_args)
                 return
             if dfq_head_in_stock == 0:
                 log_args = [ts_code]
@@ -893,7 +912,9 @@ class Stock(Asset):
                 dfq_head_in_fq = df_fq.index.get_loc(dfq_head_index_str)
             except KeyError:
                 log_args = [ts_code, dfq_head_index_str]
-                add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq, df_fq maybe not up to date', log_args)
+                add_log(20,
+                        '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq, df_fq maybe not up to date',
+                        log_args)
                 return
             if dfq_head_in_fq == 0:
                 log_args = [ts_code]
@@ -902,8 +923,8 @@ class Stock(Asset):
             elif dfq_head_in_fq > 0:
                 df_fq = take_head_n(df_fq, dfq_head_in_fq)
             _df_dfq = _create_dfq()
-            _frames=[_df_dfq, df_dfq]
-            result=pd.concat(_frames, sort=False)
+            _frames = [_df_dfq, df_dfq]
+            result = pd.concat(_frames, sort=False)
             result.to_csv(file_path, encoding="utf-8")
             log_args = [file_name]
             add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" updated".', log_args)
@@ -935,7 +956,7 @@ class Index:
             return None
         return df_l1, df_l2, df_l3
 
-    @staticmethod    
+    @staticmethod
     def load_index_daily(ts_code, nrows=None):
         """
         从文件读入指数日线数据
@@ -945,7 +966,9 @@ class Index:
         global raw_data
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name, dtype={'trade_date':str},usecols=['ts_code', 'trade_date', 'close', 'open', 'high','low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name, dtype={'trade_date': str},
+                                 usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
+                                          'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             result['vol'] = result['vol'].astype(np.int64)
             # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
@@ -953,7 +976,7 @@ class Index:
             log_args = [ts_code]
             add_log(20, '[fn]Index.load_index_daily() ts_code "{0[0]}" invalid', log_args)
             return
-    
+
     @staticmethod
     def load_sw_daily(ts_code, nrows=None):
         """
@@ -967,12 +990,15 @@ class Index:
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             try:
-                result = pd.read_csv(file_path,dtype={'trade_date':str},usecols=['ts_code','trade_date','name','open','low','high','close','change','pct_change','vol','amount','pe','pb'],index_col='trade_date',nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['ts_code', 'trade_date', 'name', 'open', 'low', 'high', 'close', 'change',
+                                              'pct_change', 'vol', 'amount', 'pe', 'pb'], index_col='trade_date',
+                                     nrows=nrows)
             except FileNotFoundError:
                 log_args = [file_path]
                 add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
                 return
-            result['vol']=result['vol'].astype(np.int64)
+            result['vol'] = result['vol'].astype(np.int64)
             # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
         else:
@@ -1006,6 +1032,7 @@ QUE_LIMIT = {'index_sse': 8000,
 
 class Plot_Utility:
     """存放绘图出报告用的公用工具"""
+
     @staticmethod
     def gen_al(al_name=None, ts_code=None, valid='T', selected='T', type_=None, stype1=None, stype2=None):
         r"""生成资产列表文件.\assets_lists\al_<name>.csv
@@ -1045,7 +1072,7 @@ class Plot_Utility:
             # -------stype2-----------
             if isinstance(stype2, str):
                 al = al[(al.stype2 == stype2)]
-            
+
             al = al['selected']
         else:
             add_log(10, '[fn]Plot_Utility.gen_al(). raw_data.all_assets_list is not valid')
@@ -1066,6 +1093,7 @@ class Plot_Utility:
 class Plot_Assets_Racing:
     """资产竞速图表：不同资产从同一基准起跑，一定时间内的价格表现
     """
+
     def __init__(self, al_file, period=30):
         """
         al_file: <str> 资产表的文件名e.g.'al_SW_Index_L1.csv'
@@ -1125,9 +1153,11 @@ class Plot_Assets_Racing:
             df.index = pd.to_datetime(df.index.astype('str'))
             # df.set_index('trade_date', inplace=True)
             base_close, = df.tail(1)['close'].values
-            df['base_chg_pct'] = (df['close']/base_close-1)*100
+            df['base_chg_pct'] = (df['close'] / base_close - 1) * 100
             last_chg, = df.head(1)['base_chg_pct'].values
-            row = pd.Series({'ts_code': ts_code, 'name': name, 'base_close': base_close, 'last_chg': last_chg, 'df': df}, name=ts_code)
+            row = pd.Series(
+                {'ts_code': ts_code, 'name': name, 'base_close': base_close, 'last_chg': last_chg, 'df': df},
+                name=ts_code)
             # print("[L383] row:{}".format(row))
             self.raw_data = self.raw_data.append(row)
             # self.raw_data.loc[ts_code]=[name,base_close,last_chg,df]
@@ -1161,6 +1191,7 @@ class Strategy:
     """
     量化策略
     """
+
     def __init__(self, name):
         """
         name: <str> strategy name
@@ -1168,11 +1199,12 @@ class Strategy:
         # print('L1160 to be continued')
         self.name = name
         self.pools = {}  # dict of pools {execute order: pool #1, ...}
-    
+
     def add_pool(self, **kwargs):
         """
         add the pool to the strategy
         """
+
         def _get_next_order():
             k_max = 0
             for k in self.pools.keys():
@@ -1182,10 +1214,10 @@ class Strategy:
             else:
                 result = (k_max // 10 + 1) * 10
             return result
-        
+
         next_order = _get_next_order()
         self.pools[next_order] = Pool(**kwargs)
-    
+
     def chg_pool_order(self, org_order, new_order):
         """
         change the execution order of the pool
@@ -1194,7 +1226,8 @@ class Strategy:
         """
         if new_order in self.pools:
             log_args = [new_order]
-            add_log(20, '[fn]Strategy.chg_pool_order(). new_order:{0[0]} was in the dict already. Order not changed', log_args)
+            add_log(20, '[fn]Strategy.chg_pool_order(). new_order:{0[0]} was in the dict already. Order not changed',
+                    log_args)
         else:
             try:
                 pool = self.pools[org_order]
@@ -1202,8 +1235,9 @@ class Strategy:
                 self.pools[new_order] = pool
             except KeyError:
                 log_args = [org_order]
-                add_log(20, '[fn]Strategy.chg_pool_order(). org_order:{0[0]} was not exist. Order not changed', log_args)
-    
+                add_log(20, '[fn]Strategy.chg_pool_order(). org_order:{0[0]} was not exist. Order not changed',
+                        log_args)
+
     def pools_brief(self):
         """
         printout the brief of pools
@@ -1220,6 +1254,7 @@ class Pool:
     """
     股票池
     """
+
     def __init__(self, desc="", al_file=None):
         r"""
         exc_order: execution order <int>
@@ -1229,7 +1264,9 @@ class Pool:
         self.assets = {}
         self.init_assets(al_file)
         self.conditions = []
-        
+        self.db_buff = Register_Buffer()  # dashboard buffer area
+        self.dashboard = Dashboard(self.db_buff)
+
     def init_assets(self, al_file=None):
         r"""
         init self.assets
@@ -1299,6 +1336,7 @@ class Pool:
         elif valid_date_str_fmt(datetime_):
             dt_int = int(datetime_)
             val_fetcher = lambda df, column_name: df.iloc[df.index.get_loc(dt_int)][column_name]
+            date_fetcher = lambda _: datetime_  # 待测试
         else:
             log_args = [datetime_]
             add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
@@ -1320,44 +1358,75 @@ class Pool:
         #         return
 
         if isinstance(rule, Condition):
+            self.dashboard.board_head = ('ts_code', 'cond_desc', 'cond_p1_value', 'cond_p2_value', 'cond_p1_date', 'cond_p2_date')
             for asset in self.assets.values():
+                # -------------刷新Pool.db_buff---------------------
+                self.db_buff.ts_code = asset.ts_code
+
                 # -------------para1---------------------
                 idt_name1 = rule.para1.idt_name
                 if idt_name1 == 'const':
-                    idt_value1 = rule.para1.const_value
+                    idt_value1 = rule.para1.const_value  # para1 value
+                    idt_date1 = 'const'  # 常量的特殊时间
                 else:
                     try:
                         idt1 = getattr(asset, idt_name1)
                         idt_df1 = idt1.df_idt
                         idt_field1 = rule.para1.field
-                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else rule.para1.idt_init_dict['idt_type'].upper()
+                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else rule.para1.idt_init_dict[
+                            'idt_type'].upper()
                         # print('[L1316] column_name1: {}'.format(column_name1))
                     except Exception as e:  # 待细化
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_value1 = val_fetcher(idt_df1, column_name1)
+                    idt_date1 = date_fetcher(idt_df1)
                 # print('[L1328] idt_value1: {}'.format(idt_value1))
 
                 # -------------para2---------------------
                 idt_name2 = rule.para2.idt_name
                 if idt_name2 == 'const':
                     idt_value2 = rule.para2.const_value
+                    idt_date2 = 'const'  # 常量的特殊时间
                 else:
                     try:
                         idt2 = getattr(asset, idt_name2)
                         idt_df2 = idt2.df_idt
                         idt_field2 = rule.para2.field
-                        column_name2 = idt_field2.upper() if idt_field2 != 'default' else rule.para2.idt_init_dict['idt_type'].upper()
+                        column_name2 = idt_field2.upper() if idt_field2 != 'default' else rule.para2.idt_init_dict[
+                            'idt_type'].upper()
                         # print('[L1316] column_name2: {}'.format(column_name2))
                     except Exception as e:  # 待细化
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_value2 = val_fetcher(idt_df2, column_name2)
+                    idt_date2 = date_fetcher(idt_df2)
                 # print('[L1328] idt_value2: {}'.format(idt_value2))
 
                 # -------------调用Condition.calcer()处理---------------------
+                if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
+                    fl_result = rule.calcer(idt_value1, idt_value2)  # condition结果
+                    print('[L1410] fl_result:{}'.format(fl_result))
+                else:
+                    log_args = [asset.ts_code, idt_date1, idt_date2]
+                    add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], condition parameters timestamp mismatch, p1:{0[1]}; p2:{0[2]}', log_args)
+                    continue
+
+                # -------------刷新Pool.db_buff---------------------
+                self.db_buff.cond_desc = rule.desc
+                self.db_buff.cond_result = fl_result
+                self.db_buff.cond_p1_value = idt_value1
+                self.db_buff.cond_p2_value = idt_value2
+                self.db_buff.cond_p1_date = idt_date1
+                self.db_buff.cond_p2_date = idt_date2
+                # -------------append True record to dashboard---------------------
+                # print('[L1424] fl_result:{}'.format(type(fl_result)))
+                if bool(fl_result) is True:
+                    # print('[L1425] fl_result:{}'.format(fl_result))
+                    self.dashboard.append_record()
+
         print('[L1329] to be continued')
 
 
@@ -1365,6 +1434,7 @@ class Condition:
     """
     判断条件
     """
+
     def __init__(self, pre_args1_, pre_args2_, ops):
         """
         pre_argsN_: <dict> refer idt_name() pre_args
@@ -1375,17 +1445,26 @@ class Condition:
         self.calcer = None  # <fn> calculator
         self.result = None  # True of False, condition result of result_time
         self.result_time = None  # <str> e.g. '20191209'
+        self.desc = None  # <str> description e.g. TBD
+
+        p1_name = self.para1.idt_name
+        p2_name = self.para2.idt_name
 
         if ops == '>':
             self.calcer = lambda p1, p2: p1 > p2
+            self.desc = p1_name + ' > ' + p2_name + ' ?'
         elif ops == '<':
             self.calcer = lambda p1, p2: p1 < p2
+            self.desc = p1_name + ' < ' + p2_name + ' ?'
         elif ops == '>=':
             self.calcer = lambda p1, p2: p1 >= p2
+            self.desc = p1_name + ' >= ' + p2_name + ' ?'
         elif ops == '<=':
             self.calcer = lambda p1, p2: p1 <= p2
+            self.desc = p1_name + ' <= ' + p2_name + ' ?'
         elif ops == '=':
             self.calcer = lambda p1, p2: p1 == p2
+            self.desc = p1_name + ' = ' + p2_name + ' ?'
 
 
 class Para:
@@ -1393,6 +1472,7 @@ class Para:
     Parameter的缩写
     Condition中比较用的元参数
     """
+
     def __new__(cls, pre_args):
         """
         检验<dict>kwargs的有效性
@@ -1427,6 +1507,84 @@ class Para:
             self.idt_name = self.idt_init_dict['idt_name']
 
 
+class Register_Buffer:
+    """
+    公共临时数据缓存区，只保存最新赋予的值，供看板、transition等调用。
+    注意：
+    - 在调用前确保值是为此调用刷新的，避免错乱
+    """
+    def __init__(self):
+        self.ts_code = None
+        self.trade_date = None  # <str> e.g. "20200102"
+
+        # Condition
+        self.cond_desc = None  # Condition.desc
+        self.cond_result = None  # True or False
+        self.cond_p1_value = None  # condition para1 的值
+        self.cond_p2_value = None  # condition para2 的值
+        self.cond_p1_date = None  # p1时间戳e.g."20190102", "const"
+        self.cond_p2_date = None  # p2时间戳e.g."20190102", "const"
+
+
+class Dashboard:
+    """
+    看板
+    """
+    def __init__(self, register_buffer):
+        self.buff_weakref = weakref.ref(register_buffer)
+        self.list = []  # dashboard <list>
+        self.board_head = ()  # <tuple> e.g. ('ts_code', 'cond_desc', 'cond_result')
+
+    def append_record(self):
+        """
+        append the record to the board. data from self.buff_weakref(), template as self.board_head
+        """
+        if not self.valid_board_head():
+            return
+
+        buff = self.buff_weakref()  # 未考虑buff被回收后的情况
+        record = tuple(getattr(buff, item_name) for item_name in self.board_head)
+        # print('[L1545] record={}'.format(record))
+        self.list.append(record)
+
+    def disp_board(self):
+        """
+        print out the contents of dashboard
+        """
+        if not self.valid_board_head():
+            return
+
+        # print head
+        formats = []
+        for name in self.board_head:
+            fmt = FORMAT_HEAD[name]
+            fmt_record = FORMAT_FIELDS[name]
+            formats.append(fmt_record)
+            print(fmt.format(name), end='')
+        print()
+        # print records
+        num = len(formats)
+        # print('[L1560] self.list:{}'.format(self.list))
+        for record in self.list:
+            # print('[L1561] record:{}'.format(record))
+            for i in range(num):
+                print(formats[i].format(record[i]), end='')
+            print()
+
+    def valid_board_head(self):
+        """
+        valid board head
+        """
+        if not isinstance(self.board_head, tuple):
+            log_args = [self.board_head]
+            add_log(20, '[fn]Dashboard.append_record(). board_head invalid: "{0[0]}"', log_args)
+            return
+        if len(self.board_head) == 0:
+            add_log(20, '[fn]Dashboard.append_record(). board_head empty')
+            return
+        return True
+
+
 if __name__ == "__main__":
     # global raw_data
     start_time = datetime.now()
@@ -1445,9 +1603,9 @@ if __name__ == "__main__":
     # download_path = r"dl_stocks"
     download_path = r"try_001"
     # download_path = r"user_001"
-    bulk_download(download_path,reload=False) #批量下载数据
+    bulk_download(download_path, reload=False)  # 批量下载数据
     # download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path,reload=False) #批量下载股票每日指标数据，及股票复权因子
+    bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
     # ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     # ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     # Plot.try_plot()
@@ -1462,7 +1620,7 @@ if __name__ == "__main__":
     # fig = plt.figure()
     # ax = fig.add_subplot(111)
     # ax.plot(df.index,df['base_chg_pct'],label='801003.SI\n指数A')
-    
+
     # df1 = Index.load_sw_daily('850341.SI',30)
     # df1 = df1[['trade_date','close']]
     # df1['trade_date'] = pd.to_datetime(df1['trade_date'])
@@ -1484,18 +1642,18 @@ if __name__ == "__main__":
     # al = All_Assets_List.load_all_assets_list()
     # All_Assets_List.rebuild_all_assets_list()
     # #------------------------生成al文件-----------------------
-    #al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1') #申万一级行业指数
-    # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2') #申万二级行业指数
-    # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3') #申万二级行业指数
+    # al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1')  # 申万一级行业指数
+    # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2')  # 申万二级行业指数
+    # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3')  # 申万二级行业指数
     # al_dl_stocks = Plot_Utility.gen_al(al_name='dl_stocks',selected=None,type_='stock')#全部valid='T'的资产
     # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
     # #-------------------Plot_Assets_Racing资产竞速-----------------------
     # plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
     # plot_ar = Plot_Assets_Racing('al_user_001.csv',period=5)
     # #-------------------Stock Class-----------------------
-    #stock = Stock(pull=True)
-    #stock = Stock()
-    #-------------------复权测试-----------------------
+    # stock = Stock(pull=True)
+    # stock = Stock()
+    # -------------------复权测试-----------------------
     # ts_code = '000001.SZ'
     # df_fq = Stock.load_adj_factor(ts_code)
     # df_stock = Stock.load_stock_daily(ts_code)
@@ -1530,6 +1688,7 @@ if __name__ == "__main__":
     bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
     print("===================Indicator===================")
     from indicator import idt_name, Indicator, Ma, Ema, Macd
+
     print('------stock1.ma10_close_hfq--------')
     stock5 = Stock(ts_code='000001.SZ')
     _kwargs = {'idt_type': 'ema',
@@ -1639,6 +1798,9 @@ if __name__ == "__main__":
     pool_10.filter_al(cond)
     print('-----')
     pool_10.filter_al(cond, '20191205')
+
+    print('------Dashboard--------')
+    pool_10.dashboard.disp_board()
 
     print('------临时便利--------')
     st01 = pool_10.assets['000001.SZ']

@@ -181,7 +181,7 @@ class Indicator:
                     log_args = [self.ts_code, self.file_path]
                     add_log(20, "[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, invalid", log_args)
             self.df_idt = df_idt
-            log_args = [self.ts_code, self.file_name[:-4]]
+            log_args = [self.ts_code, self.file_name[:-4], len(df_idt)]
             add_log(40, "[fn]Indicator.calc_idt() ts_code:{0[0]}, {0[1]} updated; items:{0[2]}", log_args)
         elif df_append is None:
             pass  # keep self.df_idt as it is
