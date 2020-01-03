@@ -103,7 +103,7 @@ class Indicator:
     def __init__(self, ts_code, par_asset, idt_type, reload=False, update_csv=True, subtype='D'):
         """
         ts_code:<str> e.g. '000001.SH'
-        reload:<bool> True: igonre the csv, generate the df from the begining
+        reload:<bool> True: ignore the csv, generate the df from the beginning
         update_csv:<bool> True: update the csv; False: keep the original csv as it is
         """
         self.ts_code = ts_code
@@ -122,7 +122,7 @@ class Indicator:
         调用st_board.load_source_df()来准备计算用原数据
         ts_code:<str> e.g. '000001.SH'
         nrows: <int> 指定读入最近n个周期的记录,None=全部
-        retrun:<df> trade_date(index); close; high..., None if failed
+        return:<df> trade_date(index); close; high..., None if failed
         """
         from st_board import load_source_df
         df_source = load_source_df(ts_code=self.ts_code, source=self.source)
@@ -148,17 +148,17 @@ class Indicator:
         return: True: up to date; 
                 None: invalid or not up to date
         """
-        if isinstance(self.df_idt,pd.DataFrame):
+        if isinstance(self.df_idt, pd.DataFrame):
             df_source_head = self.load_sources(nrows=1)
             source_date = df_source_head.index[0]
             idt_date = self.df_idt.head(1).index
             if idt_date == source_date:
                 return True
             else:
-                log_args = [self.ts_code,self.idt_name,idt_date,source_date]
+                log_args = [self.ts_code, self.idt_name, idt_date, source_date]
                 add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not uptodate. idt:{0[2]} source:{0[3]}', log_args)
         else:
-            log_args = [self.ts_code,self.idt_name]
+            log_args = [self.ts_code, self.idt_name]
             add_log(40, '[fn]Indicator.valid_utd() ts_code:{0[0]} {0[1]} not loaded', log_args)
 
     def calc_idt(self):

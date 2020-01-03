@@ -131,7 +131,7 @@ def download_data(ts_code, category, reload=False):
         return start_date_str
 
     if raw_data.valid_ts_code(ts_code):
-        if reload == True:  # 重头开始下载
+        if reload is True:  # 重头开始下载
             # #-----------index类别--------------
             # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
             #     start_date_str = str(raw_data.index.que_base_date(ts_code))
@@ -672,6 +672,38 @@ class All_Assets_List:
         log_args = [len(df_al)]
         add_log(40, '[fns]All_Assets_List.load_al_file(). df_al loaded -success, items:"{0[0]}"', log_args)
         return df_al
+
+    @staticmethod
+    def create_al_file(input_list, file_name, overwrite=True):
+        """
+        根据input_list输入的ts_code列表，生成以al_[file_name].csv命名的资产列表文件
+        input_list: <list> e.g. ['000001.SZ', '600032.SH']
+        file_name: <str> e.g. 'try001' ->  al_try001.csv
+        overwrite: <bool> True=overwrite existing file
+        """
+        if not isinstance(input_list, list):
+            log_args = [type(input_list)]
+            add_log(20, '[fn]All_Assets_List.create_al_file(). Type of input_list "{0[0]}" must be <list>', log_args)
+            return
+
+        if not (len(input_list) > 0):
+            add_log(20, '[fn]All_Assets_List.create_al_file(). empty input_list')
+            return
+
+        file_path = sub_path + sub_path_al + r'\al_' + file_name + '.csv'
+
+        mode = "w" if overwrite is True else "x"
+
+        print("[L697] except for file overwrite not ready")
+        with open(file_path, mode) as f:
+            f.write("ts_code,selected\n")
+            for ts_code in input_list:
+                line = ts_code + ',T\n'
+                f.write(line)
+
+        log_args = ['al_' + file_name + '.csv']
+        add_log(40, '[fn]All_Assets_List.create_al_file(). "{0[0]}" updated', log_args)
+        return
 
 
 class Asset:
@@ -1324,11 +1356,13 @@ class Pool:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
 
-    def filter_al(self, rule, datetime_='latest'):
+    def filter_al(self, rule, datetime_='latest', csv='default'):
         """
         filter the self.assets with the condition or filter
         rule: <Condition> or <Filter>, 过滤的条件
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
+        csv: None or 'default' or <str> al_'file_name'
+             default = <pool_desc>_output.csv
         """
         if datetime_ == 'latest':
             val_fetcher = lambda df, column_name: df.iloc[0][column_name]  # [fn] 获取最新idt记录值
@@ -1342,23 +1376,9 @@ class Pool:
             add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
             return
 
-        # def _fetch_idt_value(df, datetime__, column_name):
-        #     """
-        #     内部函数，根据时间和源<df>获取某时间idt的值
-        #     df: <df> source DataFrame
-        #     column_name: <str> e.g. 'MA', 'MACD', 'DEA'
-        #     """
-        #     if datetime == 'latest':
-        #         print("[L1285] continue here")
-        #     elif valid_date_str_fmt(datetime_):
-        #         print("[L1287] continue here")
-        #     else:
-        #         log_args = [datetime_]
-        #         add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
-        #         return
-
         if isinstance(rule, Condition):
             self.dashboard.board_head = ('ts_code', 'cond_desc', 'cond_p1_value', 'cond_p2_value', 'cond_p1_date', 'cond_p2_date')
+            out_list = []  # 存放filter出的ts_code列表
             for asset in self.assets.values():
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
@@ -1378,7 +1398,7 @@ class Pool:
                         # print('[L1316] column_name1: {}'.format(column_name1))
                     except Exception as e:  # 待细化
                         log_args = [asset.ts_code, e.__class__.__name__, e]
-                        add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
+                        add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_value1 = val_fetcher(idt_df1, column_name1)
                     idt_date1 = date_fetcher(idt_df1)
@@ -1408,7 +1428,7 @@ class Pool:
                 # -------------调用Condition.calcer()处理---------------------
                 if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
                     fl_result = rule.calcer(idt_value1, idt_value2)  # condition结果
-                    print('[L1410] fl_result:{}'.format(fl_result))
+                    # print('[L1410] fl_result:{}'.format(fl_result))
                 else:
                     log_args = [asset.ts_code, idt_date1, idt_date2]
                     add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], condition parameters timestamp mismatch, p1:{0[1]}; p2:{0[2]}', log_args)
@@ -1421,13 +1441,19 @@ class Pool:
                 self.db_buff.cond_p2_value = idt_value2
                 self.db_buff.cond_p1_date = idt_date1
                 self.db_buff.cond_p2_date = idt_date2
-                # -------------append True record to dashboard---------------------
+                # -------------append True record to dashboard and out_list---------------------
                 # print('[L1424] fl_result:{}'.format(type(fl_result)))
                 if bool(fl_result) is True:
                     # print('[L1425] fl_result:{}'.format(fl_result))
+                    out_list.append(asset.ts_code)
                     self.dashboard.append_record()
 
-        print('[L1329] to be continued')
+            if isinstance(csv, str):
+                if csv == 'default':
+                    csv_file_name = self.desc + '_output'
+                else:
+                    csv_file_name = csv
+                All_Assets_List.create_al_file(out_list, csv_file_name)
 
 
 class Condition:
@@ -1570,6 +1596,7 @@ class Dashboard:
             for i in range(num):
                 print(formats[i].format(record[i]), end='')
             print()
+        print("Total Records: {}".format(len(self.list)))
 
     def valid_board_head(self):
         """
@@ -1601,11 +1628,11 @@ if __name__ == "__main__":
     # #------------------------批量下载数据-----------------------
     # download_path = r"download_all"
     # download_path = r"dl_stocks"
-    download_path = r"try_001"
+    # download_path = r"try_001"
     # download_path = r"user_001"
-    bulk_download(download_path, reload=False)  # 批量下载数据
+    # bulk_download(download_path, reload=False)  # 批量下载数据
     # download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
+    # bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
     # ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     # ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     # Plot.try_plot()
@@ -1684,20 +1711,20 @@ if __name__ == "__main__":
     # print(df2['close'])
     # Stock.calc_dfq('600419.SH',reload=False)
     # al_file_str = r"dl_stocks"
-    al_file_str = r"try_001"
-    bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
-    print("===================Indicator===================")
-    from indicator import idt_name, Indicator, Ma, Ema, Macd
-
-    print('------stock1.ma10_close_hfq--------')
-    stock5 = Stock(ts_code='000001.SZ')
-    _kwargs = {'idt_type': 'ema',
-               'period': 10}
-    kwargs = idt_name(_kwargs)
-    stock5.add_indicator(**kwargs)
-    stock5.ema_10.calc_idt()
-    ema10 = stock5.ema_10.df_idt
-    print(ema10)
+    # al_file_str = r"try_001"
+    # bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
+    # print("===================Indicator===================")
+    # from indicator import idt_name, Indicator, Ma, Ema, Macd
+    #
+    # print('------stock1.ma10_close_hfq--------')
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {'idt_type': 'ema',
+    #            'period': 10}
+    # kwargs = idt_name(_kwargs)
+    # stock5.add_indicator(**kwargs)
+    # stock5.ema_10.calc_idt()
+    # ema10 = stock5.ema_10.df_idt
+    # print(ema10)
 
     # print('------stock1.ema26_close_hfq--------')
     # stock5 = Stock(ts_code='000001.SZ')
@@ -1741,48 +1768,41 @@ if __name__ == "__main__":
     # #ema12 = stock1.ema_12.df_idt
     # #ema26 = stock1.ema_26.df_idt
 
-    print("===================Strategy===================")
-    print('------Strategy and Pool--------')
-    stg = Strategy('test strategy')
-    stg.add_pool(desc="pool#1", al_file='try_001')
-    stg.add_pool(desc="pool#2")
-    stg.add_pool(desc="pool#3")
-    stg.pools_brief()
-    pool_10 = stg.pools[10]
-    st_002 = pool_10.assets['000002.SZ']
-    print(stg.pools[10].assets.keys())
-    print('------Add Conditions, scripts required for each strategy--------')
-    # condition_1
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'macd',
-                 'long_n1': 26,
-                 'short_n2': 12,
-                 'dea_n3': 9,
-                 'field': 'MACD'}
-    pool_10.add_condition(pre_args1, pre_args2, '>')
+    # print("===================Strategy===================")
+    # print('------Strategy and Pool--------')
+    # stg = Strategy('test strategy')
+    # stg.add_pool(desc="pool#1", al_file='try_001')
+    # stg.add_pool(desc="pool#2")
+    # stg.add_pool(desc="pool#3")
+    # stg.pools_brief()
+    # pool_10 = stg.pools[10]
+    # st_002 = pool_10.assets['000002.SZ']
+    # print(stg.pools[10].assets.keys())
+    # print('------Add Conditions, scripts required for each strategy--------')
+    # # condition_1
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'macd',
+    #              'long_n1': 26,
+    #              'short_n2': 12,
+    #              'dea_n3': 9,
+    #              'field': 'MACD'}
+    # pool_10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # # condition_2
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 5}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 30}
+    # pool_10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 10}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 8}
+    # pool_10.add_condition(pre_args1, pre_args2, '>=')
 
-    # condition_2
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 5}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 30}
-    pool_10.add_condition(pre_args1, pre_args2, '<')
-
-    pre_args1 = {'idt_type': 'ema',
-                 'period': 10}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 8}
-    pool_10.add_condition(pre_args1, pre_args2, '>=')
-
-    # _kwargs = {'idt_type': 'macd',
-    #            'long_n1': 26,
-    #            'short_n2': 12,
-    #            'dea_n3': 9}
-    # kwargs = idt_name(_kwargs)
-    # st_002.add_indicator(**kwargs)
-
-    print('------iterate  --------')
+    # print('------iterate  --------')
     # 手动为asset添加指标
     # kwargs1 = pool_10.conditions[0].para1.idt_init_dict
     # st_002.add_indicator(**kwargs1)
@@ -1791,21 +1811,64 @@ if __name__ == "__main__":
     # st_002.add_indicator(**kwargs2)
 
     # 自动iterate pool.assets 来添加
-    pool_10.iter_al()
+    # pool_10.iter_al()
+    #
+    # print('------定时间点过滤目标股Pool.filter_al()--------')
+    # cond = pool_10.conditions[0]
+    # pool_10.filter_al(cond)
+    # print('-----')
+    # pool_10.filter_al(cond, '20191205')
+    #
+    # print('------Dashboard--------')
+    # pool_10.dashboard.disp_board()
+    #
+    # print('------临时便利--------')
+    # st01 = pool_10.assets['000001.SZ']
 
-    print('------定时间点过滤目标股Pool.filter_al()--------')
-    cond = pool_10.conditions[0]
-    pool_10.filter_al(cond)
-    print('-----')
-    pool_10.filter_al(cond, '20191205')
+    print('===========Phase-1 单pool，条件筛选测试===========')
+    # print('------Strategy and Pool--------')
+    stg = Strategy('stg_p1_00')
+    stg.add_pool(desc="pool10", al_file='pool_001')
+    # stg.add_pool(desc="pool20")
+    # stg.add_pool(desc="pool30")
+    stg.pools_brief()
+    pool10 = stg.pools[10]
+    st002 = pool10.assets['000002.SZ']
+    print('------Add Conditions, scripts required for each strategy--------')
+    # ------condition_0
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5}
+    pre_args2 = {'idt_type': 'ma',
+                 'period': 20}
+    pool10.add_condition(pre_args1, pre_args2, '>')
+    #
+    # ------condition_1
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 60}
+    pool10.add_condition(pre_args1, pre_args2, '>')
+    # 自动iterate pool.assets 来添加
+    pool10.iter_al()
+    cond0 = pool10.conditions[0]
+    cond1 = pool10.conditions[1]
+    pool10.filter_al(cond0)
+    pool10.dashboard.disp_board()
+    print('------test multi-stages filter--------')
+    stg.add_pool(desc="pool20", al_file='pool10_output')
+    pool20 = stg.pools[20]
+    stg.pools_brief()
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'ma',
+                 'period': 60}
+    pool20.add_condition(pre_args1, pre_args2, '>')
+    pool20.iter_al()
+    cond0 = pool20.conditions[0]
+    pool20.filter_al(cond0)
+    pool20.dashboard.disp_board()
 
-    print('------Dashboard--------')
-    pool_10.dashboard.disp_board()
-
-    print('------临时便利--------')
-    st01 = pool_10.assets['000001.SZ']
-
-    print('后续进行Condition的result计算[fn]编写')
+    print("后续测试：不保存csv;")
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))
