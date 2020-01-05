@@ -74,11 +74,11 @@ def download_data(ts_code, category, reload=False):
     ts_code: <str> '399001.SZ'
     category: <str> in READER e.g. 'Index.load_index_daily'
     reload: <bool> True=重头开始下载
-    retrun: <df> if success, None if fail
+    return: <df> if success, None if fail
     """
     global raw_data
     try:
-        loader = LOADER[category]
+        # loader = LOADER[category]
         que_limit = QUE_LIMIT[category]
     except KeyError:
         log_args = [ts_code, category]
@@ -150,7 +150,7 @@ def download_data(ts_code, category, reload=False):
             #     add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
             #     return
             start_date_str = _category_to_start_date_str(ts_code, category)
-            if start_date_str == None:
+            if start_date_str is None:
                 return
             end_date_str = today_str()
             df = sgmt_download(ts_code, start_date_str, end_date_str, que_limit, category)
@@ -167,7 +167,7 @@ def download_data(ts_code, category, reload=False):
                 #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                 #     return
                 file_name = _category_to_file_name(ts_code, category)
-                if file_name == None:
+                if file_name is None:
                     return
                 df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                 if logable(40):
@@ -207,7 +207,7 @@ def download_data(ts_code, category, reload=False):
                     #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                     #     return
                     last_date_str = _category_to_start_date_str(ts_code, category)
-                    if last_date_str == None:
+                    if last_date_str is None:
                         return
                 last_date = date_str_to_date(last_date_str)
                 today_str_ = today_str()
@@ -232,7 +232,7 @@ def download_data(ts_code, category, reload=False):
                     #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
                     #     return
                     file_name = _category_to_file_name(ts_code, category)
-                    if file_name == None:
+                    if file_name is None:
                         return
                     df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
                     if logable(40):
@@ -260,7 +260,7 @@ def sgmt_download(ts_code, start_date_str, end_date_str, size, category):
     end_date_str: <str> 结束时间字符串 YYYYMMDD '20190804'
     size: <int> 每个分段的大小 1 to xxxx
     category: <str> listed in HANDLER e.g. ts_pro.index_daily, ts_pro.sw_daily
-    retrun: <df> if success, None if fail
+    return: <df> if success, None if fail
     """
     TRY_TIMES = 20
     SLEEP_TIME = 20  # in seconds
@@ -383,7 +383,7 @@ def bulk_dl_appendix(al_file, reload=False):
         add_log(10, '[fn]bulk_dl_appendix(). al_file "{0[0]}" not exist', log_args)
         return
     log_args = [len(df_al)]
-    add_log(40, '[fn]bulk_dl_appendix(). df_al loaded -sucess, items:"{0[0]}"', log_args)
+    add_log(40, '[fn]bulk_dl_appendix(). df_al loaded -success, items:"{0[0]}"', log_args)
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
@@ -1058,7 +1058,7 @@ QUE_LIMIT = {'index_sse': 8000,
              'index_szse': 8000,
              'index_sw': 1000,
              'stock': 4000,
-             'stock_daily_basic': 8000,
+             'stock_daily_basic': 4000,  # changed on '20200105', 8000 before
              'adj_factor': 8000}
 
 
@@ -1613,14 +1613,15 @@ class Dashboard:
 
 
 if __name__ == "__main__":
-    # global raw_data
+    from st_common import Raw_Data
+    global raw_data
     start_time = datetime.now()
     # df = get_stock_list()
     # df = load_stock_list()
     # df = get_daily_basic()
     # cl = get_trade_calendar()
     # last_trad_day_str()
-    # raw_data = Raw_Data(pull=False)
+    raw_data = Raw_Data(pull=False)
     # c = raw_data.trade_calendar
     # index = raw_data.index
     # zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
@@ -1632,7 +1633,7 @@ if __name__ == "__main__":
     # download_path = r"user_001"
     # bulk_download(download_path, reload=False)  # 批量下载数据
     # download_path = r"dl_stocks"
-    # bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
+    # bulk_dl_appendix(download_path, reload=True)  # 批量下载股票每日指标数据，及股票复权因子
     # ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
     # ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
     # Plot.try_plot()
@@ -1837,9 +1838,11 @@ if __name__ == "__main__":
     print('------Add Conditions, scripts required for each strategy--------')
     # ------condition_0
     pre_args1 = {'idt_type': 'ma',
-                 'period': 5}
+                 'period': 5,
+                 'update_csv': False}
     pre_args2 = {'idt_type': 'ma',
-                 'period': 20}
+                 'period': 20,
+                 'update_csv': True}
     pool10.add_condition(pre_args1, pre_args2, '>')
     #
     # ------condition_1

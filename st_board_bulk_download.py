@@ -911,7 +911,7 @@ QUE_LIMIT = {'index_sse':8000,
              'index_szse':8000,
              'index_sw':1000,
              'stock':4000,
-             'stock_daily_basic':8000,
+             'stock_daily_basic':4000,
              'adj_factor':8000}
 
 # def get_stock_list(return_df = True):

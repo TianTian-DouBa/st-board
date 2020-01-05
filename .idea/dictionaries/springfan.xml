@@ -5,11 +5,14 @@
       <w>disp</w>
       <w>dtype</w>
       <w>idts</w>
+      <w>iloc</w>
       <w>iterrows</w>
       <w>macd</w>
+      <w>majh</w>
       <w>nrows</w>
       <w>pretrade</w>
       <w>rslt</w>
+      <w>sgmt</w>
       <w>shzb</w>
       <w>stype</w>
       <w>szse</w>
@@ -18,6 +21,7 @@
       <w>uptodate</w>
       <w>weakref</w>
       <w>xticks</w>
+      <w>xxxx</w>
       <w>ylabel</w>
       <w>yyyymmdd</w>
     </words>

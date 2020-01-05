@@ -23,7 +23,9 @@ def idt_name(pre_args):
          'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
          'source': 'close',
          'subtype': 'w',
-         'update_csv': False}
+         'update_csv': False,  # 指标文件结果是否保存到csv文件
+         'reload': False  # 功能待查看代码
+         }
          or
          {'idt_type': 'const',
           'const_value': 30}
@@ -451,7 +453,7 @@ class Macd(Indicator):
     def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close_hfq' #SOURCE
-        return:<ins Macd> if valid; None if invalid 
+        return:<ins Macd> if valid; None if invalid
         """
         try:
             SUBTYPE[subtype]
@@ -462,7 +464,7 @@ class Macd(Indicator):
         # long_n1 = int(long_n1)
         # short_n2 = int(short_n2)
         # dea_n3 = int(dea_n3)
-        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
     def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close_hfq', reload=False, update_csv=True, subtype='D'):
@@ -559,7 +561,7 @@ class Macd(Indicator):
                 return
             elif idt_head_in_source > 0:
                 _pre_idt_hdl(idt_head_in_source + 1)  # 前置指标处理
-                last_dea = self.df_idt.iloc[0]['DEA']
+                last_dea = self.df_idt.iloc[0]['MACD']
         else:
             # ----------重头生成df_idt----------
             _pre_idt_hdl()
@@ -593,9 +595,164 @@ class Macd(Indicator):
     #     return idt_name
 
 
+class Majh(Indicator):
+    """
+    移动平均线ma的纠结程度
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins majh> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Majh.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'majh'
+        self.long_n1 = long_n1
+        self.middle_n2 = middle_n2
+        self.short_n3 = short_n3
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        long_n1 = self.long_n1
+        middle_n2 = self.middle_n2
+        short_n3 = self.short_n3
+        parent = self.par_asset()
+        df_ma_long = None  # 前置idt
+        df_ma_middle = None  # 前置idt
+        df_ma_short = None  # 前置idt
+
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_ma_long, , df_ma_middle, df_ma_short
+            """
+            nonlocal df_ma_long, df_ma_middle, df_ma_short
+            # 前置指标名idt_name计算
+            _kwargs = {
+                        'idt_type': 'ma',
+                        'period': long_n1,
+                        'source': self.source,
+                        'update_csv': False}
+            kwargs_long = idt_name(_kwargs)
+            idt_ma_long_name = kwargs_long['idt_name']
+            _kwargs = {
+                        'idt_type': 'ma',
+                        'period': middle_n2,
+                        'source': self.source,
+                        'update_csv': False}
+            kwargs_middle = idt_name(_kwargs)
+            idt_ma_middle_name = kwargs_middle['idt_name']
+            _kwargs = {
+                        'idt_type': 'ma',
+                        'period': short_n3,
+                        'source': self.source,
+                        'update_csv': False}
+            kwargs_short = idt_name(_kwargs)
+            idt_ma_short_name = kwargs_short['idt_name']
+
+            # ------valid pre-idts uptodate------
+            # idt_ma_long
+            if hasattr(parent, idt_ma_long_name):
+                idt_ma_long = getattr(parent, idt_ma_long_name)
+                if idt_ma_long.valid_utd() is not True:
+                    idt_ma_long.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_long)
+                idt_ma_long = getattr(parent, idt_ma_long_name)
+
+            # idt_ma_middle
+            if hasattr(parent, idt_ma_middle_name):
+                idt_ma_middle = getattr(parent, idt_ma_middle_name)
+                if idt_ma_middle.valid_utd() is not True:
+                    idt_ma_middle.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_middle)
+                idt_ma_middle = getattr(parent, idt_ma_middle_name)
+
+            # idt_ma_short
+            if hasattr(parent, idt_ma_short_name):
+                idt_ma_short = getattr(parent, idt_ma_short_name)
+                if idt_ma_short.valid_utd() is not True:
+                    idt_ma_short.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_short)
+                idt_ma_short = getattr(parent, idt_ma_short_name)
+
+            if n is None:
+                df_ma_long = idt_ma_long.df_idt
+                df_ma_middle = idt_ma_middle.df_idt
+                df_ma_short = idt_ma_short.df_idt
+            else:
+                df_ma_long = idt_ma_long.df_idt.head(n)
+                df_ma_middle = idt_ma_middle.df_idt.head(n)
+                df_ma_short = idt_ma_short.df_idt.head(n)
+
+        # ---------主要部分开始------------
+        last_majh = None
+        if isinstance(df_idt, pd.DataFrame):
+            # ------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source + 1)  # 前置指标处理
+                # last_majh = self.df_idt.iloc[0]['MAJH']
+        else:
+            # ----------重头生成df_idt----------
+            _pre_idt_hdl()
+        # sr_dif_long_middle = pd.Series()
+        # sr_dif_long_short = pd.Series()
+        sr_dif_middle_short = pd.Series()
+        sr_dif_middle_short.to_frame(name="")
+        short_col_name = 'MA'
+        middle_col_name = 'MA'
+        long_col_name = 'MA'
+
+        sr_dif_long_middle = (df_ma_long[long_col_name] - df_ma_middle[middle_col_name]).abs()
+        sr_dif_long_short = (df_ma_long[long_col_name] - df_ma_short[short_col_name]).abs()
+        sr_dif_middle_short = (df_ma_middle[middle_col_name] - df_ma_short[short_col_name]).abs()
+        sr_append = (sr_dif_long_middle + sr_dif_long_short + sr_dif_middle_short) / 3 / df_ma_short[short_col_name] * 100
+
+        df_append = sr_append.to_frame(name="MAJH")
+        print("[L748] not tested, 返回的df index名可能不是trade_date")
+        return df_append
+
+
 IDT_CLASS = {'ma': Ma,
              'ema': Ema,
-             'macd': Macd}
+             'macd': Macd,
+             'majh': Majh}
 
 if __name__ == '__main__':
     start_time = datetime.now()
