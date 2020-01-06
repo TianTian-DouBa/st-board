@@ -1829,6 +1829,7 @@ if __name__ == "__main__":
     print('===========Phase-1 单pool，条件筛选测试===========')
     # print('------Strategy and Pool--------')
     stg = Strategy('stg_p1_00')
+    # stg.add_pool(desc="pool10", al_file='try_001')
     stg.add_pool(desc="pool10", al_file='pool_001')
     # stg.add_pool(desc="pool20")
     # stg.add_pool(desc="pool30")
@@ -1837,39 +1838,39 @@ if __name__ == "__main__":
     st002 = pool10.assets['000002.SZ']
     print('------Add Conditions, scripts required for each strategy--------')
     # ------condition_0
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 5,
-                 'update_csv': False}
-    pre_args2 = {'idt_type': 'ma',
-                 'period': 20,
-                 'update_csv': True}
-    pool10.add_condition(pre_args1, pre_args2, '>')
+    pre_args1 = {'idt_type': 'majh',
+                 'long_n1': 60,
+                 'middle_n2': 20,
+                 'short_n3': 5}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 1.5}
+    pool10.add_condition(pre_args1, pre_args2, '<')
     #
     # ------condition_1
     pre_args1 = {'idt_type': 'ma',
                  'period': 20}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 60}
-    pool10.add_condition(pre_args1, pre_args2, '>')
+                 'const_value': 5}
+    pool10.add_condition(pre_args1, pre_args2, '<')
     # 自动iterate pool.assets 来添加
     pool10.iter_al()
     cond0 = pool10.conditions[0]
     cond1 = pool10.conditions[1]
     pool10.filter_al(cond0)
     pool10.dashboard.disp_board()
-    print('------test multi-stages filter--------')
-    stg.add_pool(desc="pool20", al_file='pool10_output')
-    pool20 = stg.pools[20]
-    stg.pools_brief()
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'ma',
-                 'period': 60}
-    pool20.add_condition(pre_args1, pre_args2, '>')
-    pool20.iter_al()
-    cond0 = pool20.conditions[0]
-    pool20.filter_al(cond0)
-    pool20.dashboard.disp_board()
+    # print('------test multi-stages filter--------')
+    # stg.add_pool(desc="pool20", al_file='pool10_output')
+    # pool20 = stg.pools[20]
+    # stg.pools_brief()
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'ma',
+    #              'period': 60}
+    # pool20.add_condition(pre_args1, pre_args2, '>')
+    # pool20.iter_al()
+    # cond0 = pool20.conditions[0]
+    # pool20.filter_al(cond0)
+    # pool20.dashboard.disp_board()
 
     print("后续测试：不保存csv;")
     end_time = datetime.now()

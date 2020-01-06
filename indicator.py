@@ -14,6 +14,7 @@ import weakref
 
 def idt_name(pre_args):
     """
+    指标周期类的参数（period, long_n1, middle_n2...，即使有默认值，初始化时也不建议省略，省略的话idt_name会不同
     pre_args: <dict> 创建para的必要输入参数
         e.g.
         {'idt_type': 'macd',
@@ -70,7 +71,7 @@ def idt_name(pre_args):
                 idt_name = idt_name + '_' + str(period)
             except KeyError:
                 pass
-            for k,v in pre_args.items():
+            for k, v in pre_args.items():
                 if k.endswith("_n1"):
                     idt_name = idt_name + '_' + str(v)
                 if k.endswith("_n2"):
@@ -733,8 +734,8 @@ class Majh(Indicator):
             _pre_idt_hdl()
         # sr_dif_long_middle = pd.Series()
         # sr_dif_long_short = pd.Series()
-        sr_dif_middle_short = pd.Series()
-        sr_dif_middle_short.to_frame(name="")
+        # sr_dif_middle_short = pd.Series()
+        # sr_dif_middle_short.to_frame(name="")
         short_col_name = 'MA'
         middle_col_name = 'MA'
         long_col_name = 'MA'
@@ -744,8 +745,9 @@ class Majh(Indicator):
         sr_dif_middle_short = (df_ma_middle[middle_col_name] - df_ma_short[short_col_name]).abs()
         sr_append = (sr_dif_long_middle + sr_dif_long_short + sr_dif_middle_short) / 3 / df_ma_short[short_col_name] * 100
 
+        sr_append.dropna(inplace=True)
+        sr_append.sort_index(ascending=False, inplace=True)
         df_append = sr_append.to_frame(name="MAJH")
-        print("[L748] not tested, 返回的df index名可能不是trade_date")
         return df_append
 
 
