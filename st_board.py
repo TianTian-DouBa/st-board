@@ -1380,6 +1380,7 @@ class Pool:
             self.dashboard.board_head = ('ts_code', 'cond_desc', 'cond_p1_value', 'cond_p2_value', 'cond_p1_date', 'cond_p2_date')
             out_list = []  # 存放filter出的ts_code列表
             for asset in self.assets.values():
+                # print("[L1383] ts_code: {}".format(asset.ts_code))
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
@@ -1400,9 +1401,16 @@ class Pool:
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
-                    idt_value1 = val_fetcher(idt_df1, column_name1)
                     idt_date1 = date_fetcher(idt_df1)
-                # print('[L1328] idt_value1: {}'.format(idt_value1))
+                    try:
+                        idt_value1 = val_fetcher(idt_df1, column_name1)
+                    except KeyError:  # 指标当前datetime_无数据
+                        log_args = [asset.ts_code, rule.para1.idt_name, idt_date1]
+                        add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
+                        continue
+
+                # print("[L1405] idt_date1: {}".format(idt_date1))
+                # print('[L1406] idt_value1: {}'.format(idt_value1))
 
                 # -------------para2---------------------
                 idt_name2 = rule.para2.idt_name
@@ -1421,9 +1429,15 @@ class Pool:
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
-                    idt_value2 = val_fetcher(idt_df2, column_name2)
                     idt_date2 = date_fetcher(idt_df2)
-                # print('[L1328] idt_value2: {}'.format(idt_value2))
+                    try:
+                        idt_value2 = val_fetcher(idt_df2, column_name2)
+                    except KeyError:  # 指标当前datetime_无数据
+                        log_args = [asset.ts_code, rule.para2.idt_name, idt_date2]
+                        add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
+                        continue
+                # print("[L1427] idt_date2: {}".format(idt_date2))
+                # print('[L1428] idt_value2: {}'.format(idt_value2))
 
                 # -------------调用Condition.calcer()处理---------------------
                 if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
@@ -1610,6 +1624,12 @@ class Dashboard:
             add_log(20, '[fn]Dashboard.append_record(). board_head empty')
             return
         return True
+
+    def clear_board(self):
+        """
+        clear the content of the dashboard
+        """
+        self.list = []
 
 
 if __name__ == "__main__":
@@ -1856,7 +1876,7 @@ if __name__ == "__main__":
     pool10.iter_al()
     cond0 = pool10.conditions[0]
     cond1 = pool10.conditions[1]
-    pool10.filter_al(cond0)
+    pool10.filter_al(cond0, '20191230')
     pool10.dashboard.disp_board()
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
@@ -1872,7 +1892,8 @@ if __name__ == "__main__":
     # pool20.filter_al(cond0)
     # pool20.dashboard.disp_board()
 
-    print("后续测试：不保存csv;")
+    print("后续测试：cond成立周期;filter过滤; asset transmit")
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))
+    pass
