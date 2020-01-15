@@ -1335,13 +1335,13 @@ class Pool:
             else:
                 print('[L1241] al selected is not "T"')
 
-    def add_condition(self, pre_args1_, pre_args2_, ops):
+    def add_condition(self, pre_args1_, pre_args2_, ops, required_period=0):
         """
         add the condition to the pool
         pre_argsN_: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.conditions.append(Condition(pre_args1_, pre_args2_, ops))
+        self.conditions.append(Condition(pre_args1_=pre_args1_, pre_args2_=pre_args2_, ops=ops,required_period=required_period))
 
     def iter_al(self):
         """
@@ -1370,7 +1370,7 @@ class Pool:
         elif valid_date_str_fmt(datetime_):
             dt_int = int(datetime_)
             val_fetcher = lambda df, column_name: df.iloc[df.index.get_loc(dt_int)][column_name]
-            date_fetcher = lambda _: datetime_  # 待测试
+            date_fetcher = lambda _: datetime_
         else:
             log_args = [datetime_]
             add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
@@ -1390,7 +1390,7 @@ class Pool:
                     idt_value1 = rule.para1.const_value  # para1 value
                     idt_date1 = 'const'  # 常量的特殊时间
                 else:
-                    try:
+                    try:  # 指标在资产中是否存在
                         idt1 = getattr(asset, idt_name1)
                         idt_df1 = idt1.df_idt
                         idt_field1 = rule.para1.field
@@ -1402,7 +1402,7 @@ class Pool:
                         add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_date1 = date_fetcher(idt_df1)
-                    try:
+                    try:  # 获取目标时间的指标数值
                         idt_value1 = val_fetcher(idt_df1, column_name1)
                     except KeyError:  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, rule.para1.idt_name, idt_date1]
@@ -1457,10 +1457,14 @@ class Pool:
                 self.db_buff.cond_p2_date = idt_date2
                 # -------------append True record to dashboard and out_list---------------------
                 # print('[L1424] fl_result:{}'.format(type(fl_result)))
-                if bool(fl_result) is True:
+                if bool(fl_result) is True:  # bool()因为fl_result类型为numpi.bool
                     # print('[L1425] fl_result:{}'.format(fl_result))
-                    out_list.append(asset.ts_code)
-                    self.dashboard.append_record()
+                    rule.increase_lasted(asset.ts_code)
+                    if rule.exam_lasted(asset.ts_code):
+                        out_list.append(asset.ts_code)
+                        self.dashboard.append_record()
+                else:
+                    rule.reset_lasted(asset.ts_code)
 
             if isinstance(csv, str):
                 if csv == 'default':
@@ -1475,10 +1479,11 @@ class Condition:
     判断条件
     """
 
-    def __init__(self, pre_args1_, pre_args2_, ops):
+    def __init__(self, pre_args1_, pre_args2_, ops, required_period=0):
         """
         pre_argsN_: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
+        required_period: <int> 条件需要持续成立的周期
         """
         self.para1 = Para(pre_args1_)
         self.para2 = Para(pre_args2_)
@@ -1486,6 +1491,8 @@ class Condition:
         self.result = None  # True of False, condition result of result_time
         self.result_time = None  # <str> e.g. '20191209'
         self.desc = None  # <str> description e.g. TBD
+        self.required_period = required_period  # <int> 条件需要持续成立的周期
+        self.true_lasted = {}  # <dict> {'000001.SZ': 2,...} 资产持续成立的周期
 
         p1_name = self.para1.idt_name
         p2_name = self.para2.idt_name
@@ -1505,6 +1512,37 @@ class Condition:
         elif ops == '=':
             self.calcer = lambda p1, p2: p1 == p2
             self.desc = p1_name + ' = ' + p2_name + ' ?'
+
+    def increase_lasted(self, ts_code):
+        """
+        将对应资产的true_lasted计数增加1
+        ts_code: <str>
+        """
+        if isinstance(ts_code, str):
+            if ts_code in self.true_lasted:
+                self.true_lasted[ts_code] += 1
+            else:
+                self.true_lasted[ts_code] = 1
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Condition.increase_lasted(). ts_code:{0[0]} in not str', log_args)
+
+    def reset_lasted(self, ts_code):
+        """
+        重置对应资产的true_lasted到0
+        """
+        if ts_code in self.true_lasted:
+            self.true_lasted[ts_code] = 0
+
+    def exam_lasted(self, ts_code):
+        """
+        检查对应资产的true_lasted是否 >= self.required_period
+        """
+        if ts_code in self.true_lasted:
+            return self.true_lasted[ts_code] >= self.required_period
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Condition.exam_lasted(). ts_code:{0[0]} not in self.true_lasted', log_args)
 
 
 class Para:
@@ -1864,7 +1902,7 @@ if __name__ == "__main__":
                  'short_n3': 5}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 1.5}
-    pool10.add_condition(pre_args1, pre_args2, '<')
+    pool10.add_condition(pre_args1, pre_args2, '<', 3)
     #
     # ------condition_1
     pre_args1 = {'idt_type': 'ma',
@@ -1876,6 +1914,13 @@ if __name__ == "__main__":
     pool10.iter_al()
     cond0 = pool10.conditions[0]
     cond1 = pool10.conditions[1]
+    print('++++ 001 ++++')
+    pool10.filter_al(cond0, '20191226')
+    pool10.dashboard.disp_board()
+    print('++++ 002 ++++')
+    pool10.filter_al(cond0, '20191227')
+    pool10.dashboard.disp_board()
+    print('++++ 003 ++++')
     pool10.filter_al(cond0, '20191230')
     pool10.dashboard.disp_board()
     # print('------test multi-stages filter--------')
