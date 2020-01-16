@@ -1341,7 +1341,7 @@ class Pool:
         pre_argsN_: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         """
-        self.conditions.append(Condition(pre_args1_=pre_args1_, pre_args2_=pre_args2_, ops=ops,required_period=required_period))
+        self.conditions.append(Condition(pre_args1_=pre_args1_, pre_args2_=pre_args2_, ops=ops, required_period=required_period))
 
     def iter_al(self):
         """
@@ -1356,13 +1356,15 @@ class Pool:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
 
-    def filter_al(self, rule, datetime_='latest', csv='default'):
+    def filter_cnd(self, cnd, datetime_='latest', csv='default', al=None):
         """
         filter the self.assets with the condition or filter
-        rule: <Condition> or <Filter>, 过滤的条件
+        cnd: <Condition>, 过滤的条件
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              default = <pool_desc>_output.csv
+        al: 输入资产列表 None=self.assets.values(); <list> of ts_code
+        return: <list> 成立ts_code列表
         """
         if datetime_ == 'latest':
             val_fetcher = lambda df, column_name: df.iloc[0][column_name]  # [fn] 获取最新idt记录值
@@ -1373,85 +1375,94 @@ class Pool:
             date_fetcher = lambda _: datetime_
         else:
             log_args = [datetime_]
-            add_log(10, '[fn]Pool.filter_al(). datetime_:{0[0]} invalid', log_args)
+            add_log(10, '[fn]Pool.filter_cnd(). datetime_:{0[0]} invalid', log_args)
             return
 
-        if isinstance(rule, Condition):
+        if isinstance(cnd, Condition):
             self.dashboard.board_head = ('ts_code', 'cond_desc', 'cond_p1_value', 'cond_p2_value', 'cond_p1_date', 'cond_p2_date')
             out_list = []  # 存放filter出的ts_code列表
-            for asset in self.assets.values():
+            if al is None:
+                al_list = self.assets.values()
+            elif isinstance(al, list):
+                al_list = (self.assets[ts_code] for ts_code in al)
+                print('[L1388] al_list:{}'.format(al_list))
+            else:
+                add_log(20, '[fn]Pool.filter_cnd(). Invalid al')
+                return
+
+            for asset in al_list:
                 # print("[L1383] ts_code: {}".format(asset.ts_code))
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
                 # -------------para1---------------------
-                idt_name1 = rule.para1.idt_name
+                idt_name1 = cnd.para1.idt_name
                 if idt_name1 == 'const':
-                    idt_value1 = rule.para1.const_value  # para1 value
+                    idt_value1 = cnd.para1.const_value  # para1 value
                     idt_date1 = 'const'  # 常量的特殊时间
                 else:
                     try:  # 指标在资产中是否存在
                         idt1 = getattr(asset, idt_name1)
                         idt_df1 = idt1.df_idt
-                        idt_field1 = rule.para1.field
-                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else rule.para1.idt_init_dict[
+                        idt_field1 = cnd.para1.field
+                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else cnd.para1.idt_init_dict[
                             'idt_type'].upper()
                         # print('[L1316] column_name1: {}'.format(column_name1))
                     except Exception as e:  # 待细化
                         log_args = [asset.ts_code, e.__class__.__name__, e]
-                        add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_date1 = date_fetcher(idt_df1)
                     try:  # 获取目标时间的指标数值
                         idt_value1 = val_fetcher(idt_df1, column_name1)
                         # print('[L1407] idt_value1:{}'.format(idt_value1))
                     except KeyError:  # 指标当前datetime_无数据
-                        log_args = [asset.ts_code, rule.para1.idt_name, idt_date1]
-                        add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
+                        log_args = [asset.ts_code, cnd.para1.idt_name, idt_date1]
+                        add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
 
                 # print("[L1405] idt_date1: {}".format(idt_date1))
                 # print('[L1406] idt_value1: {}'.format(idt_value1))
 
                 # -------------para2---------------------
-                idt_name2 = rule.para2.idt_name
+                idt_name2 = cnd.para2.idt_name
                 if idt_name2 == 'const':
-                    idt_value2 = rule.para2.const_value
+                    idt_value2 = cnd.para2.const_value
                     idt_date2 = 'const'  # 常量的特殊时间
                 else:
                     try:
                         idt2 = getattr(asset, idt_name2)
                         idt_df2 = idt2.df_idt
-                        idt_field2 = rule.para2.field
-                        column_name2 = idt_field2.upper() if idt_field2 != 'default' else rule.para2.idt_init_dict[
+                        idt_field2 = cnd.para2.field
+                        column_name2 = idt_field2.upper() if idt_field2 != 'default' else cnd.para2.idt_init_dict[
                             'idt_type'].upper()
                         # print('[L1316] column_name2: {}'.format(column_name2))
                     except Exception as e:  # 待细化
                         log_args = [asset.ts_code, e.__class__.__name__, e]
-                        add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
+                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_date2 = date_fetcher(idt_df2)
                     try:
                         idt_value2 = val_fetcher(idt_df2, column_name2)
                         # print('[L1436] idt_value2:{}'.format(idt_value2))
                     except KeyError:  # 指标当前datetime_无数据
-                        log_args = [asset.ts_code, rule.para2.idt_name, idt_date2]
-                        add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
+                        log_args = [asset.ts_code, cnd.para2.idt_name, idt_date2]
+                        add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
                 # print("[L1427] idt_date2: {}".format(idt_date2))
                 # print('[L1428] idt_value2: {}'.format(idt_value2))
 
                 # -------------调用Condition.calcer()处理---------------------
                 if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
-                    fl_result = rule.calcer(idt_value1, idt_value2)  # condition结果
+                    fl_result = cnd.calcer(idt_value1, idt_value2)  # condition结果
                     # print('[L1410] fl_result:{}'.format(fl_result))
                 else:
                     log_args = [asset.ts_code, idt_date1, idt_date2]
-                    add_log(20, '[fn]Pool.filter_al(). ts_code:{0[0], condition parameters timestamp mismatch, p1:{0[1]}; p2:{0[2]}', log_args)
+                    add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], condition parameters timestamp mismatch, p1:{0[1]}; p2:{0[2]}', log_args)
                     continue
 
                 # -------------刷新Pool.db_buff---------------------
-                self.db_buff.cond_desc = rule.desc
+                self.db_buff.cond_desc = cnd.desc
                 self.db_buff.cond_result = fl_result
                 self.db_buff.cond_p1_value = idt_value1
                 self.db_buff.cond_p2_value = idt_value2
@@ -1462,12 +1473,12 @@ class Pool:
                 # print('[L1460] fl_result:{}'.format(fl_result))
                 if bool(fl_result) is True:  # bool()因为fl_result类型为numpi.bool
                     # print('[L1425] fl_result:{}'.format(fl_result))
-                    rule.increase_lasted(asset.ts_code)
-                    if rule.exam_lasted(asset.ts_code):
+                    cnd.increase_lasted(asset.ts_code)
+                    if cnd.exam_lasted(asset.ts_code):
                         out_list.append(asset.ts_code)
                         self.dashboard.append_record()
                 else:
-                    rule.reset_lasted(asset.ts_code)
+                    cnd.reset_lasted(asset.ts_code)
 
             if isinstance(csv, str):
                 if csv == 'default':
@@ -1475,6 +1486,13 @@ class Pool:
                 else:
                     csv_file_name = csv
                 All_Assets_List.create_al_file(out_list, csv_file_name)
+
+            return out_list
+
+        else:  # 不是Condition
+            log_args = [type(cnd)]
+            add_log(10, '[fn]Pool.filter_cnd(). cnd type:{0[0]} is not <Condition>', log_args)
+            return
 
 
 class Condition:
@@ -1918,22 +1936,28 @@ if __name__ == "__main__":
     cond0 = pool10.conditions[0]
     cond1 = pool10.conditions[1]
     print('++++ 001 ++++')
-    pool10.filter_al(cond0, '20191226')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20191226')
     pool10.dashboard.disp_board()
     print('++++ 002 ++++')
-    pool10.filter_al(cond0, '20191227')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20191227')
     pool10.dashboard.disp_board()
     print('++++ 003 ++++')
-    pool10.filter_al(cond0, '20191230')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20191230')
     pool10.dashboard.disp_board()
     print('++++ 004 ++++')
-    pool10.filter_al(cond0, '20191231')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20191231')
     pool10.dashboard.disp_board()
     print('++++ 005 ++++')
-    pool10.filter_al(cond0, '20200102')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20200102')
     pool10.dashboard.disp_board()
     print('++++ 006 ++++')
-    pool10.filter_al(cond0, '20200103')
+    pool10.dashboard.clear_board()
+    pool10.filter_cnd(cond0, '20200103')
     pool10.dashboard.disp_board()
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
@@ -1948,6 +1972,11 @@ if __name__ == "__main__":
     # cond0 = pool20.conditions[0]
     # pool20.filter_al(cond0)
     # pool20.dashboard.disp_board()
+    print('++++ xxx ++++')
+    pool10.dashboard.clear_board()
+    al = ['000001.SZ', '000002.SZ', '000010.SZ', '000011.SZ']
+    pool10.filter_cnd(cnd=cond0, al=al)
+    pool10.dashboard.disp_board()
 
     print("后续测试：cond成立周期;filter过滤; asset transmit")
     end_time = datetime.now()
