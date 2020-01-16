@@ -1487,7 +1487,7 @@ class Pool:
                     csv_file_name = csv
                 All_Assets_List.create_al_file(out_list, csv_file_name)
 
-            return out_list
+            return out_list  # <list> of ts_code
 
         else:  # 不是Condition
             log_args = [type(cnd)]
