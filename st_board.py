@@ -1495,7 +1495,7 @@ class Pool:
                 else:
                     cnd.reset_lasted(asset.ts_code)
 
-            if isinstance(csv, str):
+            if isinstance(csv, str) and (len(out_list) > 0):
                 if csv == 'default':
                     csv_file_name = self.desc + '_output'
                 else:
@@ -1637,6 +1637,14 @@ class Filter:
     """
     Condition的集合，assets在pools间按过滤条件流转的通道
     """
+    def __new__(cls, cnd_indexes=set(), down_pools=set()):
+        if isinstance(cnd_indexes, set) and isinstance(down_pools, set):
+            obj = super().__new__(cls)
+            return obj
+        else:
+            log_args = [type(cnd_indexes), type(down_pools)]
+            add_log(10, '[fn]Filter.__new__() cnd_indexes type:{0[0]}, down_pools type:{0[1]} are not <set>', log_args)
+
     def __init__(self, cnd_indexes=set(), down_pools=set()):
         self.cnd_indexes = cnd_indexes  # <set> contains indexes of pool.condition
         self.down_pools = down_pools  # <set> contains indexes of downstream <Pool>
@@ -1944,8 +1952,8 @@ if __name__ == "__main__":
     print('===========Phase-1 单pool，条件筛选测试===========')
     # print('------Strategy and Pool--------')
     stg = Strategy('stg_p1_00')
-    # stg.add_pool(desc="pool10", al_file='try_001')
-    stg.add_pool(desc="pool10", al_file='pool_001')
+    stg.add_pool(desc="pool10", al_file='try_001')
+    # stg.add_pool(desc="pool10", al_file='pool_001')
     # stg.add_pool(desc="pool20")
     # stg.add_pool(desc="pool30")
     stg.pools_brief()
@@ -1997,6 +2005,9 @@ if __name__ == "__main__":
 
     print('===========Phase-2 Filter测试===========')
     stg.add_pool(desc='pool20')
+    cnd_idx = {0, 1}
+    dpools = {20}
+    pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
 
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
@@ -2011,11 +2022,11 @@ if __name__ == "__main__":
     # cond0 = pool20.conditions[0]
     # pool20.filter_al(cond0)
     # pool20.dashboard.disp_board()
-    print('++++ xxx ++++')
-    pool10.dashboard.clear_board()
-    al = ['000001.SZ', '000002.SZ', '000010.SZ', '000011.SZ']
-    pool10.filter_cnd(cnd=cond0, al=al)
-    pool10.dashboard.disp_board()
+    # print('++++ xxx ++++')
+    # pool10.dashboard.clear_board()
+    # al = ['000001.SZ', '000002.SZ', '000010.SZ', '000011.SZ']
+    # pool10.filter_cnd(cnd=cond0, al=al)
+    # pool10.dashboard.disp_board()
 
     print("后续测试：cond成立周期;filter过滤; asset transmit")
     end_time = datetime.now()
