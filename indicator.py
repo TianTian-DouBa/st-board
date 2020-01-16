@@ -727,7 +727,7 @@ class Majh(Indicator):
                 add_log(40, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source + 1)  # 前置指标处理
+                _pre_idt_hdl(idt_head_in_source)  # 前置指标处理，保留新增记录
                 # last_majh = self.df_idt.iloc[0]['MAJH']
         else:
             # ----------重头生成df_idt----------

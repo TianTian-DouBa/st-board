@@ -1404,6 +1404,7 @@ class Pool:
                     idt_date1 = date_fetcher(idt_df1)
                     try:  # 获取目标时间的指标数值
                         idt_value1 = val_fetcher(idt_df1, column_name1)
+                        # print('[L1407] idt_value1:{}'.format(idt_value1))
                     except KeyError:  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, rule.para1.idt_name, idt_date1]
                         add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
@@ -1432,6 +1433,7 @@ class Pool:
                     idt_date2 = date_fetcher(idt_df2)
                     try:
                         idt_value2 = val_fetcher(idt_df2, column_name2)
+                        # print('[L1436] idt_value2:{}'.format(idt_value2))
                     except KeyError:  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, rule.para2.idt_name, idt_date2]
                         add_log(30, '[fn]Pool.filter_al(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
@@ -1456,7 +1458,8 @@ class Pool:
                 self.db_buff.cond_p1_date = idt_date1
                 self.db_buff.cond_p2_date = idt_date2
                 # -------------append True record to dashboard and out_list---------------------
-                # print('[L1424] fl_result:{}'.format(type(fl_result)))
+                # print('[L1459] fl_result type:{}'.format(type(fl_result)))
+                # print('[L1460] fl_result:{}'.format(fl_result))
                 if bool(fl_result) is True:  # bool()因为fl_result类型为numpi.bool
                     # print('[L1425] fl_result:{}'.format(fl_result))
                     rule.increase_lasted(asset.ts_code)
@@ -1901,7 +1904,7 @@ if __name__ == "__main__":
                  'middle_n2': 20,
                  'short_n3': 5}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 1.5}
+                 'const_value': 1.0}
     pool10.add_condition(pre_args1, pre_args2, '<', 3)
     #
     # ------condition_1
@@ -1922,6 +1925,15 @@ if __name__ == "__main__":
     pool10.dashboard.disp_board()
     print('++++ 003 ++++')
     pool10.filter_al(cond0, '20191230')
+    pool10.dashboard.disp_board()
+    print('++++ 004 ++++')
+    pool10.filter_al(cond0, '20191231')
+    pool10.dashboard.disp_board()
+    print('++++ 005 ++++')
+    pool10.filter_al(cond0, '20200102')
+    pool10.dashboard.disp_board()
+    print('++++ 006 ++++')
+    pool10.filter_al(cond0, '20200103')
     pool10.dashboard.disp_board()
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
