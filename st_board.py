@@ -1296,6 +1296,7 @@ class Pool:
         self.assets = {}
         self.init_assets(al_file)
         self.conditions = []
+        self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
 
@@ -1342,6 +1343,20 @@ class Pool:
         ops: <str> e.g. '>', '<=', '='...
         """
         self.conditions.append(Condition(pre_args1_=pre_args1_, pre_args2_=pre_args2_, ops=ops, required_period=required_period))
+
+    def conditions_brief(self):
+        """
+        print the brief of conditions
+        """
+        print('No.             Condition Description')
+        for i in range(len(self.conditions)):
+            print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
+
+    def add_filter(self, cnd_indexes=set(), down_pools=set()):
+        """
+        add the filter to the pool
+        """
+        self.filters.append(Filter(cnd_indexes, down_pools))
 
     def iter_al(self):
         """
@@ -1622,8 +1637,9 @@ class Filter:
     """
     Condition的集合，assets在pools间按过滤条件流转的通道
     """
-    def __init__(self):
-        pass
+    def __init__(self, cnd_indexes=set(), down_pools=set()):
+        self.cnd_indexes = cnd_indexes  # <set> contains indexes of pool.condition
+        self.down_pools = down_pools  # <set> contains indexes of downstream <Pool>
 
 
 class Register_Buffer:
@@ -1944,7 +1960,6 @@ if __name__ == "__main__":
     pre_args2 = {'idt_type': 'const',
                  'const_value': 1.0}
     pool10.add_condition(pre_args1, pre_args2, '<', 3)
-    #
     # ------condition_1
     pre_args1 = {'idt_type': 'ma',
                  'period': 20}
@@ -1979,6 +1994,10 @@ if __name__ == "__main__":
     pool10.dashboard.clear_board()
     pool10.filter_cnd(cond0, '20200103')
     pool10.dashboard.disp_board()
+
+    print('===========Phase-2 Filter测试===========')
+    stg.add_pool(desc='pool20')
+
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
     # pool20 = stg.pools[20]
