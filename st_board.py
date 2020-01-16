@@ -1358,7 +1358,7 @@ class Pool:
 
     def filter_cnd(self, cnd, datetime_='latest', csv='default', al=None):
         """
-        filter the self.assets with the condition or filter
+        filter the self.assets or al with the condition
         cnd: <Condition>, 过滤的条件
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
@@ -1494,6 +1494,18 @@ class Pool:
             add_log(10, '[fn]Pool.filter_cnd(). cnd type:{0[0]} is not <Condition>', log_args)
             return
 
+    def filter_flt(self, flt, datetime_='latest', csv='default', al=None):
+        """
+        filter the self.assets or al with the <ins Filter>
+        flt: <Filter>, 过滤的条件
+        datetime_: <str> 'latest' or like '20190723' YYYYMMDD
+        csv: None or 'default' or <str> al_'file_name'
+             default = <pool_desc>_output.csv
+        al: 输入资产列表 None=self.assets.values(); <list> of ts_code
+        return: <list> 成立ts_code列表
+        """
+        print('[L1507] to be continued')
+
 
 class Condition:
     """
@@ -1604,6 +1616,14 @@ class Para:
                 self.field = 'default'
             self.idt_init_dict = idt_name(pre_args)
             self.idt_name = self.idt_init_dict['idt_name']
+
+
+class Filter:
+    """
+    Condition的集合，assets在pools间按过滤条件流转的通道
+    """
+    def __init__(self):
+        pass
 
 
 class Register_Buffer:
