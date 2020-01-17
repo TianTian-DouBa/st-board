@@ -1399,16 +1399,23 @@ class Pool:
                 add_log(20, '[fn]Pool.op_cnds_matrix(). {0[0]} conditions not loaded', log_args)
                 return
 
-    def filter_cnd(self, cnd, datetime_='latest', csv='default', al=None):
+    def filter_cnd(self, cnd_index, datetime_='latest', csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
-        cnd: <Condition>, 过滤的条件
+        cnd_index: <int>, self.conditions 的序号
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
-             default = <pool_desc>_output.csv
+             'default' = <pool_desc>_output.csv
         al: 输入资产列表 None=self.assets.values(); <list> of ts_code
+        update_matrix: 是否更新self.cnds_matrix, True=更新
         return: <list> 成立ts_code列表
         """
+        try:
+            cnd = self.conditions[cnd_index]  # <Condition>, 过滤的条件
+        except IndexError:
+            log_args = [cnd_index]
+            add_log(20, '[fn]Pool.filter_cnd(). invalid cnd_index:{0[0]}', log_args)
+            return
         if datetime_ == 'latest':
             val_fetcher = lambda df, column_name: df.iloc[0][column_name]  # [fn] 获取最新idt记录值
             date_fetcher = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
@@ -1517,11 +1524,18 @@ class Pool:
                 if bool(fl_result) is True:  # bool()因为fl_result类型为numpi.bool
                     # print('[L1425] fl_result:{}'.format(fl_result))
                     cnd.increase_lasted(asset.ts_code)
-                    if cnd.exam_lasted(asset.ts_code):
+                    if cnd.exam_lasted(asset.ts_code):  # 达到周期
                         out_list.append(asset.ts_code)
                         self.dashboard.append_record()
+                        if update_matrix is True:
+                            self.cnds_matrix.loc[asset.ts_code][cnd_index] = True
+                    else:  # 未达到周期要求
+                        if update_matrix is True:
+                            self.cnds_matrix.loc[asset.ts_code][cnd_index] = False
                 else:
                     cnd.reset_lasted(asset.ts_code)
+                    if update_matrix is True:
+                        self.cnds_matrix.loc[asset.ts_code][cnd_index] = False
 
             if isinstance(csv, str) and (len(out_list) > 0):
                 if csv == 'default':
@@ -1537,17 +1551,28 @@ class Pool:
             add_log(10, '[fn]Pool.filter_cnd(). cnd type:{0[0]} is not <Condition>', log_args)
             return
 
-    def filter_flt(self, flt, datetime_='latest', csv='default', al=None):
+    def filter_filter(self, filter_index, datetime_='latest', csv='default', al=None):
         """
         filter the self.assets or al with the <ins Filter>
-        flt: <Filter>, 过滤的条件
+        确保self.cnds_matrix已初始化
+        filter_index: <int>, 过滤器的标号
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              default = <pool_desc>_output.csv
         al: 输入资产列表 None=self.assets.values(); <list> of ts_code
         return: <list> 成立ts_code列表
         """
-        print('[L1507] to be continued')
+        try:
+            flt = self.filters[filter_index]  # <Filter> 条件集合过滤器
+        except IndexError:
+            log_args = [filter_index]
+            add_log(10, '[fn]Pool.filter_filter(). invalid filter_index:{0[0]}', log_args)
+            return
+
+        for i in flt.cnd_indexes:  # i为pool.conditions中cnd的标号
+            self.filter_cnd(cnd_index=i, datetime_=datetime_, al=al, update_matrix=True)
+
+        print('[L1575] to be continued')
 
 
 class Condition:
@@ -2003,40 +2028,55 @@ if __name__ == "__main__":
                  'const_value': 5}
     pool10.add_condition(pre_args1, pre_args2, '<')
     # 自动iterate pool.assets 来添加
-    pool10.iter_al()
+    pool10.iter_al()  # 给所有assets计算conditions涉及的指标
     cond0 = pool10.conditions[0]
     cond1 = pool10.conditions[1]
     print('++++ 001 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20191226')
+    pool10.filter_cnd(0, '20191226')
     pool10.dashboard.disp_board()
     print('++++ 002 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20191227')
+    pool10.filter_cnd(0, '20191227')
     pool10.dashboard.disp_board()
     print('++++ 003 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20191230')
+    pool10.filter_cnd(0, '20191230')
     pool10.dashboard.disp_board()
     print('++++ 004 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20191231')
+    pool10.filter_cnd(0, '20191231')
     pool10.dashboard.disp_board()
     print('++++ 005 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20200102')
+    pool10.filter_cnd(0, '20200102')
     pool10.dashboard.disp_board()
     print('++++ 006 ++++')
     pool10.dashboard.clear_board()
-    pool10.filter_cnd(cond0, '20200103')
+    pool10.filter_cnd(0, '20200103')
     pool10.dashboard.disp_board()
 
     print('===========Phase-2 Filter测试===========')
+    # ------condition_2
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 5}
+    pool10.add_condition(pre_args1, pre_args2, '=')
+    # ------condition_3
+    pre_args1 = {'idt_type': 'ema',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 5}
+    pool10.add_condition(pre_args1, pre_args2, '<')
+    pool10.iter_al()  # 在添加完条件后给所有assets计算conditions涉及的指标
     pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
     stg.add_pool(desc='pool20')
-    cnd_idx = {0, 1}
+    cnd_idx = {0, 1, 3}
     dpools = {20}
     pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
+    pool10.filter_filter(filter_index=0)
+    print('[L2066] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
 
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
