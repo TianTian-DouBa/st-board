@@ -1293,12 +1293,13 @@ class Pool:
         al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
         """
         self.desc = desc
-        self.assets = {}
+        self.assets = {}  # {ts_code, <ins> Asset}
         self.init_assets(al_file)
         self.conditions = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
+        self.cnds_matrix = None  # <DataFrame> index:'ts_code'; data: (True, False, numpy.nan...) 在所有cnds都初始化完后，使用[fn]op_cnds_matrix()初始化
 
     def init_assets(self, al_file=None):
         r"""
@@ -1370,6 +1371,33 @@ class Pool:
                 if cond.para2.idt_name != 'const':  # 跳过condition的常量para
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
+
+    def op_cnds_matrix(self, mode='i', **kwargs):
+        """
+        self.cnds_matrix相关的操作
+        mode: 'i' = initialize根据当前assets及cnds初始化
+              'a' = append增加ts_code行，旧记录不变
+              'd' = delete删除ts_code行，其它记录不变
+        al: <list> of ts_code,用于 a 或 d 模式
+        """
+        print('[L1383] mode "a", "d" not finished')
+        if mode == 'i':
+            n_cnds = len(self.conditions)
+            if n_cnds > 0:
+                head_list = list('cond' + str(i) for i in range(n_cnds))
+                head_list.insert(0, 'ts_code')
+                print('[L1386] head_list: {}'.format(head_list))
+                self.cnds_matrix = pd.DataFrame(columns=head_list)
+                self.cnds_matrix.set_index('ts_code', inplace=True)
+                data_nan = list(np.nan for i in range(n_cnds))
+                print('[L1394] data_nan:'.format(data_nan))
+                for ts_code in self.assets.keys():
+                    self.cnds_matrix.loc[ts_code] = data_nan
+                print('[L1396] cnds_matrix:\n{}'.format(self.cnds_matrix))
+            else:
+                log_args = [self.desc]
+                add_log(20, '[fn]Pool.op_cnds_matrix(). {0[0]} conditions not loaded', log_args)
+                return
 
     def filter_cnd(self, cnd, datetime_='latest', csv='default', al=None):
         """
@@ -1952,8 +1980,8 @@ if __name__ == "__main__":
     print('===========Phase-1 单pool，条件筛选测试===========')
     # print('------Strategy and Pool--------')
     stg = Strategy('stg_p1_00')
-    stg.add_pool(desc="pool10", al_file='try_001')
-    # stg.add_pool(desc="pool10", al_file='pool_001')
+    # stg.add_pool(desc="pool10", al_file='try_001')
+    stg.add_pool(desc="pool10", al_file='pool_001')
     # stg.add_pool(desc="pool20")
     # stg.add_pool(desc="pool30")
     stg.pools_brief()
@@ -2004,6 +2032,7 @@ if __name__ == "__main__":
     pool10.dashboard.disp_board()
 
     print('===========Phase-2 Filter测试===========')
+    pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
     stg.add_pool(desc='pool20')
     cnd_idx = {0, 1}
     dpools = {20}
