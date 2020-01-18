@@ -1569,10 +1569,20 @@ class Pool:
             add_log(10, '[fn]Pool.filter_filter(). invalid filter_index:{0[0]}', log_args)
             return
 
+        cnd_names = []
         for i in flt.cnd_indexes:  # i为pool.conditions中cnd的标号
             self.filter_cnd(cnd_index=i, datetime_=datetime_, al=al, update_matrix=True)
+            cnd_names.append('cond' + str(i))
 
-        print('[L1575] to be continued')
+        # self.cnds_matrix[(self.cnds_matrix['cond0'] is True) & (self.cnds_matrix['cond1']==True)]
+        exec_str = 'self.cnds_matrix['
+        for cnd_name in cnd_names:
+            exec_str = exec_str + '(self.cnds_matrix["' + cnd_name + '"]==True) & '
+        exec_str = exec_str[:-3] + ']'
+        print('[L1582] exec_str: {}'.format(exec_str))
+        out_df = exec(exec_str)
+        print('[L1584] out_df:\n{}'.format(out_df))
+        print('[L1585] to be continued')
 
 
 class Condition:
@@ -2072,10 +2082,11 @@ if __name__ == "__main__":
     pool10.iter_al()  # 在添加完条件后给所有assets计算conditions涉及的指标
     pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
     stg.add_pool(desc='pool20')
-    cnd_idx = {0, 1, 3}
+    cnd_idx = {0, 1}
     dpools = {20}
     pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
-    pool10.filter_filter(filter_index=0)
+    rslt = pool10.filter_filter(filter_index=0)
+    print('[L2089] rslt:\n{}'.format(rslt))
     print('[L2066] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
 
     # print('------test multi-stages filter--------')
