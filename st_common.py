@@ -85,7 +85,7 @@ class Raw_Data:
         file_name = "trade_calendar.csv"
         file_path = sub_path + '\\' + file_name
         try:
-            self.trade_calendar = pd.read_csv(file_path)
+            self.trade_calendar = pd.read_csv(file_path, dtype={'cal_date': str, 'pretrade_date': str}, index_col='cal_date')
         except FileNotFoundError:
             log_args = [file_path]
             add_log(20, '[fn]Raw_Data.load_trade_calendar(). file "{0[0]}" not found', log_args)
@@ -110,9 +110,9 @@ class Raw_Data:
             if len(self.trade_calendar) > 2:
                 return True
 
-    def last_trade_day(self, dt_str = None):
+    def last_trade_day(self, dt_str=None):
         """
-        查询指定日最近的交易日，返回日期字符串
+        查询指定日当日或之前最近的交易日，返回日期字符串
         dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
                 None 代表当日
         return: <string> in 'YYYYMMDD' e.g.'20190719'
@@ -124,24 +124,54 @@ class Raw_Data:
             dt = datetime.now()
             dt_str = dt.strftime("%Y%m%d")
         if isinstance(dt_str, str) and (len(dt_str) == 8):
-            tdf = self.trade_calendar.set_index(['cal_date'])
+            # tdf = self.trade_calendar.set_index(['cal_date'])
+            tdf = self.trade_calendar
             try:
-                is_open = tdf.loc[dt_str]['is_open']
+                is_open = tdf.loc[int(dt_str)]['is_open']
                 if is_open == 1:
                     return dt_str
                 elif is_open == 0:
-                    pretrade_date = tdf.loc[dt_str]['pretrade_date']
-                    return pretrade_date
+                    pretrade_date = tdf.loc[int(dt_str)]['pretrade_date']
+                    return str(pretrade_date)
                 else:
                     return None
             except KeyError:
                 log_args = [dt_str]
-                add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+                add_log(10, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" not in stock_basic.csv. check date_str and pull Raw_Data', log_args)
                 return
         else:
             log_args = [dt_str]
             add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
             return None
+
+    def next_trade_day(self, dt_str):
+        """
+        查询下一个交易日
+        dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+        return: <string> in 'YYYYMMDD' e.g.'20190719'
+        """
+        if self.valid_trade_calendar() is None:
+            add_log(20, '[fn]Raw_Data.next_trade_day() trade_calendar invalid')
+            return
+        if isinstance(dt_str, str) and (len(dt_str) == 8):
+            tdf = self.trade_calendar
+            try:
+                pos = tdf.index.get_loc(int(dt_str))
+                for i in range(1, 100):  # 估计最长休市天数不超过100天
+                    if tdf.iloc[pos + i]['is_open'] == 1:
+                        next_trade_date = tdf.iloc[pos + i].name  # tdf.iloc[pos + i]是Series，所以用.name
+                        # print('[L167] next_trade_date: {}'.format())
+                        return str(next_trade_date)
+                add_log(20, '[fn]Raw_Data.next_trade_day() exceed last day')
+                return
+            except KeyError:
+                log_args = [dt_str]
+                add_log(10, '[fn]Raw_Data.next_trade_day() dt_str "{0[0]}" not in stock_basic.csv. check date_str and pull Raw_Data', log_args)
+                return
+        else:
+            log_args = [dt_str]
+            add_log(20, '[fn]Raw_Data.next_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+            return
 
     def valid_ts_code(self, ts_code):
         """验证在raw_data内ts_code是否有效,
@@ -155,7 +185,7 @@ class Raw_Data:
             log_args = [ts_code]
             add_log(30, '[fn]Raw_Data.valid_ts_code(). ts_code "{0[0]}" invalid', log_args)
             return
-        if isinstance(name,str):
+        if isinstance(name, str):
             if len(name) > 0:
                 return True
         return

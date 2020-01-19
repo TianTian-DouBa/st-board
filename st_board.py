@@ -711,8 +711,19 @@ class Asset:
     资产的基类
     """
 
-    def __init__(self, ts_code):
+    def __init__(self, ts_code, in_date=None):
+        """
+        in_date: None: 不提供
+                 'latest': 根据基础数据里取有价格的最新那个时间
+        """
         self.ts_code = ts_code
+        self.in_date = in_date  # 如果是'latest'则需要在各子类中计算
+        self.by_date = None  # <str> 当前计算的日期如"20191231"
+        self.stay_days = None  # <int> 在pool中的天数
+        self.in_price = None  # <float>加入pool的价格
+        self.by_price = None  # 当前计算的价格
+        self.earn = None  # by_price - in_price
+        self.earn_pct = None  # earn / in_price * 100%
 
     def add_indicator(self, idt_class, **post_args):
         """
@@ -766,10 +777,15 @@ class Asset:
 
 
 class Stock(Asset):
-    """股票类的资产"""
+    """
+    股票类的资产
+    in_date: None: 无效
+             'latest': 根据基础数据里取有价格的最新那个时间
+    """
 
-    def __init__(self, ts_code):
-        Asset.__init__(self, ts_code=ts_code)
+    def __init__(self, ts_code, in_date=None):
+        Asset.__init__(self, ts_code=ts_code, in_date=in_date)
+        print('[L788] 在这继续，实现Asset中的那些属性')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
