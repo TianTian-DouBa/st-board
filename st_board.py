@@ -1362,6 +1362,7 @@ class Pool:
     def iter_al(self):
         """
         iterate the al list in the pool, according to the self.conditions to add indicators to each asset
+        在给每个资产添加指标时，指标的值会根据已下载的基础数据计算补完到可能的最新值；但不会触发基础数据的补完下载
         """
         for asset in self.assets.values():
             for cond in self.conditions:
@@ -1386,14 +1387,14 @@ class Pool:
             if n_cnds > 0:
                 head_list = list('cond' + str(i) for i in range(n_cnds))
                 head_list.insert(0, 'ts_code')
-                print('[L1386] head_list: {}'.format(head_list))
+                # print('[L1386] head_list: {}'.format(head_list))
                 self.cnds_matrix = pd.DataFrame(columns=head_list)
                 self.cnds_matrix.set_index('ts_code', inplace=True)
                 data_nan = list(np.nan for i in range(n_cnds))
-                print('[L1394] data_nan:'.format(data_nan))
+                # print('[L1394] data_nan:'.format(data_nan))
                 for ts_code in self.assets.keys():
                     self.cnds_matrix.loc[ts_code] = data_nan
-                print('[L1396] cnds_matrix:\n{}'.format(self.cnds_matrix))
+                # print('[L1396] cnds_matrix:\n{}'.format(self.cnds_matrix))
             else:
                 log_args = [self.desc]
                 add_log(20, '[fn]Pool.op_cnds_matrix(). {0[0]} conditions not loaded', log_args)
@@ -1402,6 +1403,7 @@ class Pool:
     def filter_cnd(self, cnd_index, datetime_='latest', csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
+        本函数不会发起基础数据的下载和或指标的重新计算
         cnd_index: <int>, self.conditions 的序号
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
@@ -1553,7 +1555,7 @@ class Pool:
 
     def filter_filter(self, filter_index, datetime_='latest', csv='default', al=None):
         """
-        filter the self.assets or al with the <ins Filter>
+        filter the self.assets or al with the <ins Filter>，本函数不会发起基础数据的下载和或指标的重新计算
         确保self.cnds_matrix已初始化
         filter_index: <int>, 过滤器的标号
         datetime_: <str> 'latest' or like '20190723' YYYYMMDD
@@ -1574,15 +1576,25 @@ class Pool:
             self.filter_cnd(cnd_index=i, datetime_=datetime_, al=al, update_matrix=True)
             cnd_names.append('cond' + str(i))
 
-        # self.cnds_matrix[(self.cnds_matrix['cond0'] is True) & (self.cnds_matrix['cond1']==True)]
         exec_str = 'self.cnds_matrix['
         for cnd_name in cnd_names:
-            exec_str = exec_str + '(self.cnds_matrix["' + cnd_name + '"]==True) & '
-        exec_str = exec_str[:-3] + ']'
-        print('[L1582] exec_str: {}'.format(exec_str))
-        out_df = exec(exec_str)
-        print('[L1584] out_df:\n{}'.format(out_df))
-        print('[L1585] to be continued')
+            exec_str = exec_str + '(self.cnds_matrix["' + cnd_name + '"] == True) & '
+        exec_str = 'self.db_buff.filter_output_al = list(' + exec_str[:-3] + '].index)'
+        # print('[L1583] exec_str: {}'.format(exec_str))
+        exec(exec_str)
+        out_al = self.db_buff.filter_output_al  # <list> of 'ts_code'
+        # print('[L1585] out_al:\n{}'.format(out_al))
+
+        if isinstance(csv, str) and (len(out_al) > 0):
+            if csv == 'default':
+                csv_file_name = self.desc + '_output'
+            else:
+                csv_file_name = csv
+            All_Assets_List.create_al_file(out_al, csv_file_name)
+
+        log_args = [len(out_al)]
+        add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
+        return out_al
 
 
 class Condition:
@@ -1731,6 +1743,9 @@ class Register_Buffer:
         self.cond_p1_date = None  # p1时间戳e.g."20190102", "const"
         self.cond_p2_date = None  # p2时间戳e.g."20190102", "const"
 
+        # Filter
+        self.filter_output_al = None  # <list> of 'ts_code'
+
 
 class Dashboard:
     """
@@ -1738,7 +1753,7 @@ class Dashboard:
     """
     def __init__(self, register_buffer):
         self.buff_weakref = weakref.ref(register_buffer)
-        self.list = []  # dashboard <list>
+        self.records = []  # dashboard <list>
         self.board_head = ()  # <tuple> e.g. ('ts_code', 'cond_desc', 'cond_result')
 
     def append_record(self):
@@ -1751,11 +1766,12 @@ class Dashboard:
         buff = self.buff_weakref()  # 未考虑buff被回收后的情况
         record = tuple(getattr(buff, item_name) for item_name in self.board_head)
         # print('[L1545] record={}'.format(record))
-        self.list.append(record)
+        self.records.append(record)
 
     def disp_board(self):
         """
         print out the contents of dashboard
+        字段的显示格式在st_common.py FORMAT_HEAD 和 FORMAT_FIELDS中
         """
         if not self.valid_board_head():
             return
@@ -1770,13 +1786,13 @@ class Dashboard:
         print()
         # print records
         num = len(formats)
-        # print('[L1560] self.list:{}'.format(self.list))
-        for record in self.list:
+        # print('[L1560] self.records:{}'.format(self.records))
+        for record in self.records:
             # print('[L1561] record:{}'.format(record))
             for i in range(num):
                 print(formats[i].format(record[i]), end='')
             print()
-        print("Total Records: {}".format(len(self.list)))
+        print("Total Records: {}".format(len(self.records)))
 
     def valid_board_head(self):
         """
@@ -1795,7 +1811,7 @@ class Dashboard:
         """
         clear the content of the dashboard
         """
-        self.list = []
+        self.records = []
 
 
 if __name__ == "__main__":
@@ -2029,42 +2045,42 @@ if __name__ == "__main__":
                  'middle_n2': 20,
                  'short_n3': 5}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 1.0}
-    pool10.add_condition(pre_args1, pre_args2, '<', 3)
+                 'const_value': 2.0}
+    pool10.add_condition(pre_args1, pre_args2, '<')
     # ------condition_1
     pre_args1 = {'idt_type': 'ma',
                  'period': 20}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 5}
-    pool10.add_condition(pre_args1, pre_args2, '<')
+                 'const_value': 100}
+    pool10.add_condition(pre_args1, pre_args2, '>')
     # 自动iterate pool.assets 来添加
-    pool10.iter_al()  # 给所有assets计算conditions涉及的指标
-    cond0 = pool10.conditions[0]
-    cond1 = pool10.conditions[1]
-    print('++++ 001 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20191226')
-    pool10.dashboard.disp_board()
-    print('++++ 002 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20191227')
-    pool10.dashboard.disp_board()
-    print('++++ 003 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20191230')
-    pool10.dashboard.disp_board()
-    print('++++ 004 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20191231')
-    pool10.dashboard.disp_board()
-    print('++++ 005 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20200102')
-    pool10.dashboard.disp_board()
-    print('++++ 006 ++++')
-    pool10.dashboard.clear_board()
-    pool10.filter_cnd(0, '20200103')
-    pool10.dashboard.disp_board()
+    # pool10.iter_al()  # 给所有assets计算conditions涉及的指标
+    # cond0 = pool10.conditions[0]
+    # cond1 = pool10.conditions[1]
+    # print('++++ 001 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191226')
+    # pool10.dashboard.disp_board()
+    # print('++++ 002 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191227')
+    # pool10.dashboard.disp_board()
+    # print('++++ 003 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191230')
+    # pool10.dashboard.disp_board()
+    # print('++++ 004 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191231')
+    # pool10.dashboard.disp_board()
+    # print('++++ 005 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20200102')
+    # pool10.dashboard.disp_board()
+    # print('++++ 006 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20200103')
+    # pool10.dashboard.disp_board()
 
     print('===========Phase-2 Filter测试===========')
     # ------condition_2
@@ -2086,8 +2102,8 @@ if __name__ == "__main__":
     dpools = {20}
     pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
     rslt = pool10.filter_filter(filter_index=0)
-    print('[L2089] rslt:\n{}'.format(rslt))
-    print('[L2066] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
+    # print('[L2089] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
+    print('[L2090] rslt:\n{}'.format(rslt))
 
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
@@ -2108,7 +2124,7 @@ if __name__ == "__main__":
     # pool10.filter_cnd(cnd=cond0, al=al)
     # pool10.dashboard.disp_board()
 
-    print("后续测试：cond成立周期;filter过滤; asset transmit")
+    print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))

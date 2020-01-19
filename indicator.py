@@ -167,6 +167,7 @@ class Indicator:
     def calc_idt(self):
         """
         调用self._calc_res()补完df_idt数据
+        指标的值会根据已下载的基础数据计算补完到可能的最新值；但不会触发基础数据的补完下载
         """
         df_append = self._calc_res()
         if isinstance(df_append, pd.DataFrame):
