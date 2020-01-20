@@ -15,6 +15,7 @@ from pandas.plotting import register_matplotlib_converters
 
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
+raw_data = None  # 消除语法错误提示
 
 
 def valid_date_str_fmt(date_str):
@@ -1369,10 +1370,16 @@ class Pool:
         for i in range(len(self.conditions)):
             print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
 
-    def add_filter(self, cnd_indexes=set(), down_pools=set()):
+    def add_filter(self, cnd_indexes=None, down_pools=None):
         """
         add the filter to the pool
+        cnd_indexes: <set> {0, 1, 2}
+        down_pools: <set> {0, 1}
         """
+        if cnd_indexes is None:
+            cnd_indexes = set()
+        if down_pools is None:
+            down_pools = set()
         self.filters.append(Filter(cnd_indexes, down_pools))
 
     def iter_al(self):
