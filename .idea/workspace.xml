@@ -232,7 +232,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>2153</line>
+          <line>2173</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>

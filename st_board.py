@@ -712,10 +712,14 @@ class Asset:
     资产的基类
     """
 
-    def __init__(self, ts_code, in_date=None):
+    def __init__(self, ts_code, in_date=None, load_daily='default'):
         """
         in_date: None: 不提供
                  'latest': 根据基础数据里取有价格的最新那个时间
+                 '20191231': 指定的日期
+        load_daily: 'default': 读入[close][open][high][low]基本字段到self.daily_data
+                  : None: self.daily_data = None
+                  : set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
         self.ts_code = ts_code
         self.in_date = in_date  # 如果是'latest'则需要在各子类中计算
@@ -725,6 +729,13 @@ class Asset:
         self.by_price = None  # 当前计算的价格
         self.earn = None  # by_price - in_price
         self.earn_pct = None  # earn / in_price * 100%
+        self.daily_data = None  # <df>
+
+    def load_daily_data(self):
+        """
+        在子类中改写
+        """
+        pass
 
     def add_indicator(self, idt_class, **post_args):
         """
@@ -784,9 +795,18 @@ class Stock(Asset):
              'latest': 根据基础数据里取有价格的最新那个时间
     """
 
-    def __init__(self, ts_code, in_date=None):
+    def __init__(self, ts_code, in_date=None, load_daily='default'):
         Asset.__init__(self, ts_code=ts_code, in_date=in_date)
         print('[L788] 在这继续，实现Asset中的那些属性')
+
+    def load_daily_data(self, load_daily='default'):
+        """
+        根据load_daily输入字段，将数据读入self.daily_data
+        load_daily: 'default': 读入[close][open][high][low]基本字段到self.daily_data
+                  : None: self.daily_data = None
+                  : set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        """
+        print('[L809] to be continued')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
