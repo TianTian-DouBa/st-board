@@ -8,7 +8,7 @@ from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_W
 from datetime import datetime,timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
 # from st_board import load_source_df, Stock, Index
-import st_board
+# import st_board
 import weakref
 
 
@@ -169,6 +169,7 @@ class Indicator:
         调用self._calc_res()补完df_idt数据
         指标的值会根据已下载的基础数据计算补完到可能的最新值；但不会触发基础数据的补完下载
         """
+        from st_board import valid_file_path
         df_append = self._calc_res()
         if isinstance(df_append, pd.DataFrame):
             if isinstance(self.df_idt, pd.DataFrame):
@@ -177,7 +178,7 @@ class Indicator:
             else:
                 df_idt = df_append
             if self.update_csv:
-                if st_board.valid_file_path(self.file_path):
+                if valid_file_path(self.file_path):
                     df_idt.to_csv(self.file_path)
                     log_args = [self.ts_code, self.file_path]
                     add_log(40, "[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, saved", log_args)

@@ -77,7 +77,19 @@ class Raw_Data:
             self.get_trade_calendar()
         else:
             self.load_trade_calendar()
-    
+
+    def valid_trade_date(self, date_str):
+        """
+        验证date_str是否是交易日
+        date_str:<str> e.g. '20190723' YYYYMMDD
+        return:<bool> True=是交易日
+        """
+        is_open = self.trade_calendar.loc[int(date_str)]['is_open']
+        # print('[L40] is_open: {}'.format(is_open))
+        # 看具体什么except
+        if is_open == 1:
+            return True
+
     def load_trade_calendar(self):
         """
         load trade_calendar.csv文件，读入self.trade_calendar
@@ -99,6 +111,7 @@ class Raw_Data:
         file_name = "trade_calendar.csv"
         file_path = sub_path + '\\' + file_name
         self.trade_calendar = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
+        self.trade_calendar.set_index('cal_date', inplace=True)
         self.trade_calendar.to_csv(file_path, encoding="utf-8")
 
     def valid_trade_calendar(self):
@@ -171,6 +184,35 @@ class Raw_Data:
         else:
             log_args = [dt_str]
             add_log(20, '[fn]Raw_Data.next_trade_day() dt_str "{0[0]}" incorrect format', log_args)
+            return
+
+    def previous_trade_day(self, dt_str):
+        """
+        查询不含当日的前一个交易日
+        dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+        return: <string> in 'YYYYMMDD' e.g.'20190719'
+        """
+        if self.valid_trade_calendar() is None:
+            add_log(20, '[fn]Raw_Data.previous_trade_day() trade_calendar invalid')
+            return
+        if isinstance(dt_str, str) and (len(dt_str) == 8):
+            tdf = self.trade_calendar
+            try:
+                pos = tdf.index.get_loc(int(dt_str))
+                for i in range(1, 100):  # 估计最长休市天数不超过100天
+                    if tdf.iloc[pos - i]['is_open'] == 1:
+                        previous_trade_date = tdf.iloc[pos - i].name  # tdf.iloc[pos + i]是Series，所以用.name
+                        # print('[L167] previous_trade_date: {}'.format())
+                        return str(previous_trade_date)
+                add_log(20, '[fn]Raw_Data.previous_trade_day() exceed span')
+                return
+            except KeyError:
+                log_args = [dt_str]
+                add_log(10, '[fn]Raw_Data.previous_trade_day() dt_str "{0[0]}" not in stock_basic.csv. check date_str and pull Raw_Data', log_args)
+                return
+        else:
+            log_args = [dt_str]
+            add_log(20, '[fn]Raw_Data.previous_trade_day() dt_str "{0[0]}" incorrect format', log_args)
             return
 
     def valid_ts_code(self, ts_code):
@@ -380,8 +422,8 @@ class Stock_Basic:
         self.basic = ts_pro.stock_basic(fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange,curr_type,list_status,list_date,delist_date,is_hs')
         if isinstance(self.basic, pd.DataFrame):
             if len(self.basic) > 10:
-                self.basic.set_index('ts_code',inplace=True)
-                self.basic.to_csv(file_path,encoding='utf-8')
+                self.basic.set_index('ts_code', inplace=True)
+                self.basic.to_csv(file_path, encoding='utf-8')
                 log_args = [file_path]
                 add_log(40, '[fn]:Stock.get_stock_basic() file "{0[0]}" saved', log_args)
                 return self.basic

@@ -15,8 +15,6 @@ from pandas.plotting import register_matplotlib_converters
 
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
-raw_data = None  # 消除语法错误提示
-
 
 def valid_date_str_fmt(date_str):
     """
@@ -468,9 +466,9 @@ def take_head_n(df, nrows):
 def load_source_df(ts_code, source, nrows=None):
     """
     根据source来选择不同数据源，返回df；数据源需要事先下载到csv，本函数不做补全
-    source:<str> e.g. 'close_hfq' defined in SOURCE
+    source:<str> e.g. 'close_hfq' defined in st_common.SOURCE
     nrows: <int> 指定读入最近n个周期的记录,None=全部
-    return:<df> trade_date(index); close; high...
+    return:<df> trade_date(index); 数据只有一列 close; high...
     """
     try:
         # SOURCE[source]
@@ -712,17 +710,17 @@ class Asset:
     资产的基类
     """
 
-    def __init__(self, ts_code, in_date=None, load_daily='default'):
+    def __init__(self, ts_code, in_date=None, load_daily='basic'):
         """
         in_date: None: 不提供
                  'latest': 根据基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
-        load_daily: 'default': 读入[close][open][high][low]基本字段到self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][amount]基本字段到self.daily_data
                   : None: self.daily_data = None
-                  : set('raw_close', 'amount'...) 基本字段外的其他补充字段
+                  : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
         """
         self.ts_code = ts_code
-        self.in_date = in_date  # 如果是'latest'则需要在各子类中计算
+        self.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
         self.by_date = None  # <str> 当前计算的日期如"20191231"
         self.stay_days = None  # <int> 在pool中的天数
         self.in_price = None  # <float>加入pool的价格
@@ -737,6 +735,66 @@ class Asset:
         """
         pass
 
+    def get_price(self, trade_date, mode='close', seek_direction=None):
+        """
+        根据mode返回价格
+        trade_date: <str> 如 ’20200126‘
+        mode: <str>
+              'close' 返回当日的close收盘价，股票都为后复权值
+              'high' 返回当日的high最高价，股票都为后复权值
+              'low' 返回当日的low最低价，股票都为后复权值
+              其它还未完成
+        seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+                       None: 返回None,不搜索
+                       'forwards': 向时间增加的方向搜索
+                       'backwards': 向时间倒退的方向搜索
+        """
+        global raw_data
+        SEEK_DAYS = 365  # 前后查找数据的最大天数
+        is_open = raw_data.valid_trade_date(trade_date)
+        if is_open is True:
+            if mode == 'close' or mode == 'high' or mode == 'low':
+                if seek_direction is None:
+                    try:
+                        rslt = self.daily_data.loc[int(trade_date)][mode]
+                        return rslt
+                    except KeyError:
+                        log_args = [self.ts_code, trade_date]
+                        add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} days', log_args)
+                        return
+                elif seek_direction == 'forwards':
+                    _trade_date = trade_date
+                    for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                        if int(_trade_date) in self.daily_data.index:
+                            rslt = self.daily_data.loc[int(_trade_date)][mode]
+                            return rslt
+                        else:
+                            _trade_date = raw_data.next_trade_day(_trade_date)
+                            continue
+                    log_args = [self.ts_code, trade_date, SEEK_DAYS]
+                    add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} and next {0[2]} days', log_args)
+                    return
+                elif seek_direction == 'backwards':
+                    _trade_date = trade_date
+                    for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                        if int(_trade_date) in self.daily_data.index:
+                            rslt = self.daily_data.loc[int(_trade_date)][mode]
+                            return rslt
+                        else:
+                            _trade_date = raw_data.previous_trade_day(_trade_date)
+                            continue
+                    log_args = [self.ts_code, trade_date, SEEK_DAYS]
+                    add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} and previous {0[2]} days', log_args)
+                else:
+                    log_args = [seek_direction]
+                    add_log(20, '[fn]Asset.get_price() seek_direction "{0[0]}" invalid',
+                            log_args)
+                    return
+            # ----------------其它模式待完善-----------------
+        else:
+            log_args = [self.ts_code, trade_date]
+            add_log(20, '[fn]Asset.get_price(). {0[0]} trade_date:"{0[1]}" is not a trade day', log_args)
+
     def add_indicator(self, idt_class, **post_args):
         """
         添加Indicator的实例
@@ -750,6 +808,7 @@ class Asset:
         idt = idt_class(ts_code=self.ts_code, par_asset=par_asset(), **post_args)
         # print('[L677] exit instance Indicator')
         setattr(self, idt_name_, idt)
+
         try:
             idt = getattr(self, idt_name_)
             if isinstance(idt, Indicator):
@@ -761,6 +820,7 @@ class Asset:
             log_args = [self.ts_code, idt_name_, e.__class__.__name__]
             add_log(10, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} failed. Except:{0[2]}', log_args)
             return
+
         # print('[L692] exit add_indicator()')
         log_args = [self.ts_code, idt_name_]
         add_log(40, '[fn]Asset.add_indicator() ts_code:{0[0]}, add idt_name:{0[1]} succeed.', log_args)
@@ -769,7 +829,7 @@ class Asset:
         """
         validate if self.[ins]Indicator up to df_source date
         idt_name: <str> e.g. 'ema12_close_hfq'
-        return: True: up to date; 
+        return: True: up to date;
                 None: invalid or not uptodate
         """
         from indicator import Indicator
@@ -795,18 +855,48 @@ class Stock(Asset):
              'latest': 根据基础数据里取有价格的最新那个时间
     """
 
-    def __init__(self, ts_code, in_date=None, load_daily='default'):
+    def __init__(self, ts_code, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
+        """
+        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
+        price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+                               None: 返回None,不搜索
+                               'forwards': 向时间增加的方向搜索
+                              'backwards': 向时间倒退的方向搜索
+        """
         Asset.__init__(self, ts_code=ts_code, in_date=in_date)
-        print('[L788] 在这继续，实现Asset中的那些属性')
 
-    def load_daily_data(self, load_daily='default'):
+        # daily_data的其它字段还待完成
+        if load_daily is not None:
+            self.load_daily_data(load_daily=load_daily)
+
+        # 处理self.in_date
+        if isinstance(self.in_date, str):
+            if self.in_date == 'latest':
+                self.in_date = str(self.daily_date[0]['trade_date'])
+            elif not valid_date_str_fmt(self.in_date):
+                log_args = [self.ts_code, self.in_date]
+                add_log(20, '[fn]Stock.__init__(). "{0[0]}" in_date "{0[1]}" invalid', log_args)
+                self.in_date = None
+
+        # 处理self.in_price
+        if self.in_date is not None:
+            self.in_price = self.get_price(trade_date=self.in_date, mode=in_price_mode, seek_direction=price_seek_direction)
+
+    def load_daily_data(self, load_daily='basic'):
         """
-        根据load_daily输入字段，将数据读入self.daily_data
-        load_daily: 'default': 读入[close][open][high][low]基本字段到self.daily_data
-                  : None: self.daily_data = None
-                  : set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        根据load_daily输入字段，从csv文件将数据读入self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
-        print('[L809] to be continued')
+        if load_daily == 'basic':
+            self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')
+            return
+        elif isinstance(load_daily, set):
+            print('[L820] 扩展字段的情况待完成')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
@@ -828,20 +918,26 @@ class Stock(Asset):
             return
 
     @staticmethod
-    def load_stock_daily(ts_code, nrows=None):
+    def load_stock_daily(ts_code, nrows=None, columns='all'):
         """
-        从文件读入股票日线数据
+        从文件读入股票日线数据，columns的修改不必要20200126
         nrows: <int> 指定读入最近n个周期的记录,None=全部
-        return: <df>
+        columns: <str> 'all' = 所有可用的列
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'amount'
+        return: <df> index = 'trade_date'
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                 usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
-                                          'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
-            result['vol'] = result['vol'].astype(np.int64)
+            if columns == 'all':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
+                                              'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+                result['vol'] = result['vol'].astype(np.int64)
+            elif columns == 'basic':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['trade_date', 'close', 'open', 'high', 'low', 'amount'], index_col='trade_date', nrows=nrows)
             # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
         else:
@@ -872,19 +968,31 @@ class Stock(Asset):
             return
 
     @staticmethod
-    def load_stock_dfq(ts_code, nrows=None):
+    def load_stock_dfq(ts_code, nrows=None, columns='all'):
         """
         从文件读入后复权的股票日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: <str> 'all' = 所有可用的列
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
         return: <df>
         """
         global raw_data
+        # print('[L940] raw_data:{}'.format(raw_data))
         if raw_data.valid_ts_code(ts_code):
             file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                 usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'],
-                                 index_col='trade_date', nrows=nrows)
+            if columns == 'all':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'],
+                                     index_col='trade_date', nrows=nrows)
+            elif columns == 'basic':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['trade_date', 'close', 'open', 'high', 'low'],
+                                     index_col='trade_date', nrows=nrows)
+            else:
+                log_args = [columns]
+                add_log(20, '[fn]Stock.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
+                return
             return result
         else:
             log_args = [ts_code]
@@ -1324,24 +1432,39 @@ class Pool:
     股票池
     """
 
-    def __init__(self, desc="", al_file=None):
+    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
-        exc_order: execution order <int>
-        al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        desc: <str> 描述
+        al_file: None = create empty dict;
+                 <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        in_date: asset进入pool的日期
+                 None: 不提供
+                 'latest': 根据asset基础数据里取有价格的最新那个时间
+                 '20191231': 指定的日期
         """
         self.desc = desc
         self.assets = {}  # {ts_code, <ins> Asset}
-        self.init_assets(al_file)
+        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode='close', price_seek_direction=price_seek_direction)
         self.conditions = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
         self.cnds_matrix = None  # <DataFrame> index:'ts_code'; data: (True, False, numpy.nan...) 在所有cnds都初始化完后，使用[fn]op_cnds_matrix()初始化
 
-    def init_assets(self, al_file=None):
+    def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
         init self.assets
-        al_file:None = create empty dict; <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        al_file: None = create empty dict;
+                 <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
+        in_date: asset进入pool的日期
+                 None: 不提供
+                 'latest': 根据asset基础数据里取有价格的最新那个时间
+                 '20191231': 指定的日期
+        in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
+        price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+                               None: 返回None,不搜索
+                               'forwards': 向时间增加的方向搜索
+                              'backwards': 向时间倒退的方向搜索
         """
         if al_file is None:
             self.assets = {}
@@ -1365,7 +1488,7 @@ class Pool:
                         log_args = [ts_code]
                         add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     else:
-                        self.assets[ts_code] = Stock(ts_code)
+                        self.assets[ts_code] = Stock(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
                         log_args = [ts_code]
                         add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
                 # ----other categories are to be implemented here-----
@@ -2075,7 +2198,7 @@ if __name__ == "__main__":
     # print('------Strategy and Pool--------')
     stg = Strategy('stg_p1_00')
     # stg.add_pool(desc="pool10", al_file='try_001')
-    stg.add_pool(desc="pool10", al_file='pool_001')
+    stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction='backwards')
     # stg.add_pool(desc="pool20")
     # stg.add_pool(desc="pool30")
     stg.pools_brief()
