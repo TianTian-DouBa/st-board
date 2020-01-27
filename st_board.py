@@ -760,7 +760,7 @@ class Asset:
                         return rslt
                     except KeyError:
                         log_args = [self.ts_code, trade_date]
-                        add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} days', log_args)
+                        add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
                         return
                 elif seek_direction == 'forwards':
                     _trade_date = trade_date
@@ -1426,6 +1426,20 @@ class Strategy:
             print("{:>5}: {:<50}".format(k, v.desc))
         print("Number of pools: {}".format(len(self.pools)))
 
+    def update_cycles(self, start_date=None, end_date=None, cycles=None):
+        """
+        执行strategy计算的循环
+        start_date: <str> e.g. '20191231', None的话不适用
+        end_date:  <str> e.g. '20191231', None的话不适用
+        cycles: <int> 执行的周期数，如果非None则end_date无效
+        """
+        print('[L1436] to be continued')
+
+        def cycle():
+            """
+            执行1次循环
+            """
+
 
 class Pool:
     """
@@ -1442,14 +1456,20 @@ class Pool:
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
         """
+        global raw_data
         self.desc = desc
         self.assets = {}  # {ts_code, <ins> Asset}
-        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode='close', price_seek_direction=price_seek_direction)
+        self.in_date = in_date  # 仅做诊断用
+        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
         self.conditions = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
         self.cnds_matrix = None  # <DataFrame> index:'ts_code'; data: (True, False, numpy.nan...) 在所有cnds都初始化完后，使用[fn]op_cnds_matrix()初始化
+        self.by_date = None  # <str>当前要计算的日期
+        self.completed_cycle = None  # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
+        # if valid_date_str_fmt(in_date):
+        #     self.by_date = raw_data.next_trade_day(in_date)  # None的话无效
 
     def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
@@ -1761,6 +1781,57 @@ class Pool:
         log_args = [len(out_al)]
         add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
         return out_al
+
+    def update_cycle(self, date_str):
+        """
+        由strategy调用执行pool计算的1此循环，返回<list> of the assets to be transferred
+        资产的pools间transfer由strategy完成
+        date_str: <str> e.g. '20191231'
+        return: <list> e.g. [(down_pool_index, <list> of ts_code),
+                             (down_pool_index, <list> of ts_code),...]
+                None 没有资产需要transfer
+        """
+        print('[L1792] Pool.update_cycle() not tested')
+        # 补缺in_price的asset
+        lack_in_price = [asset for asset in self.assets if asset.in_date is None]
+        for asset in lack_in_price:
+            asset.in_price = asset.get_price(trade_date=date_str)
+            if asset.in_price is not None:
+                asset.in_date = date_str
+
+        # iter pools
+        rslt_to_return = []  # 返回的结果
+        nf = len(self.filters)
+        for i in range(nf):
+            filter_ = self.filters[i]
+            rslt_assets = self.filter_filter(filter_index=i, datetime=date_str, csv=None)
+            if rslt_assets is not None:
+                if len(rslt_assets) > 0:
+                    for index in filter_.down_pools:
+                        rslt_set = set(index, rslt_assets)
+                        rslt_to_return.append(rslt_set)
+
+        if len(rslt_to_return) > 0:
+            return rslt_to_return
+        else:
+            return
+
+
+class Aggregate:
+    """
+    Pool的聚合信息
+    """
+    def __init__(self):
+        self.num_assets = None  # 资产个数
+        self.complete_num = None  # 信息完整的资产个数
+        self.incomplete_num = None  # 信息不完整的资产个数
+        self.earn_average_pct = None  # 平均收益%
+
+    def update(self):
+        """
+        刷新聚合信息，并更新pool每个asset的[by_date][stay_days][by_capital][earn][earn_pct]
+        """
+        print('[L1799] to be continued')
 
 
 class Condition:
@@ -2198,7 +2269,7 @@ if __name__ == "__main__":
     # print('------Strategy and Pool--------')
     stg = Strategy('stg_p1_00')
     # stg.add_pool(desc="pool10", al_file='try_001')
-    stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction='backwards')
+    stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction=None)
     # stg.add_pool(desc="pool20")
     # stg.add_pool(desc="pool30")
     stg.pools_brief()

@@ -83,6 +83,7 @@ class Raw_Data:
         验证date_str是否是交易日
         date_str:<str> e.g. '20190723' YYYYMMDD
         return:<bool> True=是交易日
+                      None=不是
         """
         is_open = self.trade_calendar.loc[int(date_str)]['is_open']
         # print('[L40] is_open: {}'.format(is_open))
