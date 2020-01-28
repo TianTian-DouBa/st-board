@@ -1376,6 +1376,8 @@ class Strategy:
         # print('L1160 to be continued')
         self.name = name
         self.pools = {}  # dict of pools {execute order: pool #1, ...}
+        self.by_date = None  # <str> 如'20191231' 当前处理周期的时间
+        self.completed_cycle = None  # # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
 
     def add_pool(self, **kwargs):
         """
@@ -1433,12 +1435,167 @@ class Strategy:
         end_date:  <str> e.g. '20191231', None的话不适用
         cycles: <int> 执行的周期数，如果非None则end_date无效
         """
-        print('[L1436] to be continued')
+        global raw_data
 
-        def cycle():
+        def _cycle():
             """
             执行1次循环
             """
+            print('[L1444] to be continued')
+            self.completed_cycle = self.by_date
+
+        def _check_end_cycles():
+            nonlocal cycles
+            if end_date is None:
+                if cycles is None:  # 就执行1次_cycle()结束
+                    _cycle()
+                else:  # cycles有<int>次数
+                    try:
+                        cycles = int(cycles)
+                    except Exception as e:
+                        log_args = [cycles, e.__class__.__name__]
+                        add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]}, except_type:{0[1]}, aborted', log_args)
+                        return
+                    if cycles < 1:
+                        log_args = [cycles]
+                        add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]} < 1, aborted', log_args)
+                        return
+                    for _ in range(cycles):
+                        _cycle()
+                        next_trade_day = raw_data.next_trade_day(self.by_date)
+                        if next_trade_day is None:
+                            log_args = [self.by_date]
+                            add_log(30, '[fn]Strategy.update_cycles._check_end_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
+                            return
+                        else:
+                            log_args = [self.by_date, next_trade_day]
+                            add_log(40, '[fn]Strategy.update_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
+                            self.by_date = next_trade_day
+                            _check_end_cycles()
+            else:  # end_date is not None
+                # 检查end_date格式有效性
+                if valid_date_str_fmt(end_date) is not True:
+                    log_args = [end_date]
+                    add_log(10, '[fn]Strategy.update_cycles._check_end_cycles() end_date:{0[0]} invalid, aborted', log_args)
+                    return
+                # 检查end_date是否逆流
+                if int(end_date) < int(self.by_date):
+                    log_args = [end_date, self.by_date]
+                    add_log(10, '[fn]Strategy.update_cycles._check_end_cycles() end_date:{0[0]} before by_date:{0[1]}, aborted', log_args)
+                    return
+                # pptx内黄框处理
+                if cycles is None:
+                    while int(self.by_date) < int(self.end_date):
+                        _cycle()
+                        next_trade_day = raw_data.next_trade_day(self.by_date)
+                        if next_trade_day is None:
+                            log_args = [self.by_date]
+                            add_log(30, '[fn]Strategy.update_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
+                            return
+                        else:
+                            log_args = [self.by_date, next_trade_day]
+                            add_log(40, '[fn]Strategy.update_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
+                            self.by_date = next_trade_day
+                else:  # cycles有<int>次数
+                    try:
+                        cycles = int(cycles)
+                    except Exception as e:
+                        log_args = [cycles, e.__class__.__name__]
+                        add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]}, except_type:{0[1]}, aborted', log_args)
+                        return
+                    if cycles < 1:
+                        log_args = [cycles]
+                        add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]} < 1, aborted', log_args)
+                        return
+                    # 外层循环条件，by_date <= end_date; 内层每cycles次做aggregate;外层条件触发，终止内层循环，直接跳出
+                    while True:
+                        for _ in range(cycles):
+                            _cycle()
+                            next_trade_day = raw_data.next_trade_day(self.by_date)
+                            if next_trade_day is None:
+                                log_args = [self.by_date]
+                                add_log(30, '[fn]Strategy.update_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
+                                break  # 特殊：会跳出while
+                            elif int(next_trade_day) > int(end_date):  # 外层终止条件
+                                break  # 特殊：会跳出while
+                            else:  # by_date往后推1交易日
+                                log_args = [self.by_date, next_trade_day]
+                                add_log(40, '[fn]Strategy.update_cycles._check_end_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
+                                self.by_date = next_trade_day
+                        else:  # 如果for执行中没有break
+                            continue  # continue while next round
+                        break  # break while out
+
+        def _check_completed_cycle():
+            if self.completed_cycle is None:
+                _check_end_cycles()
+            elif int(self.completed_cycle) < int(self.by_date):
+                _check_end_cycles()
+            else:
+                if self.completed_cycle == self.by_date:
+                    log_args = [self.by_date]
+                    add_log(40, '[fn]Strategy.update_cycles._check_completed_cycle() {0[0]} was executed, skip to next trade day', log_args)
+                    next_trade_day = raw_data.next_trade_day(self.by_date)
+                    if next_trade_day is None:
+                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() by_date:{0[0]} failed to get next trade day, aborted', log_args)
+                        return
+                    else:
+                        self.by_date = next_trade_day
+                        _check_end_cycles()
+                else:
+                    if int(self.completed_cycle) > int(self.by_date):
+                        log_args = [self.completed_cycle, self.by_date]
+                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} > by_date:{0[1]}, aborted', log_args)
+                        return
+                    else:
+                        log_args = [self.completed_cycle]
+                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} unknown problem', log_args)
+                        return
+
+        if start_date is None:
+            if self.by_date is None:
+                add_log(10, '[fn]Strategy.update_cycles(). Both start_date and by_date are not specified. Aborted')
+            else:
+                if raw_data.valid_trade_date(self.by_date):
+                    _check_completed_cycle()
+                else:
+                    next_trade_day = raw_data.next_trade_day(self.by_date)
+                    if next_trade_day is None:
+                        log_args = [self.by_date]
+                        add_log(10, '[fn]Strategy.update_cycles.() by_date:{0[0]} failed to get next trade day, aborted', log_args)
+                        return
+                    else:
+                        self.by_date = next_trade_day
+                        _check_completed_cycle()
+        else:  # start_date is not None
+            if valid_date_str_fmt(start_date) is not True:
+                log_args = [start_date]
+                add_log(10, '[fn]Strategy.update_cycles.() start_date:{0[0]} invalid', log_args)
+                return
+            # start_data非交易日处理
+            if raw_data.valid_trade_date(start_date) is not True:
+                next_trade_day = raw_data.next_trade_day(start_date)
+                if next_trade_day is None:
+                    log_args = [start_date]
+                    add_log(10, '[fn]Strategy.update_cycles.() start_date:{0[0]} failed to get next trade day, aborted', log_args)
+                    return
+                else:
+                    start_date = next_trade_day
+                    log_args = [start_date, next_trade_day]
+                    add_log(40, '[fn]Strategy.update_cycles.() start_date:{0[0]} is not a trade day, changed to {0[1]}', log_args)
+            # start_date早于by_data处理
+            if self.by_date is not None:
+                if int(start_date) < int(self.by_date):
+                    log_args = [start_date, self.by_date]
+                    add_log(10, '[fn]Strategy.update_cycles.() start_date:{0[0]} before by_date:{0[1]}, aborted', log_args)
+                    return
+            if self.by_date != start_date:
+                self.by_date = start_date
+                log_args = [self.by_date, start_date]
+                add_log(40, '[fn]Strategy.update_cycles.() by_date:{0[0]} changed to {0[1]}', log_args)
+                _check_completed_cycle()
+        # 收尾update
+        print('[L1518} 收尾未完成，程序中有些return可能需要继续，待检查')
 
 
 class Pool:
@@ -1466,7 +1623,7 @@ class Pool:
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
         self.cnds_matrix = None  # <DataFrame> index:'ts_code'; data: (True, False, numpy.nan...) 在所有cnds都初始化完后，使用[fn]op_cnds_matrix()初始化
-        self.by_date = None  # <str>当前要计算的日期
+        self.by_date = None  # <str> 如'20191231' 当前处理周期的时间
         self.completed_cycle = None  # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
         # if valid_date_str_fmt(in_date):
         #     self.by_date = raw_data.next_trade_day(in_date)  # None的话无效
@@ -1804,11 +1961,11 @@ class Pool:
         nf = len(self.filters)
         for i in range(nf):
             filter_ = self.filters[i]
-            rslt_assets = self.filter_filter(filter_index=i, datetime=date_str, csv=None)
+            rslt_assets = self.filter_filter(filter_index=i, datetime_=date_str, csv=None)
             if rslt_assets is not None:
                 if len(rslt_assets) > 0:
                     for index in filter_.down_pools:
-                        rslt_set = set(index, rslt_assets)
+                        rslt_set = {index, rslt_assets}
                         rslt_to_return.append(rslt_set)
 
         if len(rslt_to_return) > 0:
