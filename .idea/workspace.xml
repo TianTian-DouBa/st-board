@@ -4,6 +4,7 @@
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_common.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -227,17 +228,17 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="498" y="188" key="refactoring.ChangeSignatureDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1579154912854" />
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1579432465142">
+    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1580356708480">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1579432465142" />
+    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580356708480" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>2524</line>
+          <line>2617</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>

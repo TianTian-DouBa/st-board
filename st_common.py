@@ -216,6 +216,57 @@ class Raw_Data:
             add_log(20, '[fn]Raw_Data.previous_trade_day() dt_str "{0[0]}" incorrect format', log_args)
             return
 
+    def in_calendar(self, date_str):
+        """
+        查看日期是否在calendar中
+        """
+        try:
+            self.trade_calendar.index.get_loc(int(date_str))
+            return True
+        except Exception as e:
+            return
+
+    def len_trade_days(self, start_day, end_day=None):
+        """
+        查询两个日期间所包括的交易日数，start_day算第1天，end_day也算1天
+        具体except处理待完善
+        start_day: <str> e.g. '20191231'
+        end_day: None = today_str() 今天的字符串
+                 <str> e.g. '20191231'
+        """
+        from st_board import today_str, valid_date_str_fmt
+        if end_day is None:
+            end_day = today_str()
+
+        if self.in_calendar(start_day) is not True:
+            log_args = [start_day]
+            add_log(20, '[fn]Raw_Data.len_trade_days() start_day:{0[0]} not in calendar', log_args)
+            return
+
+        if self.in_calendar(end_day) is not True:
+            log_args = [end_day]
+            add_log(20, '[fn]Raw_Data.len_trade_days() end_day:{0[0]} not in calendar', log_args)
+            return
+
+        try:
+            int_start = int(start_day)
+            int_end = int(end_day)
+        except ValueError:
+            log_args = [start_day, end_day]
+            add_log(20, '[fn]Raw_Data.len_trade_days() start_day:{0[0]} or end_day:{0[1]} invalid', log_args)
+            return
+
+        try:
+            df = self.trade_calendar[self.trade_calendar.index.to_series().between(int_start, int_end)]
+            rslt = df['is_open'].value_counts()[1]
+        except IndexError:
+            log_args = [start_day, end_day]
+            add_log(20, '[fn]Raw_Data.len_trade_days() start_day:{0[0]} or end_day:{0[1]} invalid', log_args)
+            return
+        except KeyError:
+            rslt = 0  # 之间无交易日
+        return rslt
+
     def valid_ts_code(self, ts_code):
         """验证在raw_data内ts_code是否有效,
         return: <bool> True=valid

@@ -1439,16 +1439,26 @@ class Strategy:
 
         def _cycle():
             """
-            执行1次循环
+            遍历所有pools,执行1次筛选循环
             """
-            print('[L1444] to be continued')
+            for pl_i, pool in self.pools:
+                tsf_list = pool.cycle(self.by_date)
+                if tsf_list is not None:
+                    self.trans_assets(pl_i, tsf_list)
+                    print('[L1447] to be continued, Strategy._cycle()')
+
             self.completed_cycle = self.by_date
 
         def _check_end_cycles():
             nonlocal cycles
             if end_date is None:
                 if cycles is None:  # 就执行1次_cycle()结束
-                    _cycle()
+                    return_ok = _cycle()
+                    if return_ok is True:
+                        return True
+                    else:
+                        add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error [L1455], aborted')
+                        return
                 else:  # cycles有<int>次数
                     try:
                         cycles = int(cycles)
@@ -1460,8 +1470,13 @@ class Strategy:
                         log_args = [cycles]
                         add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]} < 1, aborted', log_args)
                         return
-                    for _ in range(cycles):
-                        _cycle()
+                    return_ok = None
+                    for _ in range(cycles):  # 执行cycles次_cycle()
+                        return_ok = _cycle()
+                        if return_ok is not True:  # _cycle()出错跳出
+                            log_args = [self.by_date]
+                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}, aborted', log_args)
+                            return
                         next_trade_day = raw_data.next_trade_day(self.by_date)
                         if next_trade_day is None:
                             log_args = [self.by_date]
@@ -1469,9 +1484,9 @@ class Strategy:
                             return
                         else:
                             log_args = [self.by_date, next_trade_day]
-                            add_log(40, '[fn]Strategy.update_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
+                            add_log(40, '[fn]Strategy.update_cycles._check_end_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
                             self.by_date = next_trade_day
-                            _check_end_cycles()
+                    return return_ok
             else:  # end_date is not None
                 # 检查end_date格式有效性
                 if valid_date_str_fmt(end_date) is not True:
@@ -1483,19 +1498,25 @@ class Strategy:
                     log_args = [end_date, self.by_date]
                     add_log(10, '[fn]Strategy.update_cycles._check_end_cycles() end_date:{0[0]} before by_date:{0[1]}, aborted', log_args)
                     return
-                # pptx内黄框处理
-                if cycles is None:
-                    while int(self.by_date) < int(self.end_date):
-                        _cycle()
+                # pptx黄框中，end_date内的每cycles次循环后进行aggregate()处理
+                if cycles is None:  # 不管cycles，一次做到end_date结束
+                    return_ok = None
+                    while int(self.by_date) < int(end_date):
+                        return_ok = _cycle()
+                        if return_ok is not True:  # _cycle()出错跳出
+                            log_args = [self.by_date]
+                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}, aborted', log_args)
+                            return
                         next_trade_day = raw_data.next_trade_day(self.by_date)
                         if next_trade_day is None:
                             log_args = [self.by_date]
-                            add_log(30, '[fn]Strategy.update_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
+                            add_log(30, '[fn]Strategy.update_cycles._check_end_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
                             return
                         else:
                             log_args = [self.by_date, next_trade_day]
-                            add_log(40, '[fn]Strategy.update_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
+                            add_log(40, '[fn]Strategy.update_cycles._check_end_cycles() by_date:{0[0]} changed to {0[1]}', log_args)
                             self.by_date = next_trade_day
+                    return return_ok
                 else:  # cycles有<int>次数
                     try:
                         cycles = int(cycles)
@@ -1508,13 +1529,18 @@ class Strategy:
                         add_log(10, '[fn]Strategy.update_cycles._check_end_cycles(). cycles:{0[0]} < 1, aborted', log_args)
                         return
                     # 外层循环条件，by_date <= end_date; 内层每cycles次做aggregate;外层条件触发，终止内层循环，直接跳出
+                    return_ok = None
                     while True:
                         for _ in range(cycles):
-                            _cycle()
+                            return_ok = _cycle()
+                            if return_ok is not True:  # _cycle()出错跳出
+                                log_args = [self.by_date]
+                                add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]} [L1528], aborted', log_args)
+                                return
                             next_trade_day = raw_data.next_trade_day(self.by_date)
                             if next_trade_day is None:
                                 log_args = [self.by_date]
-                                add_log(30, '[fn]Strategy.update_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
+                                add_log(30, '[fn]Strategy.update_cycles._check_end_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
                                 break  # 特殊：会跳出while
                             elif int(next_trade_day) > int(end_date):  # 外层终止条件
                                 break  # 特殊：会跳出while
@@ -1525,39 +1551,54 @@ class Strategy:
                         else:  # 如果for执行中没有break
                             continue  # continue while next round
                         break  # break while out
+                    return return_ok
 
         def _check_completed_cycle():
             if self.completed_cycle is None:
-                _check_end_cycles()
-            elif int(self.completed_cycle) < int(self.by_date):
-                _check_end_cycles()
-            else:
-                if self.completed_cycle == self.by_date:
-                    log_args = [self.by_date]
-                    add_log(40, '[fn]Strategy.update_cycles._check_completed_cycle() {0[0]} was executed, skip to next trade day', log_args)
-                    next_trade_day = raw_data.next_trade_day(self.by_date)
-                    if next_trade_day is None:
-                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() by_date:{0[0]} failed to get next trade day, aborted', log_args)
-                        return
-                    else:
-                        self.by_date = next_trade_day
-                        _check_end_cycles()
+                return_ok = _check_end_cycles()
+                if return_ok is True:
+                    return True
                 else:
-                    if int(self.completed_cycle) > int(self.by_date):
-                        log_args = [self.completed_cycle, self.by_date]
-                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} > by_date:{0[1]}, aborted', log_args)
-                        return
+                    return
+            elif int(self.completed_cycle) < int(self.by_date):
+                return_ok = _check_end_cycles()
+                if return_ok is True:
+                    return True
+                else:
+                    return
+            elif self.completed_cycle == self.by_date:
+                log_args = [self.by_date]
+                add_log(40, '[fn]Strategy.update_cycles._check_completed_cycle() {0[0]} executed before, skip to next trade day', log_args)
+                next_trade_day = raw_data.next_trade_day(self.by_date)
+                if next_trade_day is None:
+                    add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() by_date:{0[0]} failed to get next trade day, aborted', log_args)
+                    return
+                else:
+                    log_args = [self.by_date, next_trade_day]
+                    add_log(40, '[fn]Strategy.update_cycles._check_completed_cycle() by_date:{0[0]} is not a trade day, changed to {0[1]}', log_args)
+                    self.by_date = next_trade_day
+                    return_ok = _check_end_cycles()
+                    if return_ok is True:
+                        return True
                     else:
-                        log_args = [self.completed_cycle]
-                        add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} unknown problem', log_args)
                         return
+            elif int(self.completed_cycle) > int(self.by_date):
+                log_args = [self.completed_cycle, self.by_date]
+                add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} > by_date:{0[1]}, aborted', log_args)
+                return
+            else:
+                log_args = [self.completed_cycle]
+                add_log(10, '[fn]Strategy.update_cycles._check_completed_cycle() completed_cycle:{0[0]} unknown problem', log_args)
+                return
 
+        return_ok = None  # 内部函数返回成功标志
         if start_date is None:
             if self.by_date is None:
                 add_log(10, '[fn]Strategy.update_cycles(). Both start_date and by_date are not specified. Aborted')
+                return
             else:
                 if raw_data.valid_trade_date(self.by_date):
-                    _check_completed_cycle()
+                    return_ok = _check_completed_cycle()
                 else:
                     next_trade_day = raw_data.next_trade_day(self.by_date)
                     if next_trade_day is None:
@@ -1565,8 +1606,10 @@ class Strategy:
                         add_log(10, '[fn]Strategy.update_cycles.() by_date:{0[0]} failed to get next trade day, aborted', log_args)
                         return
                     else:
+                        log_args = [self.by_date, next_trade_day]
+                        add_log(40, '[fn]Strategy.update_cycles.() by_date:{0[0]} is not a trade day, changed to {0[1]}', log_args)
                         self.by_date = next_trade_day
-                        _check_completed_cycle()
+                        return_ok = _check_completed_cycle()
         else:  # start_date is not None
             if valid_date_str_fmt(start_date) is not True:
                 log_args = [start_date]
@@ -1580,22 +1623,33 @@ class Strategy:
                     add_log(10, '[fn]Strategy.update_cycles.() start_date:{0[0]} failed to get next trade day, aborted', log_args)
                     return
                 else:
-                    start_date = next_trade_day
                     log_args = [start_date, next_trade_day]
                     add_log(40, '[fn]Strategy.update_cycles.() start_date:{0[0]} is not a trade day, changed to {0[1]}', log_args)
+                    start_date = next_trade_day
             # start_date早于by_data处理
             if self.by_date is not None:
                 if int(start_date) < int(self.by_date):
                     log_args = [start_date, self.by_date]
                     add_log(10, '[fn]Strategy.update_cycles.() start_date:{0[0]} before by_date:{0[1]}, aborted', log_args)
                     return
-            if self.by_date != start_date:
-                self.by_date = start_date
+            if self.by_date != start_date:  # 有变化才增加日志
                 log_args = [self.by_date, start_date]
                 add_log(40, '[fn]Strategy.update_cycles.() by_date:{0[0]} changed to {0[1]}', log_args)
-                _check_completed_cycle()
+                self.by_date = start_date
+                return_ok = _check_completed_cycle()
         # 收尾update
+        if return_ok is not True:
+            return  # _check_completed_cycle()执行报错，外层同样return
+
         print('[L1518} 收尾未完成，程序中有些return可能需要继续，待检查')
+
+    def trans_assets(self, source_pool_index, transfer_list):
+        """
+        将assets在pools之间划转
+        source_pool_index: <int> 源头pool在self.pools中的index
+        transfer_list: <list> e.g. [(down_pool_index, <list> of ts_code),
+                             (down_pool_index, <list> of ts_code),...]
+        """
 
 
 class Pool:
@@ -1939,34 +1993,73 @@ class Pool:
         add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
         return out_al
 
-    def update_cycle(self, date_str):
+    def cycle(self, date_str):
         """
-        由strategy调用执行pool计算的1此循环，返回<list> of the assets to be transferred
+        由strategy调用执行pool计算的1次循环，
+            补全资产的in_price，in_date如果之前为None的话
+            更新by_price, by_date, stay_days
+            按序遍历所有的filter
+        返回<list> of the assets to be transferred
         资产的pools间transfer由strategy完成
+        不触发aggreagte()
+
         date_str: <str> e.g. '20191231'
         return: <list> e.g. [(down_pool_index, <list> of ts_code),
                              (down_pool_index, <list> of ts_code),...]
                 None 没有资产需要transfer
         """
-        print('[L1792] Pool.update_cycle() not tested')
-        # 补缺in_price的asset
-        lack_in_price = [asset for asset in self.assets if asset.in_date is None]
+        print('[L1992] Pool.cycle() not tested')
+        global raw_data
+        # 更新pool.by_date
+        if valid_date_str_fmt(date_str) is not True:
+            log_args = [self.desc, date_str]
+            add_log(10, '[fn]Pool.cycle() {0[0]} date_str:{0[1]} invalid', log_args)
+            return
+        if self.by_date is None:
+            self.by_date = date_str
+        elif int(self.by_date) > int(date_str):
+            log_args = [self.desc, date_str, self.by_date]
+            add_log(10, '[fn]Pool.cycle() {0[0]} date_str:{0[1]} before by_date:{0[2]}, aborted', log_args)
+            return
+        elif int(self.by_date) < int(date_str):
+            self.by_date = date_str
+
+        # 遍历assets, 补缺in_price, in_date
+        lack_in_price = [asset for asset in self.assets if asset.in_price is None]
         for asset in lack_in_price:
             asset.in_price = asset.get_price(trade_date=date_str)
             if asset.in_price is not None:
                 asset.in_date = date_str
 
-        # iter pools
+        # 遍历assets, 更新by_date, by_price, stay_days
+        for asset in self.assets:
+            _price = asset.get_price(self.by_date)
+            if _price is not None:  # 不停牌有收盘价
+                if asset.by_date is None:
+                    asset.by_date = self.by_date
+                    asset.by_price = _price
+                elif int(asset.by_date) > int(self.by_date):
+                    log_args = [asset.ts_code, asset.by_date, self.by_date]
+                    add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
+                    continue  # skip this asset
+                else:
+                    asset.by_date = self.by_date
+                    asset.by_price = _price
+            # 更新stay_days
+            if asset.in_date is not None:
+                asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
+
+        # 依次遍历所有filters
         rslt_to_return = []  # 返回的结果
         nf = len(self.filters)
         for i in range(nf):
             filter_ = self.filters[i]
-            rslt_assets = self.filter_filter(filter_index=i, datetime_=date_str, csv=None)
+            rslt_assets = self.filter_filter(filter_index=i, datetime_=date_str, csv=None)  # csv=None is OK
             if rslt_assets is not None:
                 if len(rslt_assets) > 0:
                     for index in filter_.down_pools:
-                        rslt_set = {index, rslt_assets}
-                        rslt_to_return.append(rslt_set)
+                        rslt_item = (index, rslt_assets)
+                        rslt_to_return.append(rslt_item)
 
         if len(rslt_to_return) > 0:
             return rslt_to_return
