@@ -16,6 +16,7 @@ from pandas.plotting import register_matplotlib_converters
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
 
+
 def valid_date_str_fmt(date_str):
     """
     验证date_str形式格式是否正确
@@ -748,6 +749,8 @@ class Asset:
                        None: 返回None,不搜索
                        'forwards': 向时间增加的方向搜索
                        'backwards': 向时间倒退的方向搜索
+        return: (price <float>, trade_date <str>)
+                None 并报错
         """
         global raw_data
         SEEK_DAYS = 365  # 前后查找数据的最大天数
@@ -757,7 +760,7 @@ class Asset:
                 if seek_direction is None:
                     try:
                         rslt = self.daily_data.loc[int(trade_date)][mode]
-                        return rslt
+                        return rslt, trade_date
                     except KeyError:
                         log_args = [self.ts_code, trade_date]
                         add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
@@ -767,7 +770,7 @@ class Asset:
                     for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
                         if int(_trade_date) in self.daily_data.index:
                             rslt = self.daily_data.loc[int(_trade_date)][mode]
-                            return rslt
+                            return rslt, _trade_date
                         else:
                             _trade_date = raw_data.next_trade_day(_trade_date)
                             continue
@@ -779,7 +782,7 @@ class Asset:
                     for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
                         if int(_trade_date) in self.daily_data.index:
                             rslt = self.daily_data.loc[int(_trade_date)][mode]
-                            return rslt
+                            return rslt, _trade_date
                         else:
                             _trade_date = raw_data.previous_trade_day(_trade_date)
                             continue
@@ -855,17 +858,19 @@ class Stock(Asset):
              'latest': 根据基础数据里取有价格的最新那个时间
     """
 
-    def __init__(self, ts_code, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
+    def __init__(self, ts_code, in_price=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
         """
         load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        in_price: <float> 进入价格
         in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
         price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
                                None: 返回None,不搜索
                                'forwards': 向时间增加的方向搜索
                               'backwards': 向时间倒退的方向搜索
         """
+        global raw_data
         Asset.__init__(self, ts_code=ts_code, in_date=in_date)
 
         # daily_data的其它字段还待完成
@@ -876,14 +881,25 @@ class Stock(Asset):
         if isinstance(self.in_date, str):
             if self.in_date == 'latest':
                 self.in_date = str(self.daily_date[0]['trade_date'])
-            elif not valid_date_str_fmt(self.in_date):
+            elif raw_data.valid_trade_date(self.in_data) is not True:
                 log_args = [self.ts_code, self.in_date]
-                add_log(20, '[fn]Stock.__init__(). "{0[0]}" in_date "{0[1]}" invalid', log_args)
+                add_log(20, '[fn]Stock.__init__(). "{0[0]}" in_date "{0[1]}" is not a trade date', log_args)
                 self.in_date = None
 
         # 处理self.in_price
         if self.in_date is not None:
-            self.in_price = self.get_price(trade_date=self.in_date, mode=in_price_mode, seek_direction=price_seek_direction)
+            if in_price is None:
+                rslt = self.get_price(trade_date=self.in_date, mode=in_price_mode, seek_direction=price_seek_direction)
+                if rslt is not None:
+                    self.in_price, self.in_date = rslt
+                else:
+                    self.in_price = None
+                    self.in_date = None
+            else:
+                self.in_price = float(in_price)
+        else:
+            self.in_price = None
+
 
     def load_daily_data(self, load_daily='basic'):
         """
@@ -1369,15 +1385,16 @@ class Strategy:
     量化策略
     """
 
-    def __init__(self, name):
+    def __init__(self, desc='stg#01'):
         """
-        name: <str> strategy name
+        desc: <str> strategy description
         """
         # print('L1160 to be continued')
-        self.name = name
+        self.desc = desc
         self.pools = {}  # dict of pools {execute order: pool #1, ...}
         self.by_date = None  # <str> 如'20191231' 当前处理周期的时间
         self.completed_cycle = None  # # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
+        self.trans_logs = []  # pool流转记录<list> of <Trans_Log>
 
     def add_pool(self, **kwargs):
         """
@@ -1641,15 +1658,106 @@ class Strategy:
         if return_ok is not True:
             return  # _check_completed_cycle()执行报错，外层同样return
 
-        print('[L1518} 收尾未完成，程序中有些return可能需要继续，待检查')
+        print('[L644] aggregate 收尾未完成')
 
-    def trans_assets(self, source_pool_index, transfer_list):
+    def trans_assets(self, out_pool_index, transfer_list, trade_date, out_price_mode=None, in_price_mode='close'):
         """
-        将assets在pools之间划转
+        将assets从一个out_pool划转到一个或多个in_pool
         source_pool_index: <int> 源头pool在self.pools中的index
-        transfer_list: <list> e.g. [(down_pool_index, <list> of ts_code),
-                             (down_pool_index, <list> of ts_code),...]
+        transfer_list: <list> e.g. [(in_pool_index, <list> of ts_code),
+                                    (in_pool_index, <list> of ts_code),...]
         """
+        for transfer in transfer_list:
+            in_pool_index = transfer[0]
+            al = transfer[1]  # <list> of ts_code
+            for ts_code in al:  # 给in_pool添加assets
+                self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode)
+            out_pool = self.pools[out_pool_index]
+            for ts_code in al:  # 给out_pool删除assets
+                out_pool.del_asset(ts_code)
+
+    def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', volume=None):
+        """
+        将单个asset加载到下游in_pool,但不删除原out_pool的asset（因为1个循环同1资产可能转去多个pool)； 给self.trans_logs添加1条记录
+        手续税费等还未考虑
+        ----------      --------
+        |out_pool|---->|in_pool|
+        ---------      --------
+        ts_code: <str> e.g. '000001.SZ'
+        trade_date: <str> e.g. ‘20191231’
+        out_pool_index: <int> 源头pool的index
+                        'al' 从al文件导入，此[fn]不适用
+        out_price_mode: <str> 详见Asset.get_price()
+                        None 根据in的情况在设out_price和out_date
+        in_pool_index: <int> 目的pool的index
+                       'discard' 无下游pool，只从out_pool中移除asset
+        in_price_mode: <str> 详见Asset.get_price()
+        volume: <int> 成交股数
+                <None> 不适用
+
+        return: True  success
+                None  failed
+        """
+        # get in_pool
+        in_pool = None
+        if in_pool_index != 'discard':
+            try:
+                in_pool = self.pools[in_pool_index]
+            except KeyError:
+                log_args = [in_pool_index]
+                add_log(20, '[fn]Strategy.trans_asset.() in_pool_index:{0[0]} invalid', log_args)
+                return
+
+        try:  # get out_pool
+            out_pool = self.pools[out_pool_index]
+        except KeyError:
+            log_args = [out_pool_index]
+            add_log(20, '[fn]Strategy.trans_asset.() out_pool_index:{0[0]} invalid', log_args)
+            return
+
+        try:  # get asset
+            asset = out_pool.assets[ts_code]
+        except KeyError:
+            log_args = [ts_code, out_pool_index, out_pool.desc]
+            add_log(20, '[fn]Strategy.trans_asset.() {0[0]} was not found in pool_{0[1]}:{0[2]}', log_args)
+            return
+
+        # 处理in_price 和 in_date
+        _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+        if _rslt is None:
+            add_log(20, '[fn]Strategy.trans_asset.() in_price not available, aborted')
+            return  # 未找到价格
+        in_price, in_date = _rslt
+
+        # 处理out_price 和 out_date
+        if out_price_mode is None:  # 根据in_price, in_date来
+            out_price, out_date = in_price, in_date
+        else:
+            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+            if _rslt is None:
+                add_log(20, '[fn]Strategy.trans_asset.() out_price not available, aborted')
+                return  # 未找到价格
+            out_price, out_date = _rslt
+
+        # 给下游in_pool添加asset
+        if in_pool is not None:  # 非discard的情况
+            asset = in_pool.add_asset(ts_code=ts_code, in_date=in_date, in_price=in_price)
+            if asset is not None:
+                for cond in in_pool.conditions:
+                    if cond.para1.idt_name != 'const':  # 跳过condition的常量para
+                        post_args1 = cond.para1.idt_init_dict
+                        asset.add_indicator(**post_args1)
+                    if cond.para2.idt_name != 'const':  # 跳过condition的常量para
+                        post_args2 = cond.para2.idt_init_dict
+                        asset.add_indicator(**post_args2)
+            else:  # 添加失败
+                log_args = [in_pool.desc, ts_code, in_pool_index]
+                add_log(20, '[fn]Strategy.trans_asset.() failed to add {0[1]} to pool_{0[2]}:{0[0]}', log_args)
+                return
+
+        # 增加trans_log
+        self.trans_logs.append(Trans_Log(ts_code=ts_code, out_pool_index=out_pool_index, out_price=out_price, out_date=out_date, in_pool_index=in_pool_index, in_price=in_price, in_date=in_date, volume=volume))
+        return True
 
 
 class Pool:
@@ -1684,7 +1792,7 @@ class Pool:
 
     def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
-        init self.assets
+        初始化self.assets，可选赋值in_date和in_price
         al_file: None = create empty dict;
                  <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
         in_date: asset进入pool的日期
@@ -1726,7 +1834,43 @@ class Pool:
                 else:
                     print('[L1228] other categories are to be implemented')
             else:
-                print('[L1241] al selected is not "T"')
+                log_args = [ts_code]
+                add_log(40, '[fn]Pool.init_assets() {0[0]} selected is not "T", skipped', log_args)
+
+    def add_asset(self, ts_code, in_date=None, in_price=None):
+        """
+        给pool添加一个asset,初始化资产的daidly_data和在pool中的指标
+        ts_code: <str>
+        in_date: None or <str> e.g. '20191231'，如给定则需要是交易日
+        in_price: None or <float> 必须在in_date同时给值才有效，如果给定数值，则直接使用，不再查询历史价格
+        return: asset or None
+        """
+        global raw_data
+        category = All_Assets_List.query_category_str(ts_code)
+        # 根据category不同，实例化对应的Asset
+        if category is None:
+            log_args = [ts_code]
+            add_log(20, '[fn]Pool.add_asset(). ts_code:{0[0]} category is None, aborted', log_args)
+            return
+        if ts_code in self.assets:
+            log_args = [ts_code]
+            add_log(30, '[fn]Pool.add_asset(). ts_code:{0[0]} already in the assets, aborted', log_args)
+            return
+        if in_date is not None:
+            if raw_data.valid_trade_date(in_date) is not True:
+                log_args = [ts_code, in_date]
+                add_log(20, '[fn]Pool.add_asset(). {0[0]} in_date:{0[0]} is not a trade day, aborted', log_args)
+                return
+
+        if category == 'stock':
+            asset = Stock(ts_code=ts_code, in_date=in_date, in_price=in_price)
+            self.assets[ts_code] = asset
+            log_args = [ts_code]
+            add_log(40, '[fn]Pool.add_asset(). ts_code:{0[0]} added', log_args)
+            return asset
+        # ----other categories are to be implemented here-----
+        else:
+            print('[L1228] other categories are to be implemented')
 
     def add_condition(self, pre_args1_, pre_args2_, ops, required_period=0):
         """
@@ -1758,7 +1902,7 @@ class Pool:
 
     def iter_al(self):
         """
-        iterate the al list in the pool, according to the self.conditions to add indicators to each asset
+        dual iterate the pool.assets and pool.conditions, add indicators to each asset
         在给每个资产添加指标时，指标的值会根据已下载的基础数据计算补完到可能的最新值；但不会触发基础数据的补完下载
         """
         for asset in self.assets.values():
@@ -2004,8 +2148,8 @@ class Pool:
         不触发aggreagte()
 
         date_str: <str> e.g. '20191231'
-        return: <list> e.g. [(down_pool_index, <list> of ts_code),
-                             (down_pool_index, <list> of ts_code),...]
+        return: <list> e.g. [(in_pool_index, <list> of ts_code),
+                             (in_pool_index, <list> of ts_code),...]
                 None 没有资产需要transfer
         """
         print('[L1992] Pool.cycle() not tested')
@@ -2027,13 +2171,13 @@ class Pool:
         # 遍历assets, 补缺in_price, in_date
         lack_in_price = [asset for asset in self.assets if asset.in_price is None]
         for asset in lack_in_price:
-            asset.in_price = asset.get_price(trade_date=date_str)
-            if asset.in_price is not None:
-                asset.in_date = date_str
+            rslt = asset.get_price(trade_date=date_str)
+            if rslt is not None:
+                asset.in_price, asset.in_date = rslt
 
         # 遍历assets, 更新by_date, by_price, stay_days
         for asset in self.assets:
-            _price = asset.get_price(self.by_date)
+            _price, _ = asset.get_price(self.by_date)
             if _price is not None:  # 不停牌有收盘价
                 if asset.by_date is None:
                     asset.by_date = self.by_date
@@ -2065,6 +2209,49 @@ class Pool:
             return rslt_to_return
         else:
             return
+
+    def del_asset(self, ts_code):
+        """
+        delete the asset from pool.assets
+        return: True success
+                None failed
+        """
+        try:
+            del self.assets[ts_code]
+        except KeyError:
+            log_args = [ts_code, self.desc]
+            add_log(30, '[fn]Pool.del_asset() {0[0]} was not found in pool:{0[1]}', log_args)
+            return
+        return True
+
+
+class Trans_Log:
+    """
+    asset在pool之间流转的记录
+    ----------      --------
+    |out_pool|---->|in_pool|
+    ---------      --------
+    ts_code: <str> e.g. '000001.SZ'
+    out_pool_index: <int> 源头pool的index
+                    'al' 从al文件导入
+    out_price: <float> 进入下游pool的价格
+    out_date: <str> 进入下游pool的日期 e.g. ‘20191231’
+    in_pool_index: <int> 目的pool的index
+                   'discard' 无下游pool，只从out_pool中移除asset
+    in_price: <float> 进入下游pool的价格
+    in_date: <str> 进入下游pool的日期 e.g. ‘20191231’
+    volume: <int> 成交股数
+            <None> 不适用
+    """
+    def __init__(self, ts_code, out_pool_index, out_price, out_date, in_pool_index, in_price, in_date, volume=None):
+        self.ts_code = ts_code
+        self.out_pool_index = out_pool_index
+        self.out_price = out_price
+        self.out_date = out_date
+        self.in_pool_index = in_pool_index
+        self.in_price = in_price
+        self.in_date = in_date
+        self.volume = volume
 
 
 class Aggregate:
