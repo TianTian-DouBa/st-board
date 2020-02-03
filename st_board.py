@@ -4,7 +4,7 @@ import os
 import time
 import weakref
 from st_common import raw_data
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt
+from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
 from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
@@ -726,6 +726,8 @@ class Asset:
         self.stay_days = None  # <int> 在pool中的天数
         self.in_price = None  # <float>加入pool的价格
         self.by_price = None  # 当前计算的价格
+        self.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
+        self.out_date = None  # <str> 当前计算的日期如"20191231"
         self.earn = None  # by_price - in_price
         self.earn_pct = None  # earn / in_price * 100%
         self.daily_data = None  # <df>
@@ -880,8 +882,8 @@ class Stock(Asset):
         # 处理self.in_date
         if isinstance(self.in_date, str):
             if self.in_date == 'latest':
-                self.in_date = str(self.daily_date[0]['trade_date'])
-            elif raw_data.valid_trade_date(self.in_data) is not True:
+                self.in_date = str(self.daily_data[0]['trade_date'])
+            elif raw_data.valid_trade_date(self.in_date) is not True:
                 log_args = [self.ts_code, self.in_date]
                 add_log(20, '[fn]Stock.__init__(). "{0[0]}" in_date "{0[1]}" is not a trade date', log_args)
                 self.in_date = None
@@ -899,7 +901,6 @@ class Stock(Asset):
                 self.in_price = float(in_price)
         else:
             self.in_price = None
-
 
     def load_daily_data(self, load_daily='basic'):
         """
@@ -1438,7 +1439,7 @@ class Strategy:
         """
         printout the brief of pools
         """
-        print("----Strategy: <{}> pools brief:----".format(self.name))
+        print("----Strategy: <{}> pools brief:----".format(self.desc))
         print("Order: Description")
         for k, v in sorted(self.pools.items()):
             # print("key: ",k,"    desc: ", v.desc)
@@ -1458,13 +1459,12 @@ class Strategy:
             """
             遍历所有pools,执行1次筛选循环
             """
-            for pl_i, pool in self.pools:
+            for pl_i, pool in self.pools.items():
                 tsf_list = pool.cycle(self.by_date)
                 if tsf_list is not None:
-                    self.trans_assets(pl_i, tsf_list)
-                    print('[L1447] to be continued, Strategy._cycle()')
-
+                    self.trans_assets(out_pool_index=pl_i, transfer_list=tsf_list, trade_date=self.by_date)
             self.completed_cycle = self.by_date
+            return True
 
         def _check_end_cycles():
             nonlocal cycles
@@ -1474,7 +1474,7 @@ class Strategy:
                     if return_ok is True:
                         return True
                     else:
-                        add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error [L1455], aborted')
+                        add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error [L1476], aborted')
                         return
                 else:  # cycles有<int>次数
                     try:
@@ -1492,7 +1492,7 @@ class Strategy:
                         return_ok = _cycle()
                         if return_ok is not True:  # _cycle()出错跳出
                             log_args = [self.by_date]
-                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}, aborted', log_args)
+                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}  [L1494], aborted', log_args)
                             return
                         next_trade_day = raw_data.next_trade_day(self.by_date)
                         if next_trade_day is None:
@@ -1522,7 +1522,7 @@ class Strategy:
                         return_ok = _cycle()
                         if return_ok is not True:  # _cycle()出错跳出
                             log_args = [self.by_date]
-                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}, aborted', log_args)
+                            add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}  [L1524], aborted', log_args)
                             return
                         next_trade_day = raw_data.next_trade_day(self.by_date)
                         if next_trade_day is None:
@@ -1552,7 +1552,7 @@ class Strategy:
                             return_ok = _cycle()
                             if return_ok is not True:  # _cycle()出错跳出
                                 log_args = [self.by_date]
-                                add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]} [L1528], aborted', log_args)
+                                add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]} [L1554], aborted', log_args)
                                 return
                             next_trade_day = raw_data.next_trade_day(self.by_date)
                             if next_trade_day is None:
@@ -1657,12 +1657,12 @@ class Strategy:
         # 收尾update
         if return_ok is not True:
             return  # _check_completed_cycle()执行报错，外层同样return
-
         print('[L644] aggregate 收尾未完成')
 
     def trans_assets(self, out_pool_index, transfer_list, trade_date, out_price_mode=None, in_price_mode='close'):
         """
         将assets从一个out_pool划转到一个或多个in_pool
+        从源pool，及它的cnds_matrix中删除条目
         source_pool_index: <int> 源头pool在self.pools中的index
         transfer_list: <list> e.g. [(in_pool_index, <list> of ts_code),
                                     (in_pool_index, <list> of ts_code),...]
@@ -1671,14 +1671,26 @@ class Strategy:
             in_pool_index = transfer[0]
             al = transfer[1]  # <list> of ts_code
             for ts_code in al:  # 给in_pool添加assets
-                self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode)
+                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode)
+                if _rslt == 'duplicated':
+                    continue
+                elif _rslt is True:
+                    log_args = [ts_code, in_pool_index]
+                    add_log(40, '[fn]Strategy.trans_assets.() {0[0]} added to pool#{0[1]}', log_args)
+                    continue
+                else:  # None
+                    continue  # 在trans_asset_down()中已有报错
+
+            # 从out_pool中删除assets
             out_pool = self.pools[out_pool_index]
-            for ts_code in al:  # 给out_pool删除assets
-                out_pool.del_asset(ts_code)
+            if out_pool.del_trsfed is True:
+                for ts_code in al:  # 给out_pool删除assets
+                    out_pool.del_asset(ts_code)
+                    out_pool.op_cnds_matrix(mode='d', ts_code=ts_code)
 
     def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', volume=None):
         """
-        将单个asset加载到下游in_pool,但不删除原out_pool的asset（因为1个循环同1资产可能转去多个pool)； 给self.trans_logs添加1条记录
+        将单个asset加载到下游in_pool,但不删除原out_pool的asset（因为1个循环同1资产可能转去多个pool)； 给self.trans_logs添加1条记录； 给out_pool.
         手续税费等还未考虑
         ----------      --------
         |out_pool|---->|in_pool|
@@ -1698,6 +1710,7 @@ class Strategy:
         return: True  success
                 None  failed
         """
+        from st_common import CND_SPC_TYPES
         # get in_pool
         in_pool = None
         if in_pool_index != 'discard':
@@ -1705,27 +1718,27 @@ class Strategy:
                 in_pool = self.pools[in_pool_index]
             except KeyError:
                 log_args = [in_pool_index]
-                add_log(20, '[fn]Strategy.trans_asset.() in_pool_index:{0[0]} invalid', log_args)
+                add_log(20, '[fn]Strategy.trans_asset_down() in_pool_index:{0[0]} invalid', log_args)
                 return
 
         try:  # get out_pool
             out_pool = self.pools[out_pool_index]
         except KeyError:
             log_args = [out_pool_index]
-            add_log(20, '[fn]Strategy.trans_asset.() out_pool_index:{0[0]} invalid', log_args)
+            add_log(20, '[fn]Strategy.trans_asset_down() out_pool_index:{0[0]} invalid', log_args)
             return
 
         try:  # get asset
             asset = out_pool.assets[ts_code]
         except KeyError:
             log_args = [ts_code, out_pool_index, out_pool.desc]
-            add_log(20, '[fn]Strategy.trans_asset.() {0[0]} was not found in pool_{0[1]}:{0[2]}', log_args)
+            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} was not found in pool_{0[1]}:{0[2]}', log_args)
             return
 
         # 处理in_price 和 in_date
         _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
         if _rslt is None:
-            add_log(20, '[fn]Strategy.trans_asset.() in_price not available, aborted')
+            add_log(20, '[fn]Strategy.trans_asset_down() in_price not available, aborted')
             return  # 未找到价格
         in_price, in_date = _rslt
 
@@ -1735,37 +1748,53 @@ class Strategy:
         else:
             _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
             if _rslt is None:
-                add_log(20, '[fn]Strategy.trans_asset.() out_price not available, aborted')
+                add_log(20, '[fn]Strategy.trans_asset_down() out_price not available, aborted')
                 return  # 未找到价格
             out_price, out_date = _rslt
+        asset.out_price = out_price
+        asset.out_date = out_date
 
-        # 给下游in_pool添加asset
+        # 给下游in_pool及cnds_matrix添加asset
         if in_pool is not None:  # 非discard的情况
             asset = in_pool.add_asset(ts_code=ts_code, in_date=in_date, in_price=in_price)
-            if asset is not None:
+            if asset == 'duplicated':
+                return 'duplicated'
+            elif asset is not None:
                 for cond in in_pool.conditions:
-                    if cond.para1.idt_name != 'const':  # 跳过condition的常量para
+                    if cond.para1.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args1 = cond.para1.idt_init_dict
                         asset.add_indicator(**post_args1)
-                    if cond.para2.idt_name != 'const':  # 跳过condition的常量para
+                    if cond.para2.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args2 = cond.para2.idt_init_dict
                         asset.add_indicator(**post_args2)
+                in_pool.op_cnds_matrix(mode='a', ts_code=ts_code)  # 为cnds_matrix增加条目
             else:  # 添加失败
                 log_args = [in_pool.desc, ts_code, in_pool_index]
-                add_log(20, '[fn]Strategy.trans_asset.() failed to add {0[1]} to pool_{0[2]}:{0[0]}', log_args)
+                add_log(20, '[fn]Strategy.trans_asset_down() failed to add {0[1]} to pool_{0[2]}:{0[0]}', log_args)
                 return
 
         # 增加trans_log
         self.trans_logs.append(Trans_Log(ts_code=ts_code, out_pool_index=out_pool_index, out_price=out_price, out_date=out_date, in_pool_index=in_pool_index, in_price=in_price, in_date=in_date, volume=volume))
+        asset_out_pool = out_pool.assets[ts_code]
+        out_pool.append_in_out(asset=asset_out_pool, in_pool_index=in_pool_index)
         return True
 
+    def init_pools_cnds_matrix(self):
+        """
+        遍历调用pool.iter_al()给所有asset添加指标
+        遍历调用pool.op_cnds_matrix()初始化各pool的条件矩阵
+        在所有的cnds都加载完后调用
+        """
+        for pool in self.pools.values():
+            pool.iter_al()
+            pool.op_cnds_matrix(mode='i')
 
 class Pool:
     """
     股票池
     """
 
-    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
+    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True):
         r"""
         desc: <str> 描述
         al_file: None = create empty dict;
@@ -1774,10 +1803,14 @@ class Pool:
                  None: 不提供
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
+        del_trsfed: 当资产通过filter转到下游in_pool后，是否删除源out_pool中的资产
+                    True or None
         """
         global raw_data
         self.desc = desc
         self.assets = {}  # {ts_code, <ins> Asset}
+        self.in_out = None  # <df>资产进出该pool的对应记录
+        self.init_in_out()
         self.in_date = in_date  # 仅做诊断用
         self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
         self.conditions = []
@@ -1787,6 +1820,7 @@ class Pool:
         self.cnds_matrix = None  # <DataFrame> index:'ts_code'; data: (True, False, numpy.nan...) 在所有cnds都初始化完后，使用[fn]op_cnds_matrix()初始化
         self.by_date = None  # <str> 如'20191231' 当前处理周期的时间
         self.completed_cycle = None  # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
+        self.del_trsfed = del_trsfed
         # if valid_date_str_fmt(in_date):
         #     self.by_date = raw_data.next_trade_day(in_date)  # None的话无效
 
@@ -1834,16 +1868,18 @@ class Pool:
                 else:
                     print('[L1228] other categories are to be implemented')
             else:
-                log_args = [ts_code]
+                log_args = [index]
                 add_log(40, '[fn]Pool.init_assets() {0[0]} selected is not "T", skipped', log_args)
 
     def add_asset(self, ts_code, in_date=None, in_price=None):
         """
-        给pool添加一个asset,初始化资产的daidly_data和在pool中的指标
+        给pool添加一个asset,初始化资产的daily_data和在pool中的指标
         ts_code: <str>
         in_date: None or <str> e.g. '20191231'，如给定则需要是交易日
         in_price: None or <float> 必须在in_date同时给值才有效，如果给定数值，则直接使用，不再查询历史价格
-        return: asset or None
+        return: asset, asset added
+                ‘duplicated', asset exists already
+                None, failed
         """
         global raw_data
         category = All_Assets_List.query_category_str(ts_code)
@@ -1855,7 +1891,7 @@ class Pool:
         if ts_code in self.assets:
             log_args = [ts_code]
             add_log(30, '[fn]Pool.add_asset(). ts_code:{0[0]} already in the assets, aborted', log_args)
-            return
+            return 'duplicated'
         if in_date is not None:
             if raw_data.valid_trade_date(in_date) is not True:
                 log_args = [ts_code, in_date]
@@ -1871,6 +1907,82 @@ class Pool:
         # ----other categories are to be implemented here-----
         else:
             print('[L1228] other categories are to be implemented')
+
+    def assets_brief(self):
+        """
+        显示pool资产概表
+        """
+        print('Pool:{} assets brief:'.format(self.desc))
+        head = ('ts_code', 'by_price', 'earn_pct', 'earn', 'stay_days', 'by_date', 'in_date', 'in_price')
+        # print head
+        formats = []
+        for name in head:
+            fmt = FORMAT_HEAD[name]
+            fmt_record = FORMAT_FIELDS[name]
+            formats.append(fmt_record)
+            print(fmt.format(name), end='')
+        print()
+        # print records
+        num = len(formats)
+        for asset in self.assets.values():
+            for i in range(num):
+                zd = getattr(asset, head[i])  # 用于显示的字段赋值
+                if zd is None:
+                    print('{:^14}'.format('None'), end='')
+                else:
+                    print(formats[i].format(zd), end='')
+            print()
+        print("Total Assets: {}".format(len(self.assets)))
+
+    def init_in_out(self):
+        """
+        初始化self.in_out
+        """
+        self.in_out = pd.DataFrame(columns=['ts_code', 'earn_pct', 'earn', 'in_date', 'out_date', 'stay_days', 'in_price', 'out_price', 'in_pool_index'])
+
+    def append_in_out(self, asset, in_pool_index='None'):
+        """
+        将完成一组进出pool操作的asset的当前状态，记录到pool.in_out的新条目中
+        此处出pool的意思是传到下游in_pool就算，不必须从out_pool中删掉asset
+        注意调用此函数前更新好asset的相关参数
+        asset: <Asset>
+        return: True  success
+                None  failed
+        """
+        if isinstance(asset, Asset):
+            record = {'ts_code': asset.ts_code,
+                      'earn_pct': asset.earn_pct,
+                      'earn': asset.earn,
+                      'in_date': asset.in_date,
+                      'out_date': asset.out_date,
+                      'stay_days': asset.stay_days,
+                      'in_price': asset.in_price,
+                      'out_price': asset.out_price,
+                      'in_pool_index': in_pool_index}
+            self.in_out = self.in_out.append(record, ignore_index=True)
+            return True
+        else:
+            log_args = [type(asset)]
+            add_log(20, '[fn]Pool.append_in_out(). asset type: {0[0]} is not Asset', log_args)
+            return
+
+    def csv_in_out(self, csv=None):
+        """
+        导出pool.in_out记录到csv
+        csv: None  默认文件名 io_<date_of_generate>_<pool_desc>.csv
+             <str> io_<str>.csv
+        """
+        if csv is None:  # 默认名
+            name = today_str() + '_' + self.desc
+        file_name = 'io_' + name + '.csv'
+        file_path = sub_path + sub_analysis + '\\' + file_name
+        if isinstance(self.in_out, pd.DataFrame):
+            self.in_out.to_csv(file_path, encoding="utf-8")
+            log_args = [file_path]
+            add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
+        else:
+            log_args = [self.desc, type(self.in_out)]
+            add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
 
     def add_condition(self, pre_args1_, pre_args2_, ops, required_period=0):
         """
@@ -1914,15 +2026,15 @@ class Pool:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
 
-    def op_cnds_matrix(self, mode='i', **kwargs):
+    def op_cnds_matrix(self, mode='i', ts_code=None, al=None, **kwargs):
         """
         self.cnds_matrix相关的操作
         mode: 'i' = initialize根据当前assets及cnds初始化
               'a' = append增加ts_code行，旧记录不变
               'd' = delete删除ts_code行，其它记录不变
+        ts_code: <str> 用于 a 或 d 模式，比al参数优先级高
         al: <list> of ts_code,用于 a 或 d 模式
         """
-        print('[L1383] mode "a", "d" not finished')
         if mode == 'i':
             n_cnds = len(self.conditions)
             if n_cnds > 0:
@@ -1931,14 +2043,73 @@ class Pool:
                 # print('[L1386] head_list: {}'.format(head_list))
                 self.cnds_matrix = pd.DataFrame(columns=head_list)
                 self.cnds_matrix.set_index('ts_code', inplace=True)
-                data_nan = list(np.nan for i in range(n_cnds))
+                data_nan = list(np.nan for _ in range(n_cnds))
                 # print('[L1394] data_nan:'.format(data_nan))
                 for ts_code in self.assets.keys():
                     self.cnds_matrix.loc[ts_code] = data_nan
                 # print('[L1396] cnds_matrix:\n{}'.format(self.cnds_matrix))
             else:
                 log_args = [self.desc]
-                add_log(20, '[fn]Pool.op_cnds_matrix(). {0[0]} conditions not loaded', log_args)
+                add_log(30, '[fn]Pool.op_cnds_matrix(). {0[0]} conditions not loaded', log_args)
+                return
+
+        elif mode == 'a':  # append
+            if self.cnds_matrix is None:
+                log_args = [self.desc]
+                add_log(30, '[fn]Pool.op_cnds_matrix(). cnds in pool:{0[0]} is None, append aborted', log_args)  # 可能此pool没有加载任何conditions
+                return
+            else:  # self.cnds_matrix is <df>
+                n_cnds = len(self.conditions)
+                data_nan = list(np.nan for _ in range(n_cnds))
+                if isinstance(ts_code, str):
+                    try:  # 是否已存在
+                        self.cnds_matrix.index.get_loc(ts_code)
+                    except KeyError:
+                        self.cnds_matrix.loc[ts_code] = data_nan
+                        return
+                    log_args = [ts_code, self.desc]
+                    add_log(30, '[fn]Pool.op_cnds_matrix(). {0[0]} already in cnds_matrix of pool:{0[0]}, append skipped', log_args)
+                elif isinstance(al, list):
+                    if len(al) > 0:
+                        for ts_code in al:
+                            try:  # 是否已存在
+                                self.cnds_matrix.index.get_loc(ts_code)
+                            except KeyError:
+                                self.cnds_matrix.loc[ts_code] = data_nan
+                                continue
+                            log_args = [ts_code, self.desc]
+                            add_log(30, '[fn]Pool.op_cnds_matrix(). {0[0]} already in cnds_matrix of pool:{0[0]}, append skipped', log_args)
+                            continue
+                    else:
+                        log_args = [al]
+                        add_log(20, '[fn]Pool.op_cnds_matrix(). no ts_code in al:{0[0]}, append aborted', log_args)
+                        return
+                else:  # ts_code, al在'a','d'模式都没给定
+                    add_log(20, '[fn]Pool.op_cnds_matrix(). both ts_code and al are not specified, append aborted')
+                    return
+
+        elif mode == 'd':  # delete
+            if isinstance(ts_code, str):
+                try:
+                    self.cnds_matrix.drop(ts_code, inplace=True)
+                except KeyError:
+                    log_args = [ts_code, self.desc]
+                    add_log(30, '[fn]Pool.op_cnds_matrix(). failed to delete {0[0]} from pool:{0[1]}', log_args)  # 可能已被删除
+            elif isinstance(al, list):
+                if len(al) > 0:
+                    for ts_code in al:
+                        try:
+                            self.cnds_matrix.drop(ts_code, inplace=True)
+                        except KeyError:
+                            log_args = [ts_code, self.desc]
+                            add_log(30, '[fn]Pool.op_cnds_matrix(). failed to delete {0[0]} from pool:{0[1]}', log_args)  # 可能已被删除
+                            continue
+                else:
+                    log_args = [al]
+                    add_log(20, '[fn]Pool.op_cnds_matrix(). no ts_code in al:{0[0]}, del aborted', log_args)  # 可能已被删除
+                    return
+            else:  # ts_code, al在'a','d'模式都没给定
+                add_log(20, '[fn]Pool.op_cnds_matrix(). both ts_code and al are not specified, del aborted')
                 return
 
     def filter_cnd(self, cnd_index, datetime_='latest', csv=None, al=None, update_matrix=None):
@@ -1978,7 +2149,7 @@ class Pool:
                 al_list = self.assets.values()
             elif isinstance(al, list):
                 al_list = (self.assets[ts_code] for ts_code in al)
-                print('[L1388] al_list:{}'.format(al_list))
+                # print('[L1388] al_list:{}'.format(al_list))
             else:
                 add_log(20, '[fn]Pool.filter_cnd(). Invalid al')
                 return
@@ -1993,6 +2164,13 @@ class Pool:
                 if idt_name1 == 'const':
                     idt_value1 = cnd.para1.const_value  # para1 value
                     idt_date1 = 'const'  # 常量的特殊时间
+                elif idt_name1 == 'stay_days':
+                    idt_value1 = asset.stay_days
+                    if idt_value1 is None:
+                        idt_date1 = 'None'
+                        idt_value1 = 0
+                    else:
+                        idt_date1 = asset.by_date
                 else:
                     try:  # 指标在资产中是否存在
                         idt1 = getattr(asset, idt_name1)
@@ -2022,6 +2200,13 @@ class Pool:
                 if idt_name2 == 'const':
                     idt_value2 = cnd.para2.const_value
                     idt_date2 = 'const'  # 常量的特殊时间
+                elif idt_name2 == 'stay_days':
+                    idt_value2 = asset.stay_days
+                    if idt_value2 is None:
+                        idt_date2 = 'None'
+                        idt_value2 = 0
+                    else:
+                        idt_date2 = asset.by_date
                 else:
                     try:
                         idt2 = getattr(asset, idt_name2)
@@ -2145,14 +2330,14 @@ class Pool:
             按序遍历所有的filter
         返回<list> of the assets to be transferred
         资产的pools间transfer由strategy完成
-        不触发aggreagte()
+        不触发aggregate()
 
         date_str: <str> e.g. '20191231'
         return: <list> e.g. [(in_pool_index, <list> of ts_code),
                              (in_pool_index, <list> of ts_code),...]
                 None 没有资产需要transfer
         """
-        print('[L1992] Pool.cycle() not tested')
+        # print('[L2181] Pool.cycle() not tested')
         global raw_data
         # 更新pool.by_date
         if valid_date_str_fmt(date_str) is not True:
@@ -2169,19 +2354,22 @@ class Pool:
             self.by_date = date_str
 
         # 遍历assets, 补缺in_price, in_date
-        lack_in_price = [asset for asset in self.assets if asset.in_price is None]
+        lack_in_price = [asset for asset in self.assets.values() if asset.in_price is None]
         for asset in lack_in_price:
             rslt = asset.get_price(trade_date=date_str)
             if rslt is not None:
                 asset.in_price, asset.in_date = rslt
 
         # 遍历assets, 更新by_date, by_price, stay_days
-        for asset in self.assets:
-            _price, _ = asset.get_price(self.by_date)
-            if _price is not None:  # 不停牌有收盘价
+        for asset in self.assets.values():
+            rslt = asset.get_price(self.by_date)
+            if rslt is not None:  # 不停牌有收盘价
+                _price, _ = rslt
                 if asset.by_date is None:
                     asset.by_date = self.by_date
                     asset.by_price = _price
+                    asset.earn = asset.by_price - asset.in_price
+                    asset.earn_pct = (asset.earn / asset.in_price)
                 elif int(asset.by_date) > int(self.by_date):
                     log_args = [asset.ts_code, asset.by_date, self.by_date]
                     add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
@@ -2189,6 +2377,8 @@ class Pool:
                 else:
                     asset.by_date = self.by_date
                     asset.by_price = _price
+                    asset.earn = asset.by_price - asset.in_price
+                    asset.earn_pct = (asset.earn / asset.in_price)
             # 更新stay_days
             if asset.in_date is not None:
                 asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
@@ -2291,6 +2481,12 @@ class Condition:
         self.required_period = required_period  # <int> 条件需要持续成立的周期
         self.true_lasted = {}  # <dict> {'000001.SZ': 2,...} 资产持续成立的周期
 
+        '''
+        pX_name的形式
+        <str> idt_name:对应已定义的Indicator
+        "const": 常量
+        "stayed_days": asset在pool中停留的天数，如果不可用，则value=0, date="None"
+        '''
         p1_name = self.para1.idt_name
         p2_name = self.para2.idt_name
 
@@ -2352,10 +2548,11 @@ class Para:
         """
         检验<dict>kwargs的有效性
         """
+        from st_common import CND_SPC_TYPES
         from indicator import IDT_CLASS
         if 'idt_type' in pre_args:
             idt_type = pre_args['idt_type']
-            if (idt_type == 'const') or (idt_type in IDT_CLASS):
+            if (idt_type in CND_SPC_TYPES) or (idt_type in IDT_CLASS):
                 obj = super().__new__(cls)
                 return obj
         log_args = [pre_args]
@@ -2371,6 +2568,9 @@ class Para:
             self.idt_name = 'const'
             self.idt_type = 'const'
             self.const_value = pre_args['const_value']
+        elif idt_type == 'stay_days':
+            self.idt_name = 'stay_days'
+            self.idt_type = 'stay_days'
         else:
             self.field = None  # <str> string of the indicator result csv column name
             if 'field' in pre_args:
@@ -2386,7 +2586,11 @@ class Filter:
     """
     Condition的集合，assets在pools间按过滤条件流转的通道
     """
-    def __new__(cls, cnd_indexes=set(), down_pools=set()):
+    def __new__(cls, cnd_indexes=None, down_pools=None):
+        if down_pools is None:
+            down_pools = set()
+        if cnd_indexes is None:
+            cnd_indexes = set()
         if isinstance(cnd_indexes, set) and isinstance(down_pools, set):
             obj = super().__new__(cls)
             return obj
@@ -2394,7 +2598,11 @@ class Filter:
             log_args = [type(cnd_indexes), type(down_pools)]
             add_log(10, '[fn]Filter.__new__() cnd_indexes type:{0[0]}, down_pools type:{0[1]} are not <set>', log_args)
 
-    def __init__(self, cnd_indexes=set(), down_pools=set()):
+    def __init__(self, cnd_indexes=None, down_pools=None):
+        if down_pools is None:
+            down_pools = set()
+        if cnd_indexes is None:
+            cnd_indexes = set()
         self.cnd_indexes = cnd_indexes  # <set> contains indexes of pool.condition
         self.down_pools = down_pools  # <set> contains indexes of downstream <Pool>
 
@@ -2702,31 +2910,31 @@ if __name__ == "__main__":
     # print('------临时便利--------')
     # st01 = pool_10.assets['000001.SZ']
 
-    print('===========Phase-1 单pool，条件筛选测试===========')
-    # print('------Strategy and Pool--------')
-    stg = Strategy('stg_p1_00')
-    # stg.add_pool(desc="pool10", al_file='try_001')
-    stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction=None)
-    # stg.add_pool(desc="pool20")
-    # stg.add_pool(desc="pool30")
-    stg.pools_brief()
-    pool10 = stg.pools[10]
-    st002 = pool10.assets['000002.SZ']
-    print('------Add Conditions, scripts required for each strategy--------')
-    # ------condition_0
-    pre_args1 = {'idt_type': 'majh',
-                 'long_n1': 60,
-                 'middle_n2': 20,
-                 'short_n3': 5}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 2.0}
-    pool10.add_condition(pre_args1, pre_args2, '<')
-    # ------condition_1
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 100}
-    pool10.add_condition(pre_args1, pre_args2, '>')
+    # print('===========Phase-1 单pool，条件筛选测试===========')
+    # # print('------Strategy and Pool--------')
+    # stg = Strategy('stg_p1_00')
+    # # stg.add_pool(desc="pool10", al_file='try_001')
+    # stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction=None)
+    # # stg.add_pool(desc="pool20")
+    # # stg.add_pool(desc="pool30")
+    # stg.pools_brief()
+    # pool10 = stg.pools[10]
+    # st002 = pool10.assets['000002.SZ']
+    # print('------Add Conditions, scripts required for each strategy--------')
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'majh',
+    #              'long_n1': 60,
+    #              'middle_n2': 20,
+    #              'short_n3': 5}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 2.0}
+    # pool10.add_condition(pre_args1, pre_args2, '<')
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 100}
+    # pool10.add_condition(pre_args1, pre_args2, '>')
     # 自动iterate pool.assets 来添加
     # pool10.iter_al()  # 给所有assets计算conditions涉及的指标
     # cond0 = pool10.conditions[0]
@@ -2756,28 +2964,28 @@ if __name__ == "__main__":
     # pool10.filter_cnd(0, '20200103')
     # pool10.dashboard.disp_board()
 
-    print('===========Phase-2 Filter测试===========')
-    # ------condition_2
-    pre_args1 = {'idt_type': 'ma',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 5}
-    pool10.add_condition(pre_args1, pre_args2, '=')
-    # ------condition_3
-    pre_args1 = {'idt_type': 'ema',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 5}
-    pool10.add_condition(pre_args1, pre_args2, '<')
-    pool10.iter_al()  # 在添加完条件后给所有assets计算conditions涉及的指标
-    pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
-    stg.add_pool(desc='pool20')
-    cnd_idx = {0, 1}
-    dpools = {20}
-    pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
-    rslt = pool10.filter_filter(filter_index=0)
-    # print('[L2089] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
-    print('[L2090] rslt:\n{}'.format(rslt))
+    # print('===========Phase-2 Filter测试===========')
+    # # ------condition_2
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 5}
+    # pool10.add_condition(pre_args1, pre_args2, '=')
+    # # ------condition_3
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 5}
+    # pool10.add_condition(pre_args1, pre_args2, '<')
+    # pool10.iter_al()  # 在添加完条件后给所有assets计算conditions涉及的指标
+    # pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
+    # stg.add_pool(desc='pool20')
+    # cnd_idx = {0, 1}
+    # dpools = {20}
+    # pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
+    # rslt = pool10.filter_filter(filter_index=0)
+    # # print('[L2089] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
+    # print('[L2090] rslt:\n{}'.format(rslt))
 
     # print('------test multi-stages filter--------')
     # stg.add_pool(desc="pool20", al_file='pool10_output')
@@ -2797,6 +3005,51 @@ if __name__ == "__main__":
     # al = ['000001.SZ', '000002.SZ', '000010.SZ', '000011.SZ']
     # pool10.filter_cnd(cnd=cond0, al=al)
     # pool10.dashboard.disp_board()
+    print('================Strategy测试================')
+    stg = Strategy('stg_p1_01')
+    stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    p10 = stg.pools[10]
+    stg.add_pool(desc='p20预备', al_file=None, in_date=None, price_seek_direction=None)
+    p20 = stg.pools[20]
+    stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None)
+    p30 = stg.pools[30]
+    stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
+    p40 = stg.pools[40]
+    stg.pools_brief()  # 打印pool列表
+    # ---pool10 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5}
+    pre_args2 = {'idt_type': 'ma',
+                 'period': 20}
+    p10.add_condition(pre_args1, pre_args2, '<')
+
+    p10.add_filter(cnd_indexes={0}, down_pools={20})
+    # ---pool20 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5}
+    pre_args2 = {'idt_type': 'ma',
+                 'period': 20}
+    p20.add_condition(pre_args1, pre_args2, '>=')
+
+    p20.add_filter(cnd_indexes={0}, down_pools={30})
+    # ---pool30 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 5}
+    p30.add_condition(pre_args1, pre_args2, '>=')
+
+    p30.add_filter(cnd_indexes={0}, down_pools={40})
+    # ---初始化各pool的cnds_matrix-----------
+    stg.init_pools_cnds_matrix()
+
+    # ---stg循环-----------
+    stg.update_cycles(start_date='20180101', cycles=200)
+
+    # ---报告-----------
+    p30.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()

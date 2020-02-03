@@ -12,6 +12,7 @@ sub_path_config = r"\config"  # 配置文件
 sub_path_al = r"\assets_lists"  # 资产列表
 sub_path_result = r".\plot_result"  # 分析模板运行结果
 sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
+sub_analysis = r"\analysis"  # 分析数据
 
 SUBTYPE = {'D': 'day',
            'W': 'week',
@@ -32,7 +33,14 @@ DOWNLOAD_WORD = {0: '-success-',
 DEFAULT_OPEN_DATE_STR = "19901219"  # 中国股市开始时间？
 # 用于dashboard head不同参数的显示格式
 FORMAT_HEAD = {"ts_code": "{:<12}",
-               "trade_date": "{:<10}",
+               "trade_date": "{:^10}",
+               "in_date": "{:^14}",
+               "by_date": "{:^14}",
+               "by_price": "{:>10}",
+               "in_price": "{:>10}",
+               "earn": "{:^10}",
+               "earn_pct": "{:^12}",
+               "stay_days": "{:<10}",
                "cond_desc": "{:^30}",
                "cond_result": "{:<6}",
                "cond_p1_value": "{:^15}",
@@ -43,6 +51,13 @@ FORMAT_HEAD = {"ts_code": "{:<12}",
 # 用于dashboard record不同参数的显示格式
 FORMAT_FIELDS = {"ts_code": "{:<12}",
                  "trade_date": "{:^14}",
+                 "in_date": "{:^14}",
+                 "by_date": "{:^14}",
+                 "by_price": "{:10.2f}",
+                 "in_price": "{:10.2f}",
+                 "earn": "{:10.2f}",
+                 "earn_pct": "{:12.2%}",
+                 "stay_days": "{:>8}",
                  "cond_desc": "{:<30}",
                  "cond_result": "{:<6}",
                  "cond_p1_value": "{:14.2f}",
@@ -50,6 +65,10 @@ FORMAT_FIELDS = {"ts_code": "{:<12}",
                  "cond_p1_date": "{:^14}",
                  "cond_p2_date": "{:^14}",
                  }
+
+# Condition Special idt_type
+CND_SPC_TYPES = {'const',  # 常量
+                 'stay_days'}  # 在pool中交易日数
 
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 
