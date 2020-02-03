@@ -1889,20 +1889,20 @@ class Pool:
             add_log(20, '[fn]Pool.add_asset(). ts_code:{0[0]} category is None, aborted', log_args)
             return
         if ts_code in self.assets:
-            log_args = [ts_code]
-            add_log(30, '[fn]Pool.add_asset(). ts_code:{0[0]} already in the assets, aborted', log_args)
+            log_args = [ts_code, self.desc]
+            add_log(30, '[fn]Pool.add_asset(). ts_code:{0[0]} already in pool:{0[1]}, aborted', log_args)
             return 'duplicated'
         if in_date is not None:
             if raw_data.valid_trade_date(in_date) is not True:
                 log_args = [ts_code, in_date]
-                add_log(20, '[fn]Pool.add_asset(). {0[0]} in_date:{0[0]} is not a trade day, aborted', log_args)
+                add_log(20, '[fn]Pool.add_asset(). {0[0]} in_date:{0[1]} is not a trade day, aborted', log_args)
                 return
 
         if category == 'stock':
             asset = Stock(ts_code=ts_code, in_date=in_date, in_price=in_price)
             self.assets[ts_code] = asset
-            log_args = [ts_code]
-            add_log(40, '[fn]Pool.add_asset(). ts_code:{0[0]} added', log_args)
+            log_args = [ts_code, self.desc]
+            add_log(40, '[fn]Pool.add_asset(). ts_code:{0[0]} added to pool:{0[1]}', log_args)
             return asset
         # ----other categories are to be implemented here-----
         else:
@@ -3013,8 +3013,8 @@ if __name__ == "__main__":
     p20 = stg.pools[20]
     stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None)
     p30 = stg.pools[30]
-    stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
-    p40 = stg.pools[40]
+    # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
+    # p40 = stg.pools[40]
     stg.pools_brief()  # 打印pool列表
     # ---pool10 conditions-----------
     # ------condition_0
@@ -3038,15 +3038,16 @@ if __name__ == "__main__":
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 5}
+                 'const_value': 2}
     p30.add_condition(pre_args1, pre_args2, '>=')
 
-    p30.add_filter(cnd_indexes={0}, down_pools={40})
+    p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
     # ---初始化各pool的cnds_matrix-----------
     stg.init_pools_cnds_matrix()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20180101', cycles=200)
+    # stg.update_cycles(start_date='20050101', end_date='20191231')
+    stg.update_cycles(start_date='20190101', end_date='20200101')
 
     # ---报告-----------
     p30.csv_in_out()
