@@ -3080,18 +3080,18 @@ if __name__ == "__main__":
     # ---pool10 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'ema',
-                 'period': 5}
-    pre_args2 = {'idt_type': 'ema',
                  'period': 20}
+    pre_args2 = {'idt_type': 'ema',
+                 'period': 60}
     p10.add_condition(pre_args1, pre_args2, '<')
 
     p10.add_filter(cnd_indexes={0}, down_pools={20})
     # ---pool20 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'ema',
-                 'period': 5}
-    pre_args2 = {'idt_type': 'ema',
                  'period': 20}
+    pre_args2 = {'idt_type': 'ema',
+                 'period': 60}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
     p20.add_filter(cnd_indexes={0}, down_pools={30})
@@ -3099,7 +3099,7 @@ if __name__ == "__main__":
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 2}
+                 'const_value': 20}
     p30.add_condition(pre_args1, pre_args2, '>=')
 
     p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
@@ -3107,9 +3107,8 @@ if __name__ == "__main__":
     stg.init_pools_cnds_matrix()
 
     # ---stg循环-----------
-    # stg.update_cycles(start_date='20050101', end_date='20191231')
-    # stg.update_cycles(start_date='20050101', end_date='20200101')
-    stg.update_cycles(start_date='20190101', cycles=5)
+    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20190101', cycles=5)
     # ---报告-----------
     p30.csv_in_out()
 
