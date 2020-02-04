@@ -36,6 +36,13 @@ def today_str():
     today_str_ = dt.strftime("%Y%m%d")
     return today_str_
 
+def now_time_str():
+    """
+    return: <str> e.g.'13-90-45'
+    """
+    dt = datetime.now()
+    now_str = dt.strftime("%H-%M-%S")
+    return now_str
 
 def valid_file_path(file_path):
     r"""
@@ -1201,6 +1208,52 @@ class Index:
             return
 
 
+class Analysis:
+    """
+    分析相关
+    """
+    @staticmethod
+    def select_in_out_csv():
+        """
+        选择要操作的io_xxxx.csv文件，读入返回<df>
+        return: <df> of in_out
+                None failed
+        """
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主窗口
+        file_path = filedialog.askopenfilename()
+        io_df = pd.read_csv(file_path, index_col=0)
+        return io_df
+
+    @staticmethod
+    def in_out_agg(io_df):
+        """
+        显示<df>in_out的统计信息
+        """
+        if not isinstance(io_df, pd.DataFrame):
+            log_args = [type(io_df)]
+            add_log(20, '[fns]Analysis.in_out_agg(). io_df type:{} is not <df>', log_args)
+            return
+        s_earn_pct = io_df['earn_pct']  # <Series>
+        n_records = len(io_df)  # 记录条数
+        n_positive = s_earn_pct[s_earn_pct > 0].count()
+        n_negative = s_earn_pct[s_earn_pct < 0].count()
+        avg_earn_pct, median_earn_pct = s_earn_pct.agg(['mean', 'median'])  # 平均值，中位数
+        stay_days, max_days, min_days = io_df['stay_days'].agg(['mean', 'max', 'min'])
+        # 结果展示
+        print('=============================')
+        print('in_out Aggregate:')
+        print('Number of Records:        {:>8}        Stay Days(avg):  {:8.1f}'.format(n_records, stay_days))
+        print('Number of Positive Earns: {:>8}        Stay Days(max):  {:8.0f}'.format(n_positive, max_days))
+        print('Number of Negative Earns: {:>8}        Stay Days(min):  {:8.0f}'.format(n_negative, min_days))
+        print('Average Earn%:        {:12.2%}'.format(avg_earn_pct))
+        print('Median Earn%:         {:12.2%}'.format(median_earn_pct))
+        print('=============================')
+
+
 # LOADER读入.csv数据的接口
 LOADER = {'index_sse': Index.load_index_daily,
           'index_szse': Index.load_index_daily,
@@ -1940,6 +1993,14 @@ class Pool:
         """
         self.in_out = pd.DataFrame(columns=['ts_code', 'earn_pct', 'earn', 'in_date', 'out_date', 'stay_days', 'in_price', 'out_price', 'in_pool_index'])
 
+    def in_out_agg(self):
+        """
+        显示pool.in_out的统计信息
+        """
+        io_df = self.in_out
+        print('pool:{} in_out aggregate'.format(self.desc))
+        Analysis.in_out_agg(io_df)
+
     def append_in_out(self, asset, in_pool_index='None'):
         """
         将完成一组进出pool操作的asset的当前状态，记录到pool.in_out的新条目中
@@ -1973,7 +2034,7 @@ class Pool:
              <str> io_<str>.csv
         """
         if csv is None:  # 默认名
-            name = today_str() + '_' + self.desc
+            name = today_str() + '_' + self.desc + '_' + now_time_str()
         file_name = 'io_' + name + '.csv'
         file_path = sub_path + sub_analysis + '\\' + file_name
         if isinstance(self.in_out, pd.DataFrame):
@@ -3018,18 +3079,18 @@ if __name__ == "__main__":
     stg.pools_brief()  # 打印pool列表
     # ---pool10 conditions-----------
     # ------condition_0
-    pre_args1 = {'idt_type': 'ma',
+    pre_args1 = {'idt_type': 'ema',
                  'period': 5}
-    pre_args2 = {'idt_type': 'ma',
+    pre_args2 = {'idt_type': 'ema',
                  'period': 20}
     p10.add_condition(pre_args1, pre_args2, '<')
 
     p10.add_filter(cnd_indexes={0}, down_pools={20})
     # ---pool20 conditions-----------
     # ------condition_0
-    pre_args1 = {'idt_type': 'ma',
+    pre_args1 = {'idt_type': 'ema',
                  'period': 5}
-    pre_args2 = {'idt_type': 'ma',
+    pre_args2 = {'idt_type': 'ema',
                  'period': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
@@ -3047,8 +3108,8 @@ if __name__ == "__main__":
 
     # ---stg循环-----------
     # stg.update_cycles(start_date='20050101', end_date='20191231')
-    stg.update_cycles(start_date='20190101', end_date='20200101')
-
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    stg.update_cycles(start_date='20190101', cycles=5)
     # ---报告-----------
     p30.csv_in_out()
 
