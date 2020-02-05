@@ -1439,9 +1439,10 @@ class Strategy:
     量化策略
     """
 
-    def __init__(self, desc='stg#01'):
+    def __init__(self, desc='stg#01', log_trans=None):
         """
         desc: <str> strategy description
+        log_trans: True or None, True to log the self.trans_logs for diagnostic
         """
         # print('L1160 to be continued')
         self.desc = desc
@@ -1449,6 +1450,7 @@ class Strategy:
         self.by_date = None  # <str> 如'20191231' 当前处理周期的时间
         self.completed_cycle = None  # # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
         self.trans_logs = []  # pool流转记录<list> of <Trans_Log>
+        self.log_trans = log_trans  # 是否将asset流转记录到self.trans_logs供问题诊断
 
     def add_pool(self, **kwargs):
         """
@@ -1710,7 +1712,7 @@ class Strategy:
         # 收尾update
         if return_ok is not True:
             return  # _check_completed_cycle()执行报错，外层同样return
-        print('[L644] aggregate 收尾未完成')
+        print('[L1715] aggregate 收尾未完成')
 
     def trans_assets(self, out_pool_index, transfer_list, trade_date, out_price_mode=None, in_price_mode='close'):
         """
@@ -1826,10 +1828,12 @@ class Strategy:
                 add_log(20, '[fn]Strategy.trans_asset_down() failed to add {0[1]} to pool_{0[2]}:{0[0]}', log_args)
                 return
 
-        # 增加trans_log
-        self.trans_logs.append(Trans_Log(ts_code=ts_code, out_pool_index=out_pool_index, out_price=out_price, out_date=out_date, in_pool_index=in_pool_index, in_price=in_price, in_date=in_date, volume=volume))
+        # 增加trans_log和in_out
+        if self.log_trans is True:
+            self.trans_logs.append(Trans_Log(ts_code=ts_code, out_pool_index=out_pool_index, out_price=out_price, out_date=out_date, in_pool_index=in_pool_index, in_price=in_price, in_date=in_date, volume=volume))
         asset_out_pool = out_pool.assets[ts_code]
-        out_pool.append_in_out(asset=asset_out_pool, in_pool_index=in_pool_index)
+        if out_pool.log_in_out is True:
+            out_pool.append_in_out(asset=asset_out_pool, in_pool_index=in_pool_index)
         return True
 
     def init_pools_cnds_matrix(self):
@@ -1842,12 +1846,12 @@ class Strategy:
             pool.iter_al()
             pool.op_cnds_matrix(mode='i')
 
+
 class Pool:
     """
     股票池
     """
-
-    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True):
+    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True, log_in_out=None):
         r"""
         desc: <str> 描述
         al_file: None = create empty dict;
@@ -1858,11 +1862,13 @@ class Pool:
                  '20191231': 指定的日期
         del_trsfed: 当资产通过filter转到下游in_pool后，是否删除源out_pool中的资产
                     True or None
+        log_in_out: True or None, True把asset在pool中的对应进出记录到self.io_out中
         """
         global raw_data
         self.desc = desc
         self.assets = {}  # {ts_code, <ins> Asset}
         self.in_out = None  # <df>资产进出该pool的对应记录
+        self.log_in_out = log_in_out  # 是否记录资产的对应进出供分析
         self.init_in_out()
         self.in_date = in_date  # 仅做诊断用
         self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
@@ -2192,12 +2198,42 @@ class Pool:
             add_log(20, '[fn]Pool.filter_cnd(). invalid cnd_index:{0[0]}', log_args)
             return
         if datetime_ == 'latest':
-            val_fetcher = lambda df, column_name: df.iloc[0][column_name]  # [fn] 获取最新idt记录值
-            date_fetcher = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+            # -----para1
+            if cnd.para1.shift_periods is None:
+                shift1 = 0  # 前后移动周期数
+            elif cnd.para1.shift_periods > 0:
+                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+                return
+            else:  # 负值，取前值
+                shift1 = cnd.para1.shift_periods
+            val_fetcher1 = lambda df, column_name: df.iloc[0 - shift1][column_name]  # [fn] 获取最新idt记录值
+            date_fetcher1 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+            # -----para2
+            if cnd.para2.shift_periods is None:
+                shift2 = 0  # 前后移动周期数
+            elif cnd.para2.shift_periods > 0:
+                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+                return
+            else:  # 负值，取前值
+                shift2 = cnd.para2.shift_periods
+            val_fetcher2 = lambda df, column_name: df.iloc[0 - shift2][column_name]  # [fn] 获取最新idt记录值
+            date_fetcher2 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
         elif valid_date_str_fmt(datetime_):
             dt_int = int(datetime_)
-            val_fetcher = lambda df, column_name: df.iloc[df.index.get_loc(dt_int)][column_name]
-            date_fetcher = lambda _: datetime_
+            # -----para1
+            if cnd.para1.shift_periods is None:
+                shift1 = 0  # 前后移动周期数
+            else:
+                shift1 = cnd.para1.shift_periods
+            val_fetcher1 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift1][column_name]
+            date_fetcher1 = lambda _: datetime_
+            # -----para2
+            if cnd.para2.shift_periods is None:
+                shift2 = 0  # 前后移动周期数
+            else:
+                shift2 = cnd.para2.shift_periods
+            val_fetcher2 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift2][column_name]
+            date_fetcher2 = lambda _: datetime_
         else:
             log_args = [datetime_]
             add_log(10, '[fn]Pool.filter_cnd(). datetime_:{0[0]} invalid', log_args)
@@ -2244,9 +2280,9 @@ class Pool:
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
-                    idt_date1 = date_fetcher(idt_df1)
+                    idt_date1 = date_fetcher1(idt_df1)
                     try:  # 获取目标时间的指标数值
-                        idt_value1 = val_fetcher(idt_df1, column_name1)
+                        idt_value1 = val_fetcher1(idt_df1, column_name1)
                         # print('[L1407] idt_value1:{}'.format(idt_value1))
                     except KeyError:  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, cnd.para1.idt_name, idt_date1]
@@ -2280,9 +2316,9 @@ class Pool:
                         log_args = [asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
-                    idt_date2 = date_fetcher(idt_df2)
+                    idt_date2 = date_fetcher2(idt_df2)
                     try:
-                        idt_value2 = val_fetcher(idt_df2, column_name2)
+                        idt_value2 = val_fetcher2(idt_df2, column_name2)
                         # print('[L1436] idt_value2:{}'.format(idt_value2))
                     except KeyError:  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, cnd.para2.idt_name, idt_date2]
@@ -2641,6 +2677,11 @@ class Para:
                 self.field = 'default'
             self.idt_init_dict = idt_name(pre_args)
             self.idt_name = self.idt_init_dict['idt_name']
+        if 'shift_periods' in pre_args:
+            self.shift_periods = pre_args['shift_periods']
+            del pre_args['shift_periods']
+        else:
+            self.shift_periods = None
 
 
 class Filter:
@@ -3068,49 +3109,108 @@ if __name__ == "__main__":
     # pool10.dashboard.disp_board()
     print('================Strategy测试================')
     stg = Strategy('stg_p1_01')
+    # stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
     stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
-    stg.add_pool(desc='p20预备', al_file=None, in_date=None, price_seek_direction=None)
+    stg.add_pool(desc='p20持仓5日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
-    stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None)
+    stg.add_pool(desc='p30持仓10日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p30 = stg.pools[30]
+    stg.add_pool(desc='p40持仓20日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p40 = stg.pools[40]
+    stg.add_pool(desc='p50持仓30日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p50 = stg.pools[50]
+    # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
     # p40 = stg.pools[40]
     stg.pools_brief()  # 打印pool列表
     # ---pool10 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'ema',
-                 'period': 20}
+                 'period': 20,
+                 'shift_periods': -1}
     pre_args2 = {'idt_type': 'ema',
-                 'period': 60}
+                 'period': 60,
+                 'shift_periods': -1}
     p10.add_condition(pre_args1, pre_args2, '<')
-
-    p10.add_filter(cnd_indexes={0}, down_pools={20})
-    # ---pool20 conditions-----------
-    # ------condition_0
+    # ------condition_1
     pre_args1 = {'idt_type': 'ema',
                  'period': 20}
     pre_args2 = {'idt_type': 'ema',
                  'period': 60}
+    p10.add_condition(pre_args1, pre_args2, '>=')
+    # ------condition_2
+    pre_args1 = {'idt_type': 'emaqs',
+                 'period': 20}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.0013}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50})
+    # # ---pool20 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'ema',
+    #              'period': 60}
+    # p20.add_condition(pre_args1, pre_args2, '>=')
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 60}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0}
+    # p20.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p20.add_filter(cnd_indexes={0}, down_pools={30})
+    # ---pool20 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 5}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={30})
+    p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
+
     # ---pool30 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
+                 'const_value': 10}
     p30.add_condition(pre_args1, pre_args2, '>=')
 
     p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
+
+    # ---pool40 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 20}
+    p40.add_condition(pre_args1, pre_args2, '>=')
+
+    p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
+
+    # ---pool50 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 30}
+    p50.add_condition(pre_args1, pre_args2, '>=')
+
+    p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
+
     # ---初始化各pool的cnds_matrix-----------
     stg.init_pools_cnds_matrix()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
-    # stg.update_cycles(start_date='20190101', cycles=5)
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050201', end_date='20200101')
+    stg.update_cycles(start_date='20190101', cycles=30)
     # ---报告-----------
+    p20.csv_in_out()
     p30.csv_in_out()
+    p40.csv_in_out()
+    p50.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()

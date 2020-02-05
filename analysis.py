@@ -36,7 +36,7 @@ def in_out_agg(io_df):
     stay_days, max_days, min_days = io_df['stay_days'].agg(['mean', 'max', 'min'])
 
     # 结果展示
-    print('=============================')
+    print('=======================================================================================')
     print('in_out Aggregate:')
     print('Num of Records:    {:>8}        Stay Days(avg):  {:8.1f}'.format(n_records, stay_days))
     print('Num of Pos. Earns: {:>8}        Stay Days(max):  {:8.0f}'.format(n_positive, max_days))
@@ -50,7 +50,7 @@ def in_out_agg(io_df):
     print('75% Earn%:     {:12.2%}'.format(med_75))
     print('25% Earn%:     {:12.2%}'.format(med_25))
     print('10% Earn%:     {:12.2%}'.format(med_10))
-    print('=============================')
+    print('======================================================================================')
 
 
 if __name__ == '__main__':

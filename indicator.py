@@ -111,7 +111,7 @@ class Indicator:
         """
         self.ts_code = ts_code
         self.subtype = subtype
-        self.idt_type = idt_type
+        self.idt_type = idt_type  # ?为什么把这参数放这，而不是用子类里的，忘记。暂留以后优化
         self.df_idt = None  # <df>存放指标的结果数据
         self.source = None  # <str>数据源，如'close_hfq'收盘后复权
         self.update_csv = update_csv
@@ -753,8 +753,205 @@ class Majh(Indicator):
         return df_append
 
 
+class Maqs(Indicator):
+    """
+    MAQS: MA的变化率，也就是它校前值的变化率
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins Maqs> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Maqs.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        period: <int> MA的周期
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'maqs'
+        self.period = period
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period = self.period
+        parent = self.par_asset()
+        df_ma = None  # 前置idt
+
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_ma
+            """
+            nonlocal df_ma
+            # 前置指标名idt_name计算
+            _kwargs = {
+                        'idt_type': 'ma',
+                        'period': period,
+                        'source': self.source,
+                        'update_csv': True}  # 考虑到此ma会是常用指标
+            kwargs_qz = idt_name(_kwargs)
+            idt_ma_name = kwargs_qz['idt_name']
+
+            # ------valid pre-idts uptodate------
+            if hasattr(parent, idt_ma_name):
+                idt_ma = getattr(parent, idt_ma_name)
+                if idt_ma.valid_utd() is not True:
+                    idt_ma.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_qz)
+                idt_ma = getattr(parent, idt_ma_name)
+            if n is None:
+                df_ma = idt_ma.df_idt
+            else:
+                df_ma = idt_ma.df_idt.head(n)
+
+        # ---------主要部分开始------------
+        if isinstance(df_idt, pd.DataFrame):
+            # ------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Maqs._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Maqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                # last_dea = self.df_idt.iloc[0]['MAQS']
+        else:
+            # ----------重头生成df_idt----------
+            _pre_idt_hdl()
+        ma_col_name = 'MA'  # 前置指标csv的字段名
+        sr_append = df_ma[ma_col_name].pct_change(periods=-1)  # <Series> maqs序列
+        sr_append = sr_append[:-1]  # 去掉最后一条
+        idt_column_name = 'MAQS'
+        df_idt_append = sr_append.to_frame(name=idt_column_name)
+        return df_idt_append
+
+
+class Emaqs(Indicator):
+    """
+    EMAQS: EMA的变化率，也就是它校前值的变化率
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins Emaqs> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Emaqs.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        period: <int> EMA的周期
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'emaqs'
+        self.period = period
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period = self.period
+        parent = self.par_asset()
+        df_ema = None  # 前置idt
+
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_ema
+            """
+            nonlocal df_ema
+            # 前置指标名idt_name计算
+            _kwargs = {
+                        'idt_type': 'ema',
+                        'period': period,
+                        'source': self.source,
+                        'update_csv': True}  # 考虑到此ema会是常用指标
+            kwargs_qz = idt_name(_kwargs)
+            idt_ema_name = kwargs_qz['idt_name']
+
+            # ------valid pre-idts uptodate------
+            if hasattr(parent, idt_ema_name):
+                idt_ema = getattr(parent, idt_ema_name)
+                if idt_ema.valid_utd() is not True:
+                    idt_ema.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_qz)
+                idt_ema = getattr(parent, idt_ema_name)
+            if n is None:
+                df_ema = idt_ema.df_idt
+            else:
+                df_ema = idt_ema.df_idt.head(n)
+
+        # ---------主要部分开始------------
+        if isinstance(df_idt, pd.DataFrame):
+            # ------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Emaqs._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Emaqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+        else:
+            # ----------重头生成df_idt----------
+            _pre_idt_hdl()
+        ema_col_name = 'EMA'  # 前置指标csv的字段名
+        sr_append = df_ema[ema_col_name].pct_change(periods=-1)  # <Series> emaqs序列
+        sr_append = sr_append[:-1]  # 去掉最后一条
+        idt_column_name = 'EMAQS'
+        df_idt_append = sr_append.to_frame(name=idt_column_name)
+        return df_idt_append
+
+
 IDT_CLASS = {'ma': Ma,
+             'maqs': Maqs,  # ma的趋势变化率
              'ema': Ema,
+             'emaqs': Emaqs,  # ema的趋势变化率
              'macd': Macd,
              'majh': Majh}
 

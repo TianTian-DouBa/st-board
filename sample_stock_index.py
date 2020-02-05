@@ -3,7 +3,7 @@ import numpy as np
 from XF_common.XF_KXJS import reverse_df
 
 if __name__ == "__main__":
-    #print("Hello Raspberrypi")
+    # print("Hello Raspberrypi")
     df0 = pd.DataFrame(columns=['trade_date','source'])
     df0.trade_date = ('a','b','c','d','e','f')
     df0.source = np.arange(6)
