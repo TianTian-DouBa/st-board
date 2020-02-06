@@ -712,6 +712,17 @@ class All_Assets_List:
         add_log(40, '[fn]All_Assets_List.create_al_file(). "{0[0]}" updated', log_args)
         return
 
+    @staticmethod
+    def update_hs300_al():
+        """
+        更新沪深300的 al 文件
+        """
+        df = ts_pro.index_weight(index_code='399007.SZ')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, 'HS300成分股')
+
 
 class Asset:
     """
@@ -736,8 +747,12 @@ class Asset:
         self.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
         self.out_date = None  # <str> 当前计算的日期如"20191231"
         self.earn = None  # by_price - in_price
-        self.earn_pct = None  # earn / in_price * 100%
+        self.earn_pct = None  # earn / in_price
         self.daily_data = None  # <df>
+        self.high_in_pool = None  # <float> 在pool期间的最高价
+        self.high_pct = None  # <float> (high_in_pool - in_price) / in_price
+        self.low_in_pool = None  # <float> 在pool期间的最低价
+        self.low_pct = None  # <float> (low_in_pool - in_price) / in_price
 
     def load_daily_data(self):
         """
@@ -1793,7 +1808,8 @@ class Strategy:
         # 处理in_price 和 in_date
         _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
         if _rslt is None:
-            add_log(20, '[fn]Strategy.trans_asset_down() in_price not available, aborted')
+            log_args = [ts_code, trade_date, in_price_mode]
+            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode: {0[2]}) not available on {0[1]}, aborted', log_args)
             return  # 未找到价格
         in_price, in_date = _rslt
 
@@ -2023,6 +2039,10 @@ class Pool:
                       'in_date': asset.in_date,
                       'out_date': asset.out_date,
                       'stay_days': asset.stay_days,
+                      'high_in_pool': asset.high_in_pool,
+                      'high_pct': asset.high_pct,
+                      'low_in_pool': asset.low_in_pool,
+                      'low_pct': asset.low_pct,
                       'in_price': asset.in_price,
                       'out_price': asset.out_price,
                       'in_pool_index': in_pool_index}
@@ -2284,7 +2304,7 @@ class Pool:
                     try:  # 获取目标时间的指标数值
                         idt_value1 = val_fetcher1(idt_df1, column_name1)
                         # print('[L1407] idt_value1:{}'.format(idt_value1))
-                    except KeyError:  # 指标当前datetime_无数据
+                    except (IndexError, KeyError):  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, cnd.para1.idt_name, idt_date1]
                         add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
@@ -2320,7 +2340,7 @@ class Pool:
                     try:
                         idt_value2 = val_fetcher2(idt_df2, column_name2)
                         # print('[L1436] idt_value2:{}'.format(idt_value2))
-                    except KeyError:  # 指标当前datetime_无数据
+                    except (IndexError, KeyError):  # 指标当前datetime_无数据
                         log_args = [asset.ts_code, cnd.para2.idt_name, idt_date2]
                         add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
@@ -2434,7 +2454,6 @@ class Pool:
                              (in_pool_index, <list> of ts_code),...]
                 None 没有资产需要transfer
         """
-        # print('[L2181] Pool.cycle() not tested')
         global raw_data
         # 更新pool.by_date
         if valid_date_str_fmt(date_str) is not True:
@@ -2453,13 +2472,13 @@ class Pool:
         # 遍历assets, 补缺in_price, in_date
         lack_in_price = [asset for asset in self.assets.values() if asset.in_price is None]
         for asset in lack_in_price:
-            rslt = asset.get_price(trade_date=date_str)
+            rslt = asset.get_price(trade_date=date_str)  # 永远当日收盘价
             if rslt is not None:
                 asset.in_price, asset.in_date = rslt
 
         # 遍历assets, 更新by_date, by_price, stay_days
         for asset in self.assets.values():
-            rslt = asset.get_price(self.by_date)
+            rslt = asset.get_price(self.by_date)  # 永远当日收盘价
             if rslt is not None:  # 不停牌有收盘价
                 _price, _ = rslt
                 if asset.by_date is None:
@@ -2476,9 +2495,30 @@ class Pool:
                     asset.by_price = _price
                     asset.earn = asset.by_price - asset.in_price
                     asset.earn_pct = (asset.earn / asset.in_price)
+
             # 更新stay_days
             if asset.in_date is not None:
                 asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
+
+                # 更新high_in_pool, low_in_pool
+                rslt = asset.get_price(self.by_date, mode='high')
+                if rslt is not None:  # 不停牌有收盘价
+                    _high, _ = rslt
+                    if asset.high_in_pool is None:
+                        asset.high_in_pool = _high
+                        asset.high_pct = (_high - asset.in_price) / asset.in_price
+                    elif asset.high_in_pool < _high:
+                        asset.high_in_pool = _high
+                        asset.high_pct = (_high - asset.in_price) / asset.in_price
+                rslt = asset.get_price(self.by_date, mode='low')  # 永远当日收盘价
+                if rslt is not None:  # 不停牌有收盘价
+                    _low, _ = rslt
+                    if asset.low_in_pool is None:
+                        asset.low_in_pool = _low
+                        asset.low_pct = (_low - asset.in_price) / asset.in_price
+                    elif asset.low_in_pool > _low:
+                        asset.low_in_pool = _low
+                        asset.low_pct = (_low - asset.in_price) / asset.in_price
 
         # 依次遍历所有filters
         rslt_to_return = []  # 返回的结果
@@ -3110,16 +3150,20 @@ if __name__ == "__main__":
     print('================Strategy测试================')
     stg = Strategy('stg_p1_01')
     # stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓5日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
     stg.add_pool(desc='p30持仓10日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p30 = stg.pools[30]
-    stg.add_pool(desc='p40持仓20日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    stg.add_pool(desc='p40持仓15日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p40 = stg.pools[40]
-    stg.add_pool(desc='p50持仓30日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    stg.add_pool(desc='p50持仓20日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p50 = stg.pools[50]
+    stg.add_pool(desc='p60持仓25日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p60 = stg.pools[60]
+    stg.add_pool(desc='p70持仓30日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p70 = stg.pools[70]
     # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
@@ -3127,27 +3171,29 @@ if __name__ == "__main__":
     stg.pools_brief()  # 打印pool列表
     # ---pool10 conditions-----------
     # ------condition_0
-    pre_args1 = {'idt_type': 'ema',
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5,
+                 'shift_periods': -1}
+    pre_args2 = {'idt_type': 'ma',
                  'period': 20,
-                 'shift_periods': -1}
-    pre_args2 = {'idt_type': 'ema',
-                 'period': 60,
-                 'shift_periods': -1}
+                 'shift_periods': -1,
+                 'update_csv': None}  # 非常用周期，所以不存csv
     p10.add_condition(pre_args1, pre_args2, '<')
     # ------condition_1
-    pre_args1 = {'idt_type': 'ema',
-                 'period': 20}
-    pre_args2 = {'idt_type': 'ema',
-                 'period': 60}
+    pre_args1 = {'idt_type': 'ma',
+                 'period': 5}
+    pre_args2 = {'idt_type': 'ma',
+                 'period': 20,
+                 'update_csv': None}  # 非常用周期，所以不存csv
     p10.add_condition(pre_args1, pre_args2, '>=')
     # ------condition_2
-    pre_args1 = {'idt_type': 'emaqs',
+    pre_args1 = {'idt_type': 'maqs',
                  'period': 20}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.0013}
+                 'const_value': 0}
     p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50})
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50, 60, 70})
     # # ---pool20 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'ema',
@@ -3185,7 +3231,7 @@ if __name__ == "__main__":
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
+                 'const_value': 15}
     p40.add_condition(pre_args1, pre_args2, '>=')
 
     p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
@@ -3194,23 +3240,42 @@ if __name__ == "__main__":
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 30}
+                 'const_value': 20}
     p50.add_condition(pre_args1, pre_args2, '>=')
 
     p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
 
+    # ---pool60 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 25}
+    p60.add_condition(pre_args1, pre_args2, '>=')
+
+    p60.add_filter(cnd_indexes={0}, down_pools={'discard'})
+
+    # ---pool70 conditions-----------
+    # ------condition_0
+    pre_args1 = {'idt_type': 'stay_days'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 30}
+    p70.add_condition(pre_args1, pre_args2, '>=')
+
+    p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
     # ---初始化各pool的cnds_matrix-----------
     stg.init_pools_cnds_matrix()
 
     # ---stg循环-----------
-    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    stg.update_cycles(start_date='20190101', cycles=30)
+    # stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
     p30.csv_in_out()
     p40.csv_in_out()
     p50.csv_in_out()
+    p60.csv_in_out()
+    p70.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()
