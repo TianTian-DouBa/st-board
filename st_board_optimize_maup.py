@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 import weakref
-from st_common import raw_data  # 不能去掉
+from st_common import raw_data
 from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
@@ -43,6 +43,7 @@ def now_time_str():
     dt = datetime.now()
     now_str = dt.strftime("%H-%M-%S")
     return now_str
+
 
 def valid_file_path(file_path):
     r"""
@@ -3152,18 +3153,18 @@ if __name__ == "__main__":
     # stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
     stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
-    stg.add_pool(desc='p20持仓5日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    stg.add_pool(desc='p20_平稳下降时间段', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
-    stg.add_pool(desc='p30持仓10日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p30 = stg.pools[30]
-    stg.add_pool(desc='p40持仓15日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p40 = stg.pools[40]
-    stg.add_pool(desc='p50持仓20日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p50 = stg.pools[50]
-    stg.add_pool(desc='p60持仓25日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p60 = stg.pools[60]
-    stg.add_pool(desc='p70持仓30日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p70 = stg.pools[70]
+    # stg.add_pool(desc='p30_maqs_0.02to0.03', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p30 = stg.pools[30]
+    # stg.add_pool(desc='p40_maqs_0.01to0.02', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p40 = stg.pools[40]
+    # stg.add_pool(desc='p50_maqs_0.00to0.01', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p50 = stg.pools[50]
+    # stg.add_pool(desc='p60_maqs_-0.01to0.00', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p60 = stg.pools[60]
+    # stg.add_pool(desc='p70_maqs_-0.02to-0.01', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p70 = stg.pools[70]
     # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
@@ -3191,9 +3192,79 @@ if __name__ == "__main__":
                  'period': 20}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0}
-    p10.add_condition(pre_args1, pre_args2, '>')
+    p10.add_condition(pre_args1, pre_args2, '>=')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50, 60, 70})
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20})
+    # # ------condition_3, _4
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.02}
+    # p10.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.03}
+    # p10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # p10.add_filter(cnd_indexes={0, 1, 3, 4}, down_pools={30})
+    # # ------condition_5, _6
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.01}
+    # p10.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.02}
+    # p10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # p10.add_filter(cnd_indexes={0, 1, 5, 6}, down_pools={40})
+    # # ------condition_7, _8
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.00}
+    # p10.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.01}
+    # p10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # p10.add_filter(cnd_indexes={0, 1, 7, 8}, down_pools={50})
+    # # ------condition_9, _10
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.01}
+    # p10.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.00}
+    # p10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # p10.add_filter(cnd_indexes={0, 1, 9, 10}, down_pools={60})
+    # # ------condition_11, _12
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.02}
+    # p10.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.01}
+    # p10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # p10.add_filter(cnd_indexes={0, 1, 11, 12}, down_pools={70})
     # # ---pool20 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'ema',
@@ -3213,69 +3284,70 @@ if __name__ == "__main__":
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 5}
+                 'const_value': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
     p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
 
-    # ---pool30 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 10}
-    p30.add_condition(pre_args1, pre_args2, '>=')
-
-    p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
-
-    # ---pool40 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 15}
-    p40.add_condition(pre_args1, pre_args2, '>=')
-
-    p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
-
-    # ---pool50 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p50.add_condition(pre_args1, pre_args2, '>=')
-
-    p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
-
-    # ---pool60 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 25}
-    p60.add_condition(pre_args1, pre_args2, '>=')
-
-    p60.add_filter(cnd_indexes={0}, down_pools={'discard'})
-
-    # ---pool70 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 30}
-    p70.add_condition(pre_args1, pre_args2, '>=')
-
-    p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    # # ---pool30 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p30.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    #
+    # # ---pool40 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p40.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    #
+    # # ---pool50 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p50.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    #
+    # # ---pool60 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p60.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p60.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    #
+    # # ---pool70 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p70.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
     # ---初始化各pool的cnds_matrix-----------
     stg.init_pools_cnds_matrix()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    stg.update_cycles(start_date='20090801', end_date='20140701')  # 平稳下降阶段
     # stg.update_cycles(start_date='20050201', end_date='20200101')
     # stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
-    p30.csv_in_out()
-    p40.csv_in_out()
-    p50.csv_in_out()
-    p60.csv_in_out()
-    p70.csv_in_out()
+    # p30.csv_in_out()
+    # p40.csv_in_out()
+    # p50.csv_in_out()
+    # p60.csv_in_out()
+    # p70.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()

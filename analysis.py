@@ -2,9 +2,9 @@ from XF_common.XF_LOG_MANAGE import add_log
 import pandas as pd
 
 
-def select_in_out_csv():
+def select_df_csv():
     """
-    选择要操作的io_xxxx.csv文件，读入返回<df>
+    选择要操作的包含<df>的.csv文件，读入返回<df>
     return: <df> of in_out
             None failed
     """
@@ -14,8 +14,8 @@ def select_in_out_csv():
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
     file_path = filedialog.askopenfilename()
-    io_df = pd.read_csv(file_path, index_col=0)
-    return io_df
+    df = pd.read_csv(file_path, index_col=0)
+    return df
 
 
 def in_out_agg(io_df):
@@ -62,5 +62,6 @@ def in_out_agg(io_df):
 
 
 if __name__ == '__main__':
-    df = select_in_out_csv()
-    in_out_agg(df)
+    df = select_df_csv()
+    in_out_agg(df)  # in_out io_xxxxx.csv文件的报告
+    # print(df.MAQS.describe())  # 显示<df>某列的简报
