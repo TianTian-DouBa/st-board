@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from pylab import mpl
 import tushare as ts
 from pandas.plotting import register_matplotlib_converters
+from numba import jit
 
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
@@ -2439,7 +2440,7 @@ class Pool:
         log_args = [len(out_al)]
         add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
         return out_al
-
+    
     def cycle(self, date_str):
         """
         由strategy调用执行pool计算的1次循环，
