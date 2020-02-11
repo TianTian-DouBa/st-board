@@ -276,7 +276,7 @@ class Ma(Indicator):
                 add_log(40, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                df_source.drop(df_source.index[idt_head_in_source + period - 1:], inplace=True)
+                df_source.drop(df_source.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些df_source记录用于计算
                 values = []
                 rvs_rslt = []
                 try:
@@ -755,7 +755,7 @@ class Majh(Indicator):
 
 class Maqs(Indicator):
     """
-    MAQS: MA的变化率，也就是它校前值的变化率
+    MAQS: MA的变化率，也就是它校前值的变化率，或理解为ma的切线斜率
     """
     def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
         """
@@ -948,8 +948,117 @@ class Emaqs(Indicator):
         return df_idt_append
 
 
+class Madq(Indicator):
+    """
+    MA的n周期抵扣，用n个当前价抵扣 MA 周期里最老的n个值，计算ma
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close_hfq' #SOURCE
+        return:<ins Madq> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Madq.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        if dq_n1 >= period:
+            log_args = [ts_code, period, dq_n1]
+            add_log(10, '[fn]Madq.__new__() ts_code:{0[0]}; dq_n1:{0[2]} must < period:{0[1]}; instance not created', log_args)
+            return
+        # period = int(period)
+        # dq_n1 = int(dq_n1)
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+        """
+        period:<int> 周期数
+        subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
+        dq_n1: <int> 抵扣掉的周期数，要远小于period
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'madq'
+        self.period = period
+        self.dq_n1 = dq_n1
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period = self.period
+        dq_n1 = self.dq_n1
+        if isinstance(df_idt, pd.DataFrame):
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Madq._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Madq._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                df_source.drop(df_source.index[idt_head_in_source + period - 1 - dq_n1:], inplace=True)  # 根据period和dq_n1计算保留哪些df_source记录用于计算
+                values = []
+                rvs_rslt = []
+                try:
+                    source_column_name = SOURCE_TO_COLUMN[self.source]
+                except KeyError:
+                    log_args = [self.ts_code, self.source]
+                    add_log(20, '[fn]Madq._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                    return
+                for idx in reversed(df_source.index):
+                    v = df_source[source_column_name][idx]
+                    values.append(v)
+                    if len(values) > period - dq_n1:  # 最近罗干天的值
+                        del values[0]
+                    if len(values) == period - dq_n1:  # 注意修改
+                        dq_values = values.copy()
+                        for _ in range(dq_n1):
+                            dq_values.append(v)
+                        rvs_rslt.append(np.average(dq_values))
+        else:  # .csv file not exist
+            try:
+                source_column_name = SOURCE_TO_COLUMN[self.source]
+            except KeyError:
+                log_args = [self.ts_code, self.source]
+                add_log(20, '[fn]Madq._calc_res() ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+                return
+            values = []
+            rvs_rslt = []
+            for idx in reversed(df_source.index):
+                v = df_source[source_column_name][idx]
+                values.append(v)
+                if len(values) > period - dq_n1:  # 最近罗干天的值
+                    del values[0]
+                if len(values) == period - dq_n1:  # 注意修改
+                    dq_values = values.copy()
+                    for _ in range(dq_n1):
+                        dq_values.append(v)
+                    rvs_rslt.append(np.average(dq_values))
+        iter_rslt = reversed(rvs_rslt)
+        rslt = list(iter_rslt)
+        index_source = df_source.index[:len(df_source) - period + dq_n1 + 1]  # 注意修改
+        idt_column_name = 'MADQ'
+        data = {idt_column_name: rslt}
+        df_idt_append = pd.DataFrame(data, index=index_source)
+        return df_idt_append
+
+
 IDT_CLASS = {'ma': Ma,
              'maqs': Maqs,  # ma的趋势变化率
+             'madq': Madq,  # ma抵扣x周期
              'ema': Ema,
              'emaqs': Emaqs,  # ema的趋势变化率
              'macd': Macd,
