@@ -760,15 +760,17 @@ class Asset:
         """
         pass
 
-    def get_price(self, trade_date, mode='close', seek_direction=None, **kwargs):
+    def get_price(self, trade_date, mode='close', seek_direction=None, shift_days=0):
         """
         根据mode返回价格
         trade_date: <str> 如 '20200126'
         mode: <str>
               'close' 返回当日的close收盘价，股票都为后复权值
+              'open' 返回当日的open开盘价，股票都为后复权值
               'high' 返回当日的high最高价，股票都为后复权值
               'low' 返回当日的low最低价，股票都为后复权值
               'close_sxd' 返回当日偏离x周期的close收盘价，股票都为后复权值
+              'close_open'
               'high_sxd'
               'low_sxd'
               其它还未完成
@@ -776,8 +778,7 @@ class Asset:
                        None: 返回None,不搜索
                        'forwards': 向时间增加的方向搜索
                        'backwards': 向时间倒退的方向搜索
-        **kwargs: <dict>
-                  shift_days: <int> 价格偏离的日期，-n往早移  +n往晚移
+        shift_days: <int> 价格偏离的日期，-n往早移  +n往晚移
         return: (price <float>, trade_date <str>)
                 None 并报错
         """
@@ -785,7 +786,7 @@ class Asset:
         SEEK_DAYS = 365  # 前后查找数据的最大天数
         is_open = raw_data.valid_trade_date(trade_date)
         if is_open is True:
-            if mode == 'close' or mode == 'high' or mode == 'low':
+            if mode == 'close' or mode == 'open' or mode == 'high' or mode == 'low':
                 if seek_direction is None:
                     try:
                         rslt = self.daily_data.loc[int(trade_date)][mode]
@@ -822,15 +823,11 @@ class Asset:
                     add_log(20, '[fn]Asset.get_price() seek_direction "{0[0]}" invalid',
                             log_args)
                     return
-            elif mode == 'close_sxd' or mode == 'high_sxd' or mode == 'low_sxd':
-                if 'shift_days' in kwargs:
-                    shift_days = int(kwargs['shift_days'])
-                else:
-                    log_args = [self.ts_code]
-                    add_log(20, '[fn]Asset.get_price() ts_code:{0[0]}, the attribute shift_days is required for mode xxx_sxd, return None', log_args)
-                    return
+            elif mode == 'close_sxd' or mode == 'open_sxd' or mode == 'high_sxd' or mode == 'low_sxd':
                 if mode == 'close_sxd':
                     head_name = 'close'
+                elif mode == 'open_sxd':
+                    head_name = 'open'
                 elif mode == 'high_sxd':
                     head_name = 'high'
                 elif mode == 'low_sxd':
@@ -1766,19 +1763,25 @@ class Strategy:
             return  # _check_completed_cycle()执行报错，外层同样return
         print('[L1715] aggregate 收尾未完成')
 
-    def trans_assets(self, out_pool_index, transfer_list, trade_date, out_price_mode=None, in_price_mode='close', **kwargs):
+    def trans_assets(self, out_pool_index, transfer_list, trade_date):
         """
         将assets从一个out_pool划转到一个或多个in_pool
         从源pool，及它的cnds_matrix中删除条目
         source_pool_index: <int> 源头pool在self.pools中的index
         transfer_list: <list> e.g. [(in_pool_index, <list> of ts_code),
                                     (in_pool_index, <list> of ts_code),...]
+        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
         """
         for transfer in transfer_list:
             in_pool_index = transfer[0]
             al = transfer[1]  # <list> of ts_code
+            out_price_mode = transfer[2]
+            in_price_mode = transfer[3]
+            out_shift_days = transfer[4]
+            in_shift_days = transfer[5]
             for ts_code in al:  # 给in_pool添加assets
-                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode)
+                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days)
                 if _rslt == 'duplicated':
                     continue
                 elif _rslt is True:
@@ -1795,7 +1798,7 @@ class Strategy:
                     out_pool.del_asset(ts_code)
                     out_pool.op_cnds_matrix(mode='d', ts_code=ts_code)
 
-    def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', volume=None):
+    def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', out_shift_days=0, in_shift_days=0, volume=None):
         """
         将单个asset加载到下游in_pool,但不删除原out_pool的asset（因为1个循环同1资产可能转去多个pool)； 给self.trans_logs添加1条记录； 给out_pool.
         手续税费等还未考虑
@@ -1806,11 +1809,12 @@ class Strategy:
         trade_date: <str> e.g. ‘20191231’
         out_pool_index: <int> 源头pool的index
                         'al' 从al文件导入，此[fn]不适用
-        out_price_mode: <str> 详见Asset.get_price()
-                        None 根据in的情况在设out_price和out_date
         in_pool_index: <int> 目的pool的index
                        'discard' 无下游pool，只从out_pool中移除asset
+        out_price_mode: <str> 详见Asset.get_price()
+                        None 根据in的情况在设out_price和out_date
         in_price_mode: <str> 详见Asset.get_price()
+        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
         volume: <int> 成交股数
                 <None> 不适用
 
@@ -1843,7 +1847,7 @@ class Strategy:
             return
 
         # 处理in_price 和 in_date
-        _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+        _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode, shift_days=in_shift_days)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
         if _rslt is None:
             log_args = [ts_code, trade_date, in_price_mode]
             add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode: {0[2]}) not available on {0[1]}, aborted', log_args)
@@ -1854,7 +1858,7 @@ class Strategy:
         if out_price_mode is None:  # 根据in_price, in_date来
             out_price, out_date = in_price, in_date
         else:
-            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode, shift_days=out_shift_days)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
             if _rslt is None:
                 add_log(20, '[fn]Strategy.trans_asset_down() out_price not available, aborted')
                 return  # 未找到价格
@@ -2124,17 +2128,19 @@ class Pool:
         for i in range(len(self.conditions)):
             print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
 
-    def add_filter(self, cnd_indexes=None, down_pools=None):
+    def add_filter(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_shift_days=0, in_shift_days=0):
         """
         add the filter to the pool
         cnd_indexes: <set> {0, 1, 2}
         down_pools: <set> {0, 1}
+        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
         """
         if cnd_indexes is None:
             cnd_indexes = set()
         if down_pools is None:
             down_pools = set()
-        self.filters.append(Filter(cnd_indexes, down_pools))
+        self.filters.append(Filter(cnd_indexes, down_pools, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days))
 
     def iter_al(self):
         """
@@ -2487,8 +2493,7 @@ class Pool:
         不触发aggregate()
 
         date_str: <str> e.g. '20191231'
-        return: <list> e.g. [(in_pool_index, <list> of ts_code),
-                             (in_pool_index, <list> of ts_code),...]
+        return: <list> e.g. [(in_pool_index, <list> of ts_code, <str> out_price_mode, <str> in_price_mode, <int> out_shift_days, <int> in_shift_days), ...]
                 None 没有资产需要transfer
         """
         global raw_data
@@ -2566,7 +2571,7 @@ class Pool:
             if rslt_assets is not None:
                 if len(rslt_assets) > 0:
                     for index in filter_.down_pools:
-                        rslt_item = (index, rslt_assets)
+                        rslt_item = (index, rslt_assets, filter_.out_price_mode, filter_.in_price_mode, filter_.out_shift_days, filter_.in_shift_days)
                         rslt_to_return.append(rslt_item)
 
         if len(rslt_to_return) > 0:
@@ -2765,7 +2770,7 @@ class Filter:
     """
     Condition的集合，assets在pools间按过滤条件流转的通道
     """
-    def __new__(cls, cnd_indexes=None, down_pools=None):
+    def __new__(cls, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', in_shift_days=0, out_shift_days=0):
         if down_pools is None:
             down_pools = set()
         if cnd_indexes is None:
@@ -2777,13 +2782,21 @@ class Filter:
             log_args = [type(cnd_indexes), type(down_pools)]
             add_log(10, '[fn]Filter.__new__() cnd_indexes type:{0[0]}, down_pools type:{0[1]} are not <set>', log_args)
 
-    def __init__(self, cnd_indexes=None, down_pools=None):
+    def __init__(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', in_shift_days=0, out_shift_days=0):
+        """
+        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        """
         if down_pools is None:
             down_pools = set()
         if cnd_indexes is None:
             cnd_indexes = set()
         self.cnd_indexes = cnd_indexes  # <set> contains indexes of pool.condition
         self.down_pools = down_pools  # <set> contains indexes of downstream <Pool>
+        self.out_price_mode = out_price_mode
+        self.in_price_mode = in_price_mode
+        self.in_shift_days = in_shift_days
+        self.out_shift_days = out_shift_days
 
 
 class Register_Buffer:

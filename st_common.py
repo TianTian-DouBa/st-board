@@ -280,7 +280,7 @@ class Raw_Data:
             rslt = df['is_open'].value_counts()[1]
         except IndexError:
             log_args = [start_day, end_day]
-            add_log(20, '[fn]Raw_Data.len_trade_days() start_day:{0[0]} or end_day:{0[1]} invalid', log_args)
+            add_log(30, '[fn]Raw_Data.len_trade_days() start_day:{0[0]} or end_day:{0[1]} invalid or mis-order', log_args)
             return
         except KeyError:
             rslt = 0  # 之间无交易日
