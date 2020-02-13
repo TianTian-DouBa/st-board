@@ -27,11 +27,8 @@ def idt_name(pre_args):
          'update_csv': False,  # 指标文件结果是否保存到csv文件
          'reload': False  # 功能待查看代码
          }
-         or
-         {'idt_type': 'const',
-          'const_value': 30}
-         
-    return: <dict> of attributes for initialize the indicator, called post_args, 函数的主要部分是对其中idt_name键值的计算
+
+    return: <dict> post_args: attributes for initialize the indicator, called post_args, 函数的主要部分是对其中idt_name键值的计算
         e.g.
         {'idt_type': 'macd',
          'idt_name': 'macd_close_w_26_12_9',
@@ -39,48 +36,41 @@ def idt_name(pre_args):
          'subtype': 'w',
          ‘field': 'DEA',
          'idt_class': Macd}
-         or
-         {'idt_type': 'const',
-          'idt_name': 'const',
-          'const_value': 30}
     """
 
     if isinstance(pre_args, dict):
         idt_type = pre_args["idt_type"]
-        if idt_type == 'const':  # para为常量的情况
-            pre_args['idt_name'] = 'const'
-            return pre_args
-        else:
-            idt_name = ""
-            idt_class = IDT_CLASS[idt_type]
-            idt_name = idt_name + idt_type
-            try:
-                source = pre_args["source"]
-                if source != 'close_hfq':
-                    idt_name = idt_name + '_' + source
-            except KeyError:
-                pass
-            try:
-                subtype = pre_args["subtype"]
-                if subtype.lower() != 'd':
-                    idt_name = idt_name + '_' + subtype.lower()
-            except KeyError:
-                pass
-            try:
-                period = pre_args["period"]
-                idt_name = idt_name + '_' + str(period)
-            except KeyError:
-                pass
-            for k, v in pre_args.items():
-                if k.endswith("_n1"):
-                    idt_name = idt_name + '_' + str(v)
-                if k.endswith("_n2"):
-                    idt_name = idt_name + '_' + str(v)
-                if k.endswith("_n3"):
-                    idt_name = idt_name + '_' + str(v)
-            pre_args['idt_name'] = idt_name
-            pre_args['idt_class'] = idt_class
-            return pre_args
+        idt_name = ""
+        idt_class = IDT_CLASS[idt_type]
+        idt_name = idt_name + idt_type
+        try:
+            source = pre_args["source"]
+            if source != 'close_hfq':
+                idt_name = idt_name + '_' + source
+        except KeyError:
+            pass
+        try:
+            subtype = pre_args["subtype"]
+            if subtype.lower() != 'd':
+                idt_name = idt_name + '_' + subtype.lower()
+        except KeyError:
+            pass
+        try:
+            period = pre_args["period"]
+            idt_name = idt_name + '_' + str(period)
+        except KeyError:
+            pass
+        for k, v in pre_args.items():
+            if k.endswith("_n1"):
+                idt_name = idt_name + '_' + str(v)
+            if k.endswith("_n2"):
+                idt_name = idt_name + '_' + str(v)
+            if k.endswith("_n3"):
+                idt_name = idt_name + '_' + str(v)
+        pre_args['idt_name'] = idt_name
+        pre_args['idt_class'] = idt_class
+        post_args = pre_args
+        return post_args
     else:
         log_args = [type(pre_args)]
         add_log(20, '[fn]idt_name() input type:{0[0]} is not <dict>', log_args)
