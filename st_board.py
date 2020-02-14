@@ -925,7 +925,7 @@ class Stock(Asset):
         in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
         price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
                                None: 返回None,不搜索
-                               'forwards': 向时间增加的方向搜索
+                              'forwards': 向时间增加的方向搜索
                               'backwards': 向时间倒退的方向搜索
         """
         global raw_data
@@ -1180,10 +1180,52 @@ class Stock(Asset):
             add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" updated".', log_args)
 
 
-class Index:
+class Index(Asset):
     """
-    指数相关，包括行业板块指数等
+    指数类资产，包括行业板块指数等
     """
+
+    def __init__(self, ts_code, in_price=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
+        """
+        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        in_price: <float> 进入价格
+        in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
+        price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+                               None: 返回None,不搜索
+                              'forwards': 向时间增加的方向搜索
+                              'backwards': 向时间倒退的方向搜索
+        """
+        global raw_data
+        Asset.__init__(self, ts_code=ts_code, in_date=in_date)
+
+        # daily_data的其它字段还待完成
+        if load_daily is not None:
+            self.load_daily_data(load_daily=load_daily)
+
+        # 处理self.in_date
+        if isinstance(self.in_date, str):
+            if self.in_date == 'latest':
+                self.in_date = str(self.daily_data[0]['trade_date'])
+            elif raw_data.valid_trade_date(self.in_date) is not True:
+                log_args = [self.ts_code, self.in_date]
+                add_log(20, '[fn]Index.__init__(). "{0[0]}" in_date "{0[1]}" is not a trade date', log_args)
+                self.in_date = None
+
+        # 处理self.in_price
+        if self.in_date is not None:
+            if in_price is None:
+                rslt = self.get_price(trade_date=self.in_date, mode=in_price_mode, seek_direction=price_seek_direction)
+                if rslt is not None:
+                    self.in_price, self.in_date = rslt
+                else:
+                    self.in_price = None
+                    self.in_date = None
+            else:
+                self.in_price = float(in_price)
+        else:
+            self.in_price = None
 
     @staticmethod
     def get_sw_index_classify(return_df=True):
@@ -1910,35 +1952,42 @@ class Strategy:
         为self.ref_assets添加资产
         """
         from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
+
+        def _init_asset():
+            category = All_Assets_List.query_category_str(ts_code)
+            # 根据category不同，实例化对应的Asset
+            if category is None:
+                log_args = [ts_code]
+                add_log(30, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} category is None, skip', log_args)
+                return
+            elif category == 'stock':
+                if ts_code in self.ref_assets:
+                    log_args = [ts_code]
+                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
+                else:
+                    self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+                    log_args = [ts_code]
+                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
+            # ----other categories are to be implemented here-----
+            else:
+                print('[L1931] other categories are to be implemented')
+            # 给assets添加indicator
+            asset = self.ref_assets[ts_code]
+            if cnd.para1.idt_name not in CND_SPC_TYPES:
+                post_args1 = cnd.para1.idt_init_dict
+                asset.add_indicator(**post_args1)
+            if cnd.para2.idt_name not in CND_SPC_TYPES:
+                post_args2 = cnd.para2.idt_init_dict
+                asset.add_indicator(**post_args2)
+
         for pool in self.pools.values():
             for cnd in pool.conditions:
-                if cnd.specific_asset is not None:
-                    ts_code = cnd.specific_asset
-                    category = All_Assets_List.query_category_str(ts_code)
-                    # 根据category不同，实例化对应的Asset
-                    if category is None:
-                        log_args = [ts_code]
-                        add_log(30, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} category is None, skip', log_args)
-                        continue
-                    elif category == 'stock':
-                        if ts_code in self.ref_assets:
-                            log_args = [ts_code]
-                            add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
-                        else:
-                            self.ref_assets[ts_code] = Stock(ts_code=ts_code)
-                            log_args = [ts_code]
-                            add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
-                    # ----other categories are to be implemented here-----
-                    else:
-                        print('[L1931] other categories are to be implemented')
-                    # 给assets添加indicator
-                    asset = self.ref_assets[ts_code]
-                    if cnd.para1.idt_name not in CND_SPC_TYPES:
-                        post_args1 = cnd.para1.idt_init_dict
-                        asset.add_indicator(**post_args1)
-                    if cnd.para2.idt_name not in CND_SPC_TYPES:
-                        post_args2 = cnd.para2.idt_init_dict
-                        asset.add_indicator(**post_args2)
+                if cnd.para1.specific_asset is not None:
+                    ts_code = cnd.para1.specific_asset
+                    _init_asset()
+                if cnd.para2.specific_asset is not None:
+                    ts_code = cnd.para2.specific_asset
+                    _init_asset()
 
 
 class Pool:
@@ -1991,7 +2040,7 @@ class Pool:
         in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
         price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
                                None: 返回None,不搜索
-                               'forwards': 向时间增加的方向搜索
+                              'forwards': 向时间增加的方向搜索
                               'backwards': 向时间倒退的方向搜索
         """
         if al_file is None:
@@ -2011,6 +2060,7 @@ class Pool:
                     log_args = [ts_code]
                     add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip', log_args)
                     continue
+                # stock类型
                 elif category == 'stock':
                     if ts_code in self.assets:
                         log_args = [ts_code]
@@ -2019,6 +2069,7 @@ class Pool:
                         self.assets[ts_code] = Stock(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
                         log_args = [ts_code]
                         add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
+                # elif category ==
                 # ----other categories are to be implemented here-----
                 else:
                     print('[L1228] other categories are to be implemented')
@@ -2154,7 +2205,20 @@ class Pool:
     def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
         add the condition to the pool
-        pre_argsN: <dict> refer indicator.idt_name() pre_args
+        pre_argsN: <dict> refer indicator.idt_name() pre_args 创建para的必要输入参数
+        e.g.
+        {'idt_type': 'macd',
+         'long_n1': 26,
+         'short_n2': 12,
+         'dea_n3': 9,
+         'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
+         'source': 'close',
+         'subtype': 'w',
+         'update_csv': False,  # 指标文件结果是否保存到csv文件
+         'reload': False  # 功能待查看代码
+         'bias': 0.05  # 偏置量
+         'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
+         }
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 需要保持多少个周期来达成条件
         """
@@ -2374,7 +2438,7 @@ class Pool:
                         idt_date1 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para1.specific_asset is not None:  # specific asset指标
-                        _asset = self.par_strategy.ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
+                        _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
                     else:
                         _asset = asset
                     try:  # 指标在资产中是否存在
@@ -3379,8 +3443,9 @@ if __name__ == "__main__":
     p70.add_condition(pre_args1, pre_args2, '>=')
 
     p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    # ---初始化各pool的cnds_matrix-----------
+    # ---初始化各pool.cnds_matrix, strategy.ref_assets-----------
     stg.init_pools_cnds_matrix()
+    stg.init_ref_assets()
 
     # ---stg循环-----------
     # stg.update_cycles(start_date='20050101', end_date='20200101')

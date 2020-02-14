@@ -1500,6 +1500,7 @@ class Strategy:
         self.completed_cycle = None  # # <str>当by_date的日期计算循环完成后，将by_date日期赋给此参数；两参数非None值相同代表该周期结束
         self.trans_logs = []  # pool流转记录<list> of <Trans_Log>
         self.log_trans = log_trans  # 是否将asset流转记录到self.trans_logs供问题诊断
+        self.ref_assets = {}  # 参考资产
 
     def add_pool(self, **kwargs):
         """
@@ -1517,7 +1518,8 @@ class Strategy:
             return result
 
         next_order = _get_next_order()
-        self.pools[next_order] = Pool(**kwargs)
+        par_strategy = weakref.ref(self)
+        self.pools[next_order] = Pool(par_strategy=par_strategy(), **kwargs)
 
     def chg_pool_order(self, org_order, new_order):
         """
@@ -1903,13 +1905,56 @@ class Strategy:
             pool.iter_al()
             pool.op_cnds_matrix(mode='i')
 
+    def init_ref_assets(self):
+        """
+        为self.ref_assets添加资产
+        """
+        from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
+
+        def _init_asset():
+            category = All_Assets_List.query_category_str(ts_code)
+            # 根据category不同，实例化对应的Asset
+            if category is None:
+                log_args = [ts_code]
+                add_log(30, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} category is None, skip', log_args)
+                return
+            elif category == 'stock':
+                if ts_code in self.ref_assets:
+                    log_args = [ts_code]
+                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
+                else:
+                    self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+                    log_args = [ts_code]
+                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
+            # ----other categories are to be implemented here-----
+            else:
+                print('[L1931] other categories are to be implemented')
+            # 给assets添加indicator
+            asset = self.ref_assets[ts_code]
+            if cnd.para1.idt_name not in CND_SPC_TYPES:
+                post_args1 = cnd.para1.idt_init_dict
+                asset.add_indicator(**post_args1)
+            if cnd.para2.idt_name not in CND_SPC_TYPES:
+                post_args2 = cnd.para2.idt_init_dict
+                asset.add_indicator(**post_args2)
+
+        for pool in self.pools.values():
+            for cnd in pool.conditions:
+                if cnd.para1.specific_asset is not None:
+                    ts_code = cnd.para1.specific_asset
+                    _init_asset()
+                if cnd.para2.specific_asset is not None:
+                    ts_code = cnd.para2.specific_asset
+                    _init_asset()
+
 
 class Pool:
     """
     股票池
     """
-    def __init__(self, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True, log_in_out=None):
+    def __init__(self, par_strategy, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True, log_in_out=None):
         r"""
+        par_strategy: <weak ref> parent strategy
         desc: <str> 描述
         al_file: None = create empty dict;
                  <str> = path for al file e.g. r'.\data_csv\assets_lists\al_<al_file>.csv'
@@ -1939,6 +1984,7 @@ class Pool:
         self.del_trsfed = del_trsfed
         # if valid_date_str_fmt(in_date):
         #     self.by_date = raw_data.next_trade_day(in_date)  # None的话无效
+        self.par_strategy = weakref.ref(par_strategy)  # <weak ref> parent strategy
 
     def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
@@ -2112,13 +2158,27 @@ class Pool:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
 
-    def add_condition(self, pre_args1_, pre_args2_, ops, required_period=0):
+    def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
         add the condition to the pool
-        pre_argsN_: <dict> refer idt_name() pre_args
+        pre_argsN: <dict> refer indicator.idt_name() pre_args 创建para的必要输入参数
+        e.g.
+        {'idt_type': 'macd',
+         'long_n1': 26,
+         'short_n2': 12,
+         'dea_n3': 9,
+         'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
+         'source': 'close',
+         'subtype': 'w',
+         'update_csv': False,  # 指标文件结果是否保存到csv文件
+         'reload': False  # 功能待查看代码
+         'bias': 0.05  # 偏置量
+         'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
+         }
         ops: <str> e.g. '>', '<=', '='...
+        required_period: <int> 需要保持多少个周期来达成条件
         """
-        self.conditions.append(Condition(pre_args1_=pre_args1_, pre_args2_=pre_args2_, ops=ops, required_period=required_period))
+        self.conditions.append(Condition(pre_args1=pre_args1, pre_args2=pre_args2, ops=ops, required_period=required_period))
 
     def conditions_brief(self):
         """
@@ -2133,6 +2193,8 @@ class Pool:
         add the filter to the pool
         cnd_indexes: <set> {0, 1, 2}
         down_pools: <set> {0, 1}
+        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
         """
         if cnd_indexes is None:
             cnd_indexes = set()
@@ -2145,12 +2207,13 @@ class Pool:
         dual iterate the pool.assets and pool.conditions, add indicators to each asset
         在给每个资产添加指标时，指标的值会根据已下载的基础数据计算补完到可能的最新值；但不会触发基础数据的补完下载
         """
+        from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for asset in self.assets.values():
             for cond in self.conditions:
-                if cond.para1.idt_name != 'const':  # 跳过condition的常量para
+                if cond.para1.idt_name not in CND_SPC_TYPES:
                     post_args1 = cond.para1.idt_init_dict
                     asset.add_indicator(**post_args1)
-                if cond.para2.idt_name != 'const':  # 跳过condition的常量para
+                if cond.para2.idt_name not in CND_SPC_TYPES:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
 
@@ -2329,24 +2392,27 @@ class Pool:
                         idt_value1 = 0
                     else:
                         idt_date1 = asset.by_date
-                else:
+                else:  # 普通Indicator类condition
+                    if cnd.para1.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
                     try:  # 指标在资产中是否存在
-                        idt1 = getattr(asset, idt_name1)
-                        idt_df1 = idt1.df_idt
-                        idt_field1 = cnd.para1.field
-                        column_name1 = idt_field1.upper() if idt_field1 != 'default' else cnd.para1.idt_init_dict[
-                            'idt_type'].upper()
-                        # print('[L1316] column_name1: {}'.format(column_name1))
+                        idt1 = getattr(_asset, idt_name1)
                     except Exception as e:  # 待细化
-                        log_args = [asset.ts_code, e.__class__.__name__, e]
+                        log_args = [_asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
+                    idt_df1 = idt1.df_idt
+                    idt_field1 = cnd.para1.field
+                    column_name1 = idt_field1.upper() if idt_field1 != 'default' else cnd.para1.idt_init_dict['idt_type'].upper()
+                    # print('[L1316] column_name1: {}'.format(column_name1))
                     idt_date1 = date_fetcher1(idt_df1)
                     try:  # 获取目标时间的指标数值
-                        idt_value1 = val_fetcher1(idt_df1, column_name1)
+                        idt_value1 = val_fetcher1(idt_df1, column_name1) + cnd.para1.bias  # <float>
                         # print('[L1407] idt_value1:{}'.format(idt_value1))
                     except (IndexError, KeyError):  # 指标当前datetime_无数据
-                        log_args = [asset.ts_code, cnd.para1.idt_name, idt_date1]
+                        log_args = [_asset.ts_code, cnd.para1.idt_name, idt_date1]
                         add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
 
@@ -2365,24 +2431,27 @@ class Pool:
                         idt_value2 = 0
                     else:
                         idt_date2 = asset.by_date
-                else:
-                    try:
-                        idt2 = getattr(asset, idt_name2)
-                        idt_df2 = idt2.df_idt
-                        idt_field2 = cnd.para2.field
-                        column_name2 = idt_field2.upper() if idt_field2 != 'default' else cnd.para2.idt_init_dict[
-                            'idt_type'].upper()
-                        # print('[L1316] column_name2: {}'.format(column_name2))
+                else:  # 普通Indicator类condition
+                    if cnd.para2.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
+                    try:  # 指标在资产中是否存在
+                        idt2 = getattr(_asset, idt_name2)
                     except Exception as e:  # 待细化
-                        log_args = [asset.ts_code, e.__class__.__name__, e]
+                        log_args = [_asset.ts_code, e.__class__.__name__, e]
                         add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
+                    idt_df2 = idt2.df_idt
+                    idt_field2 = cnd.para2.field
+                    column_name2 = idt_field2.upper() if idt_field2 != 'default' else cnd.para2.idt_init_dict['idt_type'].upper()
+                    # print('[L1316] column_name2: {}'.format(column_name2))
                     idt_date2 = date_fetcher2(idt_df2)
                     try:
-                        idt_value2 = val_fetcher2(idt_df2, column_name2)
+                        idt_value2 = val_fetcher2(idt_df2, column_name2) + cnd.para2.bias  # <float>
                         # print('[L1436] idt_value2:{}'.format(idt_value2))
                     except (IndexError, KeyError):  # 指标当前datetime_无数据
-                        log_args = [asset.ts_code, cnd.para2.idt_name, idt_date2]
+                        log_args = [_asset.ts_code, cnd.para2.idt_name, idt_date2]
                         add_log(30, '[fn]Pool.filter_cnd(). {0[0]}, {0[1]}, data unavailable:{0[2]} skip', log_args)
                         continue
                 # print("[L1427] idt_date2: {}".format(idt_date2))
@@ -2643,18 +2712,18 @@ class Condition:
     判断条件
     """
 
-    def __init__(self, pre_args1_, pre_args2_, ops, required_period=0):
+    def __init__(self, pre_args1, pre_args2, ops, required_period=0):
         """
-        pre_argsN_: <dict> refer idt_name() pre_args
+        pre_argsN: <dict> refer idt_name() pre_args
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 条件需要持续成立的周期
         """
-        self.para1 = Para(pre_args1_)
-        self.para2 = Para(pre_args2_)
+        self.para1 = Para(pre_args1)
+        self.para2 = Para(pre_args2)
         self.calcer = None  # <fn> calculator
-        self.result = None  # True of False, condition result of result_time
-        self.result_time = None  # <str> e.g. '20191209'
-        self.desc = None  # <str> description e.g. TBD
+        # self.result = None  # 要用? True of False, condition result of result_time
+        # self.result_time = None  # 要用? <str> e.g. '20191209'
+        self.desc = None  # <str> description 由后面程序修改
         self.required_period = required_period  # <int> 条件需要持续成立的周期
         self.true_lasted = {}  # <dict> {'000001.SZ': 2,...} 资产持续成立的周期
 
@@ -2669,19 +2738,19 @@ class Condition:
 
         if ops == '>':
             self.calcer = lambda p1, p2: p1 > p2
-            self.desc = p1_name + ' > ' + p2_name + ' ?'
+            self.desc = p1_name + ' > ' + p2_name
         elif ops == '<':
             self.calcer = lambda p1, p2: p1 < p2
-            self.desc = p1_name + ' < ' + p2_name + ' ?'
+            self.desc = p1_name + ' < ' + p2_name
         elif ops == '>=':
             self.calcer = lambda p1, p2: p1 >= p2
-            self.desc = p1_name + ' >= ' + p2_name + ' ?'
+            self.desc = p1_name + ' >= ' + p2_name
         elif ops == '<=':
             self.calcer = lambda p1, p2: p1 <= p2
-            self.desc = p1_name + ' <= ' + p2_name + ' ?'
+            self.desc = p1_name + ' <= ' + p2_name
         elif ops == '=':
             self.calcer = lambda p1, p2: p1 == p2
-            self.desc = p1_name + ' = ' + p2_name + ' ?'
+            self.desc = p1_name + ' = ' + p2_name
 
     def increase_lasted(self, ts_code):
         """
@@ -2738,6 +2807,16 @@ class Para:
     def __init__(self, pre_args):
         """
         pre_args: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
+        idt_type: <str> in indicator.IDT_CLASS.keys, or
+                        'const' 常量
+                        'stay_days' 资产在pool中停留的交易日数
+        field: <str> 指标结果列名
+                     'default' 指标结果是单列的，使用此默认值
+                     如'DEA' 指标结果是多列的，非与指标名同名的列，用大写指定
+        shift_periods: <int> 取值的偏移量，-值时间向早，+值时间向晚
+        specific_asset: <str> None 默认不起作用
+                        'ts_code' 如 '000001.SZ' 取此资产的值
+        bias: <float> 取值的偏置量，会加到结果上
         """
         from indicator import idt_name
         idt_type = pre_args['idt_type']
@@ -2762,6 +2841,16 @@ class Para:
             del pre_args['shift_periods']
         else:
             self.shift_periods = None
+        if 'specific_asset' in pre_args:
+            self.specific_asset = pre_args['specific_asset']
+            del pre_args['specific_asset']
+        else:
+            self.specific_asset = None
+        if 'bias' in pre_args:
+            self.bias = pre_args['bias']
+            del pre_args['bias']
+        else:
+            self.bias = 0
 
 
 class Filter:
@@ -2894,8 +2983,8 @@ if __name__ == "__main__":
 
     print('================Strategy测试================')
     stg = Strategy('stg_p1_01')
-    # stg.add_pool(desc='p10初始池', al_file='pool_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
@@ -2936,10 +3025,12 @@ if __name__ == "__main__":
     p10.add_condition(pre_args1, pre_args2, '>=')
     # ------condition_2
     pre_args1 = {'idt_type': 'maqs',
-                 'period': 20}
+                 'period': 20,
+                 'specific_asset': '000333.SZ',
+                 'bias': 0}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0}
-    p10.add_condition(pre_args1, pre_args2, '>')
+                 'const_value': -0.5}
+    p10.add_condition(pre_args1, pre_args2, '<')
 
     p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
     # ---pool20 conditions-----------
@@ -3009,13 +3100,14 @@ if __name__ == "__main__":
     # p70.add_condition(pre_args1, pre_args2, '>=')
     #
     # p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    # ---初始化各pool的cnds_matrix-----------
+    # ---初始化各pool.cnds_matrix, strategy.ref_assets-----------
     stg.init_pools_cnds_matrix()
+    stg.init_ref_assets()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    # stg.update_cycles(start_date='20180101', cycles=50)
+    stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
     # p30.csv_in_out()
