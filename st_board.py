@@ -478,6 +478,7 @@ def load_source_df(ts_code, source, nrows=None):
     nrows: <int> 指定读入最近n个周期的记录,None=全部
     return:<df> trade_date(index); 数据只有一列 close; high...
     """
+    print('[L481] load_source_df() 此函数可能不再需要')
     try:
         # SOURCE[source]
         column_name = SOURCE_TO_COLUMN[source]
@@ -486,7 +487,7 @@ def load_source_df(ts_code, source, nrows=None):
         add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
         return
     # ---------------close_hfq 收盘后复权---------------
-    if source == 'close_hfq':
+    if source == 'close':
         result = Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
         return result
     # ---------------无匹配，报错---------------
@@ -626,7 +627,7 @@ class All_Assets_List:
         根据all_assets_list中的type, stype1, stype2字段来返回category
         ts_code: <str> e.g. '000001.SZ'
         return: None, if no match
-                <str> e.g. 'index_sw'; 'stock'
+                <str> e.g. 'stock', 'index_sw', 'index_sse', 'index_szse'
         """
         global raw_data
         name, _type, stype1, stype2 = raw_data.all_assets_list.loc[ts_code][['name', 'type', 'stype1', 'stype2']]
@@ -728,9 +729,9 @@ class Asset:
     """
     资产的基类
     """
-
-    def __init__(self, ts_code, in_date=None, load_daily='basic'):
+    def __new__(cls, ts_code, in_date=None, load_daily='basic', **kwargs):
         """
+        检验category的有效性
         in_date: None: 不提供
                  'latest': 根据基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
@@ -738,21 +739,61 @@ class Asset:
                   : None: self.daily_data = None
                   : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
         """
-        self.ts_code = ts_code
-        self.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
-        self.by_date = None  # <str> 当前计算的日期如"20191231"
-        self.stay_days = None  # <int> 在pool中的天数
-        self.in_price = None  # <float>加入pool的价格
-        self.by_price = None  # 当前计算的价格
-        self.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
-        self.out_date = None  # <str> 当前计算的日期如"20191231"
-        self.earn = None  # by_price - in_price
-        self.earn_pct = None  # earn / in_price
-        self.daily_data = None  # <df>
-        self.high_in_pool = None  # <float> 在pool期间的最高价
-        self.high_pct = None  # <float> (high_in_pool - in_price) / in_price
-        self.low_in_pool = None  # <float> 在pool期间的最低价
-        self.low_pct = None  # <float> (low_in_pool - in_price) / in_price
+        INDEX = {'index_sw', 'index_sse', 'index_szse'}
+        category = All_Assets_List.query_category_str(ts_code)
+        if category == 'stock':
+            obj = super().__new__(Stock)
+            obj.category = 'stock'
+        elif category in INDEX:
+            obj = super().__new__(Index)
+            obj.category = category
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Asset.__new__(). ts_code:{0[0]} category invalid, asset not initialized', log_args)
+            return
+        obj.ts_code = ts_code
+        obj.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
+        obj.by_date = None  # <str> 当前计算的日期如"20191231"
+        obj.stay_days = None  # <int> 在pool中的天数
+        obj.in_price = None  # <float>加入pool的价格
+        obj.by_price = None  # 当前计算的价格
+        obj.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
+        obj.out_date = None  # <str> 当前计算的日期如"20191231"
+        obj.earn = None  # by_price - in_price
+        obj.earn_pct = None  # earn / in_price
+        obj.daily_data = None  # <df>
+        obj.high_in_pool = None  # <float> 在pool期间的最高价
+        obj.high_pct = None  # <float> (high_in_pool - in_price) / in_price
+        obj.low_in_pool = None  # <float> 在pool期间的最低价
+        obj.low_pct = None  # <float> (low_in_pool - in_price) / in_price
+        return obj
+
+
+    # def __init__(self, ts_code, in_date=None, load_daily='basic'):
+    #     """
+    #     in_date: None: 不提供
+    #              'latest': 根据基础数据里取有价格的最新那个时间
+    #              '20191231': 指定的日期
+    #     load_daily: 'basic': 读入[close][open][high][low][amount]基本字段到self.daily_data
+    #               : None: self.daily_data = None
+    #               : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
+    #     """
+    #     self.ts_code = ts_code
+    #     self.category = All_Assets_List.query_category_str(ts_code)
+    #     self.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
+    #     self.by_date = None  # <str> 当前计算的日期如"20191231"
+    #     self.stay_days = None  # <int> 在pool中的天数
+    #     self.in_price = None  # <float>加入pool的价格
+    #     self.by_price = None  # 当前计算的价格
+    #     self.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
+    #     self.out_date = None  # <str> 当前计算的日期如"20191231"
+    #     self.earn = None  # by_price - in_price
+    #     self.earn_pct = None  # earn / in_price
+    #     self.daily_data = None  # <df>
+    #     self.high_in_pool = None  # <float> 在pool期间的最高价
+    #     self.high_pct = None  # <float> (high_in_pool - in_price) / in_price
+    #     self.low_in_pool = None  # <float> 在pool期间的最低价
+    #     self.low_pct = None  # <float> (low_in_pool - in_price) / in_price
 
     def load_daily_data(self):
         """
@@ -929,7 +970,7 @@ class Stock(Asset):
                               'backwards': 向时间倒退的方向搜索
         """
         global raw_data
-        Asset.__init__(self, ts_code=ts_code, in_date=in_date)
+        # Asset.__init__(self, ts_code=ts_code, in_date=in_date)
 
         # daily_data的其它字段还待完成
         if load_daily is not None:
@@ -969,7 +1010,7 @@ class Stock(Asset):
             self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')
             return
         elif isinstance(load_daily, set):
-            print('[L820] 扩展字段的情况待完成')
+            print('[L972] 扩展字段的情况待完成')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
@@ -1060,8 +1101,7 @@ class Stock(Asset):
                                      index_col='trade_date', nrows=nrows)
             elif columns == 'basic':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['trade_date', 'close', 'open', 'high', 'low'],
-                                     index_col='trade_date', nrows=nrows)
+                                     usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Stock.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
@@ -1198,7 +1238,7 @@ class Index(Asset):
                               'backwards': 向时间倒退的方向搜索
         """
         global raw_data
-        Asset.__init__(self, ts_code=ts_code, in_date=in_date)
+        # Asset.__init__(self, ts_code=ts_code, in_date=in_date)
 
         # daily_data的其它字段还待完成
         if load_daily is not None:
@@ -1227,6 +1267,27 @@ class Index(Asset):
         else:
             self.in_price = None
 
+    def load_daily_data(self, load_daily='basic'):
+        """
+        根据load_daily输入字段，从csv文件将数据读入self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        """
+        global raw_data
+
+        if load_daily == 'basic':
+            if self.category == 'index_sw':
+                self.daily_data = self.load_sw_daily(ts_code=self.ts_code, columns='basic')
+            elif self.category == 'index_sse' or self.category == 'index_szse':
+                self.daily_date = self.load_index_daily(ts_code=self.ts_code, columns='basic')
+            else:
+                log_args = [self.ts_code, self.category]
+                add_log(20, '[fn]Index.load_daily_data(). "{0[0]}" invalid category {0[0]}', log_args)
+                return
+        elif isinstance(load_daily, set):
+            print('[L1241] 扩展字段的情况待完成')
+
     @staticmethod
     def get_sw_index_classify(return_df=True):
         """
@@ -1249,20 +1310,27 @@ class Index(Asset):
         return df_l1, df_l2, df_l3
 
     @staticmethod
-    def load_index_daily(ts_code, nrows=None):
+    def load_index_daily(ts_code, nrows=None,  columns='all'):
         """
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: <str> 'all' = 所有可用的列
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
         return: <df>
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
-            result = pd.read_csv(sub_path + sub_path_2nd_daily + '\\' + file_name, dtype={'trade_date': str},
-                                 usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
-                                          'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
-            result['vol'] = result['vol'].astype(np.int64)
-            # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            if columns == 'all':
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+                result['vol'] = result['vol'].astype(np.int64)  # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            elif columns == 'basic':
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+            else:
+                log_args = [columns]
+                add_log(20, '[fn]Index.load_index_daily() attribute columns "{0[0]}" invalid', log_args)
+                return
             return result
         else:
             log_args = [ts_code]
@@ -1270,7 +1338,7 @@ class Index(Asset):
             return
 
     @staticmethod
-    def load_sw_daily(ts_code, nrows=None):
+    def load_sw_daily(ts_code, nrows=None, columns='all'):
         """
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
@@ -1281,17 +1349,25 @@ class Index(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'd_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            try:
-                result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['ts_code', 'trade_date', 'name', 'open', 'low', 'high', 'close', 'change',
-                                              'pct_change', 'vol', 'amount', 'pe', 'pb'], index_col='trade_date',
-                                     nrows=nrows)
-            except FileNotFoundError:
-                log_args = [file_path]
-                add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
+            if columns == 'all':
+                try:
+                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'name', 'open', 'low', 'high', 'close', 'change', 'pct_change', 'vol', 'amount', 'pe', 'pb'], index_col='trade_date', nrows=nrows)
+                except FileNotFoundError:
+                    log_args = [file_path]
+                    add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
+                    return
+                result['vol'] = result['vol'].astype(np.int64)
+            elif columns == 'basic':
+                try:
+                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                except FileNotFoundError:
+                    log_args = [file_path]
+                    add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
+                    return
+            else:
+                log_args = [columns]
+                add_log(20, '[fn]Index.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
                 return
-            result['vol'] = result['vol'].astype(np.int64)
-            # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             return result
         else:
             log_args = [ts_code]
@@ -1954,23 +2030,32 @@ class Strategy:
         from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
 
         def _init_asset():
-            category = All_Assets_List.query_category_str(ts_code)
-            # 根据category不同，实例化对应的Asset
-            if category is None:
+            if ts_code in self.ref_assets:
                 log_args = [ts_code]
-                add_log(30, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} category is None, skip', log_args)
-                return
-            elif category == 'stock':
-                if ts_code in self.ref_assets:
-                    log_args = [ts_code]
-                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
-                else:
-                    self.ref_assets[ts_code] = Stock(ts_code=ts_code)
-                    log_args = [ts_code]
-                    add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
-            # ----other categories are to be implemented here-----
+                add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
             else:
-                print('[L1931] other categories are to be implemented')
+                self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+                log_args = [ts_code]
+                add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
+
+            # category = All_Assets_List.query_category_str(ts_code)
+            # # 根据category不同，实例化对应的Asset
+            # if category is None:
+            #     log_args = [ts_code]
+            #     add_log(30, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} category is None, skip', log_args)
+            #     return
+            # elif category == 'stock':
+            #     if ts_code in self.ref_assets:
+            #         log_args = [ts_code]
+            #         add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
+            #     else:
+            #         self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+            #         log_args = [ts_code]
+            #         add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
+            # # ----other categories are to be implemented here-----
+            # else:
+            #     print('[L1931] other categories are to be implemented')
+
             # 给assets添加indicator
             asset = self.ref_assets[ts_code]
             if cnd.para1.idt_name not in CND_SPC_TYPES:
@@ -2054,25 +2139,14 @@ class Pool:
             selected = row['selected'].strip().upper()
             if selected == 'T':
                 ts_code = index
-                category = All_Assets_List.query_category_str(ts_code)
-                # 根据category不同，实例化对应的Asset
-                if category is None:
+                if ts_code in self.assets:
                     log_args = [ts_code]
-                    add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} category is None, skip', log_args)
+                    add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     continue
-                # stock类型
-                elif category == 'stock':
-                    if ts_code in self.assets:
-                        log_args = [ts_code]
-                        add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
-                    else:
-                        self.assets[ts_code] = Stock(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
-                        log_args = [ts_code]
-                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
-                # elif category ==
-                # ----other categories are to be implemented here-----
                 else:
-                    print('[L1228] other categories are to be implemented')
+                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+                    log_args = [ts_code]
+                    add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
             else:
                 log_args = [index]
                 add_log(40, '[fn]Pool.init_assets() {0[0]} selected is not "T", skipped', log_args)
@@ -2104,15 +2178,11 @@ class Pool:
                 add_log(20, '[fn]Pool.add_asset(). {0[0]} in_date:{0[1]} is not a trade day, aborted', log_args)
                 return
 
-        if category == 'stock':
-            asset = Stock(ts_code=ts_code, in_date=in_date, in_price=in_price)
-            self.assets[ts_code] = asset
-            log_args = [ts_code, self.desc]
-            add_log(40, '[fn]Pool.add_asset(). ts_code:{0[0]} added to pool:{0[1]}', log_args)
-            return asset
-        # ----other categories are to be implemented here-----
-        else:
-            print('[L1228] other categories are to be implemented')
+        asset = Asset(ts_code=ts_code, in_date=in_date, in_price=in_price)
+        self.assets[ts_code] = asset
+        log_args = [ts_code, self.desc]
+        add_log(40, '[fn]Pool.add_asset(). ts_code:{0[0]} added to pool:{0[1]}', log_args)
+        return asset
 
     def assets_brief(self):
         """

@@ -1,7 +1,7 @@
 import tushare as ts
 import pandas as pd
 import numpy as np
-from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable, log_print
 from datetime import datetime, timedelta
 
 ts_pro = ts.pro_api()
@@ -18,10 +18,10 @@ SUBTYPE = {'D': 'day',
            'W': 'week',
            'M': 'month'}
 
-SOURCE = {'close_hfq': '收盘后复权',
+SOURCE = {'close': '收盘数据，能复权则后复权',  # 修改的是，原来'close_hfq'
           }
 
-SOURCE_TO_COLUMN = {'close_hfq': 'close',
+SOURCE_TO_COLUMN = {'close': 'close',  # 修改的是，原来'close_hfq'
                     }
 
 STATUS_WORD = {0: '-bad-',

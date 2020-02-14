@@ -6,7 +6,7 @@ from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
 # from st_common import Raw_Data, raw_data_init, SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
 from datetime import datetime,timedelta
-from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable, log_print
 # from st_board import load_source_df, Stock, Index
 # import st_board
 import weakref
@@ -45,7 +45,7 @@ def idt_name(pre_args):
         idt_name = idt_name + idt_type
         try:
             source = pre_args["source"]
-            if source != 'close_hfq':
+            if source != 'close':
                 idt_name = idt_name + '_' + source
         except KeyError:
             pass
@@ -103,7 +103,7 @@ class Indicator:
         self.subtype = subtype
         self.idt_type = idt_type  # ?为什么把这参数放这，而不是用子类里的，忘记。暂留以后优化
         self.df_idt = None  # <df>存放指标的结果数据
-        self.source = None  # <str>数据源，如'close_hfq'收盘后复权
+        self.source = None  # <str>数据源，如'close'收盘后复权
         self.update_csv = update_csv
         self.idt_name = None
         self.file_name = None
@@ -117,9 +117,38 @@ class Indicator:
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return:<df> trade_date(index); close; high..., None if failed
         """
-        from st_board import load_source_df
-        df_source = load_source_df(ts_code=self.ts_code, source=self.source)
-        return df_source
+        from st_board import LOADER, Stock
+        asset = self.par_asset()
+        category = asset.category
+        source = self.source
+        ts_code = asset.ts_code
+        # 如果在asset的daily_data中直接有该源，则直接使用
+        if hasattr(asset.daily_data, source):
+            df = getattr(asset.daily_data, source)
+            if isinstance(df, pd.DataFrame):
+                return df
+        # 直接从.csv中读入
+        # ----确定column_name
+        if self.source == 'close':
+            column_name = 'close'
+        # elif  其它source待完善
+        else:
+            log_args = [source]
+            add_log(20, '[fn]Indicator.load_sources(). source:{0[0]} invalid', log_args)
+            return
+
+        INDEX = {'index_sw', 'index_sse', 'index_szse'}
+        if category == 'stock':
+            loader = lambda ts_code, nrows: Stock.load_stock_dfq(ts_code=ts_code,nrows=nrows)[[column_name]]
+        elif category in INDEX:
+            loader = lambda ts_code, nrows: LOADER[category](ts_code=ts_code, nrows=nrows)[[column_name]]
+        else:
+            log_args = [source]
+            add_log(20, '[fn]Indicator.load_sources(). source:{0[0]} invalid', log_args)
+            return
+        df = loader(ts_code=ts_code, nrows=nrows)
+        assert isinstance(df, pd.DataFrame)
+        return df
 
     def load_idt(self, nrows=None):
         """
@@ -199,7 +228,7 @@ class Indicator:
     #     # e.g. ma_close_m_13 or ma_20
     #     if hasattr(self, 'period'):
     #         idt_name = self.idt_type
-    #         if self.source != 'close_hfq':
+    #         if self.source != 'close':
     #             idt_name = idt_name + '_' + self.source
     #         if self.subtype.lower() != 'd':
     #             idt_name = idt_name + '_' + self.subtype.lower()
@@ -214,9 +243,9 @@ class Ma(Indicator):
     """
     移动平均线
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Ma> if valid; None if invalid 
         """
         try:
@@ -229,7 +258,7 @@ class Ma(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
@@ -309,9 +338,9 @@ class Ema(Indicator):
     """
     指数移动平均线
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Ema> if valid; None if invalid 
         """
         try:
@@ -324,7 +353,7 @@ class Ema(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset,idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
@@ -443,9 +472,9 @@ class Macd(Indicator):
     """
     MACD
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Macd> if valid; None if invalid
         """
         try:
@@ -460,7 +489,7 @@ class Macd(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=26, short_n2=12, dea_n3=9, source='close', reload=False, update_csv=True, subtype='D'):
         """
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
@@ -580,7 +609,7 @@ class Macd(Indicator):
     #     """
     #     #e.g. macd_close_m_13 or macd_26_12_9
     #     idt_name = self.idt_type
-    #     if self.source != 'close_hfq':
+    #     if self.source != 'close':
     #         idt_name = idt_name + '_' + self.source
     #     if self.subtype.lower() != 'd':
     #         idt_name = idt_name + '_' + self.subtype.lower()
@@ -592,9 +621,9 @@ class Majh(Indicator):
     """
     移动平均线ma的纠结程度
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins majh> if valid; None if invalid
         """
         try:
@@ -606,7 +635,7 @@ class Majh(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close', reload=False, update_csv=True, subtype='D'):
         """
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
@@ -747,9 +776,9 @@ class Maqs(Indicator):
     """
     MAQS: MA的变化率，也就是它校前值的变化率，或理解为ma的切线斜率
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Maqs> if valid; None if invalid
         """
         try:
@@ -761,7 +790,7 @@ class Maqs(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
         period: <int> MA的周期
         """
@@ -845,9 +874,9 @@ class Emaqs(Indicator):
     """
     EMAQS: EMA的变化率，也就是它校前值的变化率
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Emaqs> if valid; None if invalid
         """
         try:
@@ -859,7 +888,7 @@ class Emaqs(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
         """
         period: <int> EMA的周期
         """
@@ -942,9 +971,9 @@ class Madq(Indicator):
     """
     MA的n周期抵扣，用n个当前价抵扣 MA 周期里最老的n个值，计算ma
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close', reload=False, update_csv=True, subtype='D'):
         """
-        source:<str> e.g. 'close_hfq' #SOURCE
+        source:<str> e.g. 'close' #SOURCE
         return:<ins Madq> if valid; None if invalid
         """
         try:
@@ -962,7 +991,7 @@ class Madq(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close_hfq', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, dq_n1, source='close', reload=False, update_csv=True, subtype='D'):
         """
         period:<int> 周期数
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
