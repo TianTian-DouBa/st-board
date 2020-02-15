@@ -1619,6 +1619,9 @@ class Strategy:
         self.trans_logs = []  # pool流转记录<list> of <Trans_Log>
         self.log_trans = log_trans  # 是否将asset流转记录到self.trans_logs供问题诊断
         self.ref_assets = {}  # 参考资产
+        self.start_date = None  # self.update_cycles()刷新的开始时间
+        self.end_date = None  # self.update_cycles()刷新的结束时间
+        self.cycles = None  # self.update_cycles()刷新的轮次
 
     def add_pool(self, **kwargs):
         """
@@ -1833,6 +1836,9 @@ class Strategy:
                 return
 
         return_ok = None  # 内部函数返回成功标志
+        self.start_date = start_date
+        self.end_date = end_date
+        self.cycles = cycles
         if start_date is None:
             if self.by_date is None:
                 add_log(10, '[fn]Strategy.update_cycles(). Both start_date and by_date are not specified. Aborted')
@@ -2101,6 +2107,7 @@ class Pool:
         self.init_in_out()
         self.in_date = in_date  # 仅做诊断用
         self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+        self.al_file = None  # <str> or None al file name
         self.conditions = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
@@ -2112,6 +2119,8 @@ class Pool:
         # if valid_date_str_fmt(in_date):
         #     self.by_date = raw_data.next_trade_day(in_date)  # None的话无效
         self.par_strategy = weakref.ref(par_strategy)  # <weak ref> parent strategy
+        if al_file is not None:
+            self.al_file = al_file
 
     def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
         r"""
@@ -2263,7 +2272,9 @@ class Pool:
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
         file_name = 'io_' + name + '.csv'
+        txt_name = 'io_' + name + '.txt'
         file_path = sub_path + sub_analysis + '\\' + file_name
+        txt_path = sub_path + sub_analysis + '\\' + txt_name
         if isinstance(self.in_out, pd.DataFrame):
             self.in_out.to_csv(file_path, encoding="utf-8")
             log_args = [file_path]
@@ -2271,6 +2282,13 @@ class Pool:
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
+        msg = self.in_out_stg_brief()
+        try:
+            with open(txt_path, 'w', encoding='utf-8') as f:
+                f.write(msg)
+        except Exception:
+            log_args = [txt_path]
+            add_log(10, '[fn]:Pool.csv_in_out() write strategy to {0[0]} failed', log_args)
 
     def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
@@ -2773,6 +2791,124 @@ class Pool:
             add_log(30, '[fn]Pool.del_asset() {0[0]} was not found in pool:{0[1]}', log_args)
             return
         return True
+
+    def in_out_stg_brief(self):
+        """
+        显示该pool生成的io_xxxx.csv对应的策略io_xxxx.txt
+        暂时按简化的模式处理pool_10为初始pool，取它的al资产列表名称信息
+        查pool_10的filters,看下游是自己pool的，把对应的filter和condition信息打出来
+        将来考虑根据strategy的策略结果不同生成不同的方案
+        """
+        stg = self.par_strategy()
+        msg = ""
+
+        def print_filter_stg(pool_index, filter_index):
+            """
+            打印对应pool及filter的策略信息
+            """
+            nonlocal msg
+            msg = msg + '.' * 120 + '\n'
+            pool = stg.pools[pool_index]
+            msg = msg + 'pool[{}]:{};    al:{}\n'.format(pool_index, pool.desc, pool.al_file)
+            fltr = pool.filters[filter_index]
+            msg = msg + '----filter[{}] down_pools:{}\n'.format(filter_index, fltr.down_pools)
+            # price mode and shift_days
+            in_shift_days = fltr.in_shift_days
+            str_in_shift_days = '    shift_days:{}'.format(in_shift_days) if in_shift_days != 0 else ""
+            msg = msg + 'in_price_mode:{}'.format(fltr.in_price_mode) + str_in_shift_days + '\n'
+            out_price_mode = fltr.out_price_mode
+            if out_price_mode is not None:
+                out_shift_days = fltr.out_shift_days
+                str_out_shift_days = '    shift_days:{}'.format(out_shift_days) if out_shift_days != 0 else ""
+                msg = msg + 'out_price_mode:{}'.format(fltr.out_price_mode) + str_out_shift_days + '\n'
+
+            for cnd_index in fltr.cnd_indexes:
+                cnd = pool.conditions[cnd_index]
+                str_req = '    req_period:{}'.format(cnd.required_period) if cnd.required_period != 0 else ""
+                msg = msg + '--------cnd[{}]:{}'.format(cnd_index, cnd.desc) + str_req + '\n'
+                # para1
+                _para = cnd.para1
+                str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
+                msg = msg + '[para1]:{}'.format(_para.idt_name) + str_bias + '\n'
+                # ----另起一行
+                # --------para.specific_asset
+                sa = _para.specific_asset
+                if sa is not None:
+                    str_specific_asset = 'sp_asset:{}  '.format(sa)
+                else:
+                    str_specific_asset = ""
+                # --------para.field
+                str_field = ""
+                if hasattr(_para, 'field'):
+                    _field = _para.field
+                    if _field != 'default':
+                        str_field = 'field:{}  '.format(_para.field)
+                # --------para.const_value
+                str_const_value = 'const_v:{}  '.format(_para.const_value) if hasattr(_para, 'const_value') else ""
+                # --------para.stay_days
+                str_stay_days = 'stay_days:{}'.format(_para.stay_days) if hasattr(_para, 'stay_days') else ""
+                str_combined = str_specific_asset + str_field + str_const_value + str_stay_days
+                line_end = "\n" if len(str_combined) > 0 else ""
+                line_space = " " * 8 if len(str_combined) > 0 else ""
+                msg = msg + line_space + str_combined + line_end
+
+                # para2
+                _para = cnd.para2
+                str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
+                msg = msg + '[para2]:{}'.format(_para.idt_name) + str_bias + '\n'
+                # ----另起一行
+                # --------para.specific_asset
+                sa = _para.specific_asset
+                if sa is not None:
+                    str_specific_asset = 'sp_asset:{}  '.format(sa)
+                else:
+                    str_specific_asset = ""
+                # --------para.field
+                str_field = ""
+                if hasattr(_para, 'field'):
+                    _field = _para.field
+                    if _field != 'default':
+                        str_field = 'field:{}  '.format(_para.field)
+                # --------para.const_value
+                str_const_value = 'const_v:{}  '.format(_para.const_value) if hasattr(_para, 'const_value') else ""
+                # --------para.stay_days
+                str_stay_days = 'stay_days:{}'.format(_para.stay_days) if hasattr(_para, 'stay_days') else ""
+                str_combined = str_specific_asset + str_field + str_const_value + str_stay_days
+                line_end = "\n" if len(str_combined) > 0 else ""
+                line_space = " " * 8 if len(str_combined) > 0 else ""
+                msg = msg + line_space + str_combined + line_end
+
+        stg_desc = stg.desc
+        self_n_filters = len(self.filters)
+        self_index = None  # self pool index in strategy.pools.keys()
+
+        # 找self pool对应的index,找上游的pools
+        fltr_idx_buff = []  # item: (key_of_pool, key_of_filter, down_pools)暂存各pools下filters的index
+        for index, pool in stg.pools.items():
+            if pool is self:
+                self_index = index  # self pool对应的index
+            else:
+                n_filters = len(pool.filters)
+                for fltr_idx in range(n_filters):
+                    fltr = pool.filters[fltr_idx]
+                    item = (index, fltr_idx, fltr.down_pools)
+                    fltr_idx_buff.append(item)
+        if not isinstance(self_index, int):
+            log_args = [self_index]
+            add_log(10, '[fn]Pool.in_out_stg_brief() self_index{0[0]} invalid', log_args)
+            return
+
+        # 更新strategy及self pool的信息
+        msg = '\n' + '+' * 120 + '\n'
+        msg = msg + 'strategy:{}  start:{}  end:{}  cycles:{}  target_pool[{}]:{}\n'.format(stg_desc, stg.start_date, stg.end_date, stg.cycles, self_index, self.desc)
+        for filter_idx in range(self_n_filters):
+            print_filter_stg(pool_index=self_index, filter_index=filter_idx)
+        # 更新
+        msg = msg + '----------------------------Upstream Pools---------------------------\n'
+        for item in fltr_idx_buff:
+            if self_index in item[2]:
+                print_filter_stg(pool_index=item[0], filter_index=item[1])
+        return msg
 
 
 class Trans_Log:
