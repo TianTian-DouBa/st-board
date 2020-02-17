@@ -2269,8 +2269,11 @@ class Pool:
         csv: None  默认文件名 io_<date_of_generate>_<pool_desc>.csv
              <str> io_<str>.csv
         """
+        from analysis import in_out_agg
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
+        else:
+            name = csv
         file_name = 'io_' + name + '.csv'
         txt_name = 'io_' + name + '.txt'
         file_path = sub_path + sub_analysis + '\\' + file_name
@@ -2279,13 +2282,15 @@ class Pool:
             self.in_out.to_csv(file_path, encoding="utf-8")
             log_args = [file_path]
             add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
+            msg2 = in_out_agg(self.in_out)
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
-        msg = self.in_out_stg_brief()
+            return
+        msg = self.in_out_stg_brief(file_name)
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
-                f.write(msg)
+                f.write(msg + msg2)
         except Exception:
             log_args = [txt_path]
             add_log(10, '[fn]:Pool.csv_in_out() write strategy to {0[0]} failed', log_args)
@@ -2792,7 +2797,7 @@ class Pool:
             return
         return True
 
-    def in_out_stg_brief(self):
+    def in_out_stg_brief(self, file_name):
         """
         显示该pool生成的io_xxxx.csv对应的策略io_xxxx.txt
         暂时按简化的模式处理pool_10为初始pool，取它的al资产列表名称信息
@@ -2828,8 +2833,13 @@ class Pool:
                 msg = msg + '--------cnd[{}]:{}'.format(cnd_index, cnd.desc) + str_req + '\n'
                 # para1
                 _para = cnd.para1
+                # para.name; para.bias; para.shift_periods
                 str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
-                msg = msg + '[para1]:{}'.format(_para.idt_name) + str_bias + '\n'
+                str_shift_periods = ""
+                _shift = _para.shift_periods
+                if _shift is not None:
+                    str_shift_periods = '  shift_periods:{}'.format(_shift)
+                msg = msg + '[para1]:{}'.format(_para.idt_name) + str_shift_periods + str_bias + '\n'
                 # ----另起一行
                 # --------para.specific_asset
                 sa = _para.specific_asset
@@ -2854,8 +2864,13 @@ class Pool:
 
                 # para2
                 _para = cnd.para2
+                # para.name; para.bias; para.shift_periods
                 str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
-                msg = msg + '[para2]:{}'.format(_para.idt_name) + str_bias + '\n'
+                str_shift_periods = ""
+                _shift = _para.shift_periods
+                if _shift is not None:
+                    str_shift_periods = '  shift_periods:{}'.format(_shift)
+                msg = msg + '[para2]:{}'.format(_para.idt_name) + str_shift_periods + str_bias + '\n'
                 # ----另起一行
                 # --------para.specific_asset
                 sa = _para.specific_asset
@@ -2901,6 +2916,7 @@ class Pool:
         # 更新strategy及self pool的信息
         msg = '\n' + '+' * 120 + '\n'
         msg = msg + 'strategy:{}  start:{}  end:{}  cycles:{}  target_pool[{}]:{}\n'.format(stg_desc, stg.start_date, stg.end_date, stg.cycles, self_index, self.desc)
+        msg = msg + 'file_name: {}\n'.format(file_name)
         for filter_idx in range(self_n_filters):
             print_filter_stg(pool_index=self_index, filter_index=filter_idx)
         # 更新

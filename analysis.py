@@ -42,26 +42,27 @@ def in_out_agg(io_df):
     low_10, low_50, low_90 = dscb_l_pct[['90%', '50%', '10%']]  # 高低价有意倒过来
 
     # 结果展示
-    print('======================================================================================')
-    print('in_out Aggregate:')
-    print('Num of Records:    {:>8}        Stay Days(avg):  {:8.1f}'.format(n_records, stay_days))
-    print('% of Pos. Earns:   {:8.2%}        Stay Days(max):  {:8.0f}'.format(n_positive / n_records, max_days))
-    print('% of Neg. Earns:   {:8.2%}        Stay Days(min):  {:8.0f}'.format(n_negative / n_records, min_days))
-    print()
+    msg = '\n======================================================================================\n'
+    msg = msg + 'in_out Aggregate:\n'
+    msg = msg + 'Num of Records:    {:>8}        Stay Days(avg):  {:8.1f}\n'.format(n_records, stay_days)
+    msg = msg + '% of Pos. Earns:   {:8.2%}        Stay Days(max):  {:8.0f}\n'.format(n_positive / n_records, max_days)
+    msg = msg + '% of Neg. Earns:   {:8.2%}        Stay Days(min):  {:8.0f}\n'.format(n_negative / n_records, min_days)
+    msg = msg + '\n'
 
-    print('Average Earn%: {:12.2%}        90% High%:   {:12.2%}'.format(avg_earn_pct, high_90))
-    print('Median Earn%:  {:12.2%}        50% High%:   {:12.2%}'.format(median_earn_pct, high_50))
-    print('Std Dev Earn%: {:12.2%}        10% High%:   {:12.2%}'.format(std_earn_pct, high_10))
-    print()
+    msg = msg + 'Average Earn%: {:12.2%}        90% High%:   {:12.2%}\n'.format(avg_earn_pct, high_90)
+    msg = msg + 'Median Earn%:  {:12.2%}        50% High%:   {:12.2%}\n'.format(median_earn_pct, high_50)
+    msg = msg + 'Std Dev Earn%: {:12.2%}        10% High%:   {:12.2%}\n'.format(std_earn_pct, high_10)
+    msg = msg + '\n'
 
-    print('90% Earn%:     {:12.2%}        90% Low%:    {:12.2%}'.format(med_90, low_90))
-    print('75% Earn%:     {:12.2%}        50% Low%:    {:12.2%}'.format(med_75, low_50))
-    print('25% Earn%:     {:12.2%}        10% Low%:    {:12.2%}'.format(med_25, low_10))
-    print('10% Earn%:     {:12.2%}'.format(med_10))
-    print('======================================================================================')
+    msg = msg + '90% Earn%:     {:12.2%}        90% Low%:    {:12.2%}\n'.format(med_90, low_90)
+    msg = msg + '75% Earn%:     {:12.2%}        50% Low%:    {:12.2%}\n'.format(med_75, low_50)
+    msg = msg + '25% Earn%:     {:12.2%}        10% Low%:    {:12.2%}\n'.format(med_25, low_10)
+    msg = msg + '10% Earn%:     {:12.2%}\n'.format(med_10)
+    msg = msg + '======================================================================================\n'
+    return msg
 
 
 if __name__ == '__main__':
     df = select_df_csv()
-    in_out_agg(df)  # in_out io_xxxxx.csv文件的报告
+    print(in_out_agg(df))  # in_out io_xxxxx.csv文件的报告
     # print(df.MAQS.describe())  # 显示<df>某列的简报

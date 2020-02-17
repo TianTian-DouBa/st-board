@@ -2271,6 +2271,8 @@ class Pool:
         """
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
+        else:
+            name = csv
         file_name = 'io_' + name + '.csv'
         txt_name = 'io_' + name + '.txt'
         file_path = sub_path + sub_analysis + '\\' + file_name
@@ -2282,7 +2284,7 @@ class Pool:
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
-        msg = self.in_out_stg_brief()
+        msg = self.in_out_stg_brief(file_name)
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
                 f.write(msg)
@@ -2792,7 +2794,7 @@ class Pool:
             return
         return True
 
-    def in_out_stg_brief(self):
+    def in_out_stg_brief(self, file_name=""):
         """
         显示该pool生成的io_xxxx.csv对应的策略io_xxxx.txt
         暂时按简化的模式处理pool_10为初始pool，取它的al资产列表名称信息
@@ -2828,8 +2830,13 @@ class Pool:
                 msg = msg + '--------cnd[{}]:{}'.format(cnd_index, cnd.desc) + str_req + '\n'
                 # para1
                 _para = cnd.para1
+                # para.name; para.bias; para.shift_periods
                 str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
-                msg = msg + '[para1]:{}'.format(_para.idt_name) + str_bias + '\n'
+                str_shift_periods = ""
+                _shift = _para.shift_periods
+                if _shift is not None:
+                    str_shift_periods = '  shift_periods:{}'.format(_shift)
+                msg = msg + '[para1]:{}'.format(_para.idt_name) + str_shift_periods + str_bias + '\n'
                 # ----另起一行
                 # --------para.specific_asset
                 sa = _para.specific_asset
@@ -2854,8 +2861,13 @@ class Pool:
 
                 # para2
                 _para = cnd.para2
+                # para.name; para.bias; para.shift_periods
                 str_bias = '  bias:{}'.format(_para.bias) if _para.bias != 0 else ""
-                msg = msg + '[para2]:{}'.format(_para.idt_name) + str_bias + '\n'
+                str_shift_periods = ""
+                _shift = _para.shift_periods
+                if _shift is not None:
+                    str_shift_periods = '  shift_periods:{}'.format(_shift)
+                msg = msg + '[para2]:{}'.format(_para.idt_name) + str_shift_periods + str_bias + '\n'
                 # ----另起一行
                 # --------para.specific_asset
                 sa = _para.specific_asset
@@ -2901,6 +2913,7 @@ class Pool:
         # 更新strategy及self pool的信息
         msg = '\n' + '+' * 120 + '\n'
         msg = msg + 'strategy:{}  start:{}  end:{}  cycles:{}  target_pool[{}]:{}\n'.format(stg_desc, stg.start_date, stg.end_date, stg.cycles, self_index, self.desc)
+        msg = msg + 'file_name: {}\n'.format(file_name)
         for filter_idx in range(self_n_filters):
             print_filter_stg(pool_index=self_index, filter_index=filter_idx)
         # 更新
@@ -3232,12 +3245,12 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
 
     stg = Strategy('简单模式')
-    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
-    # stg.add_pool(desc='p30持仓10日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40持仓15日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p40 = stg.pools[40]
@@ -3266,7 +3279,7 @@ if __name__ == "__main__":
     p10.add_condition(pre_args1, pre_args2, '<')
     # ------condition_1
     pre_args1 = {'idt_type': 'madq',
-                 'period': 5,
+                 'period': 50,
                  'dq_n1': 1}
     pre_args2 = {'idt_type': 'madq',
                  'period': 20,
@@ -3274,13 +3287,19 @@ if __name__ == "__main__":
     p10.add_condition(pre_args1, pre_args2, '>=')
     # ------condition_2
     pre_args1 = {'idt_type': 'maqs',
-                 'period': 10,
+                 'period': 5,
                  'specific_asset': '000001.SH'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.003}
-    p10.add_condition(pre_args1, pre_args2, '>')
+                 'const_value': -0.005}
+    p10.add_condition(pre_args1, pre_args2, '<=')
+    # ------condition_3
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.001}
+    # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20,30}, in_price_mode='open_sxd', in_shift_days=1)
     # ---pool20 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
@@ -3308,9 +3327,9 @@ if __name__ == "__main__":
     # # ------condition_0
     # pre_args1 = {'idt_type': 'stay_days'}
     # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 10}
+    #              'const_value': 30}
     # p30.add_condition(pre_args1, pre_args2, '>=')
-    #
+    
     # p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
     #
     # # ---pool40 conditions-----------
@@ -3353,9 +3372,10 @@ if __name__ == "__main__":
     stg.init_ref_assets()
 
     # ---stg循环-----------
-    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    stg.update_cycles(start_date='20180101', cycles=50)
+    # stg.update_cycles(start_date='20190514', end_date='20200101')
+    # stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
     # p30.csv_in_out()
