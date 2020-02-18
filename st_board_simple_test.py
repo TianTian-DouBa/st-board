@@ -2269,6 +2269,7 @@ class Pool:
         csv: None  默认文件名 io_<date_of_generate>_<pool_desc>.csv
              <str> io_<str>.csv
         """
+        from analysis import in_out_agg
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
         else:
@@ -2281,13 +2282,15 @@ class Pool:
             self.in_out.to_csv(file_path, encoding="utf-8")
             log_args = [file_path]
             add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
+            msg2 = in_out_agg(self.in_out)
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
+            return
         msg = self.in_out_stg_brief(file_name)
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
-                f.write(msg)
+                f.write(msg + msg2)
         except Exception:
             log_args = [txt_path]
             add_log(10, '[fn]:Pool.csv_in_out() write strategy to {0[0]} failed', log_args)
@@ -2794,7 +2797,7 @@ class Pool:
             return
         return True
 
-    def in_out_stg_brief(self, file_name=""):
+    def in_out_stg_brief(self, file_name):
         """
         显示该pool生成的io_xxxx.csv对应的策略io_xxxx.txt
         暂时按简化的模式处理pool_10为初始pool，取它的al资产列表名称信息
@@ -3245,8 +3248,8 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
 
     stg = Strategy('简单模式')
-    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
@@ -3276,15 +3279,15 @@ if __name__ == "__main__":
                  'dq_n1': 1,
                  'shift_periods': -1,
                  'update_csv': True}
-    p10.add_condition(pre_args1, pre_args2, '<')
+    p10.add_condition(pre_args1, pre_args2, '>')
     # ------condition_1
     pre_args1 = {'idt_type': 'madq',
-                 'period': 50,
+                 'period': 5,
                  'dq_n1': 1}
     pre_args2 = {'idt_type': 'madq',
                  'period': 20,
                  'dq_n1': 1}
-    p10.add_condition(pre_args1, pre_args2, '>=')
+    p10.add_condition(pre_args1, pre_args2, '<=')
     # ------condition_2
     pre_args1 = {'idt_type': 'maqs',
                  'period': 5,
@@ -3299,7 +3302,7 @@ if __name__ == "__main__":
     #              'const_value': 0.001}
     # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20,30}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
     # ---pool20 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
@@ -3372,10 +3375,10 @@ if __name__ == "__main__":
     stg.init_ref_assets()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
     # stg.update_cycles(start_date='20190514', end_date='20200101')
-    # stg.update_cycles(start_date='20180101', cycles=50)
+    stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
     # p30.csv_in_out()

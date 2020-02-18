@@ -68,7 +68,11 @@ FORMAT_FIELDS = {"ts_code": "{:<12}",
 
 # Condition Special idt_type
 CND_SPC_TYPES = {'const',  # 常量
-                 'stay_days'}  # 在pool中交易日数
+                 'stay_days',  # 在pool中交易日数
+                 'earn_pct',  # 盈利%
+                 'max_by_pct',  # pool中历史最高by_price对应的earn pct
+                 'min_by_pct',  # pool中历史最低by_price对应的loss pct
+                 'earn_return'}  # 从max_by回落一定比例触发
 
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 
@@ -177,59 +181,79 @@ class Raw_Data:
             add_log(20, '[fn]Raw_Data.last_trade_day() dt_str "{0[0]}" incorrect format', log_args)
             return None
 
-    def next_trade_day(self, dt_str):
+    def next_trade_day(self, dt_str, next_n=1):
         """
-        查询下一个交易日
+        查询之后第n个交易日
         dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+        next_n: <int>
         return: <string> in 'YYYYMMDD' e.g.'20190719'
         """
+        SUSPENDED_DAYS_LIM = 100
         if self.valid_trade_calendar() is None:
             add_log(20, '[fn]Raw_Data.next_trade_day() trade_calendar invalid')
+            return
+        if next_n < 1:
+            log_args = [next_n]
+            add_log(20, '[fn]Raw_Data.next_trade_day() next_n:{0[0]} invalid'.format(log_args))
             return
         if isinstance(dt_str, str) and (len(dt_str) == 8):
             tdf = self.trade_calendar
             try:
                 pos = tdf.index.get_loc(int(dt_str))
-                for i in range(1, 100):  # 估计最长休市天数不超过100天
-                    if tdf.iloc[pos + i]['is_open'] == 1:
-                        next_trade_date = tdf.iloc[pos + i].name  # tdf.iloc[pos + i]是Series，所以用.name
-                        # print('[L167] next_trade_date: {}'.format())
-                        return str(next_trade_date)
-                add_log(20, '[fn]Raw_Data.next_trade_day() exceed last day')
-                return
+                for _ in range(int(next_n)):
+                    for i in range(1, SUSPENDED_DAYS_LIM):  # 估计最长休市天数不超过x天
+                        if tdf.iloc[pos + i]['is_open'] == 1:
+                            pos = pos + i
+                            break
+                    else:
+                        add_log(20, '[fn]Raw_Data.next_trade_day() suspended days exceed limit')
+                        return
             except KeyError:
                 log_args = [dt_str]
                 add_log(10, '[fn]Raw_Data.next_trade_day() dt_str "{0[0]}" not in stock_basic.csv. check date_str and pull Raw_Data', log_args)
                 return
+            next_trade_date = tdf.iloc[pos].name  # tdf.iloc[pos]是Series，所以用.name
+            # print('[L167] next_trade_date: {}'.format())
+            return str(next_trade_date)
         else:
             log_args = [dt_str]
             add_log(20, '[fn]Raw_Data.next_trade_day() dt_str "{0[0]}" incorrect format', log_args)
             return
 
-    def previous_trade_day(self, dt_str):
+    def previous_trade_day(self, dt_str, pre_n=1):
         """
         查询不含当日的前一个交易日
         dt_str: <string> in 'YYYYMMDD' e.g.'20190721'
+        pre_n: <int>
         return: <string> in 'YYYYMMDD' e.g.'20190719'
         """
+        SUSPENDED_DAYS_LIM = 100
         if self.valid_trade_calendar() is None:
             add_log(20, '[fn]Raw_Data.previous_trade_day() trade_calendar invalid')
+            return
+        if pre_n < 1:
+            log_args = [pre_n]
+            add_log(20, '[fn]Raw_Data.previous_trade_day() pre_n:{0[0]} invalid'.format(log_args))
             return
         if isinstance(dt_str, str) and (len(dt_str) == 8):
             tdf = self.trade_calendar
             try:
                 pos = tdf.index.get_loc(int(dt_str))
-                for i in range(1, 100):  # 估计最长休市天数不超过100天
-                    if tdf.iloc[pos - i]['is_open'] == 1:
-                        previous_trade_date = tdf.iloc[pos - i].name  # tdf.iloc[pos + i]是Series，所以用.name
-                        # print('[L167] previous_trade_date: {}'.format())
-                        return str(previous_trade_date)
-                add_log(20, '[fn]Raw_Data.previous_trade_day() exceed span')
-                return
+                for _ in range(int(pre_n)):
+                    for i in range(1, SUSPENDED_DAYS_LIM):  # 估计最长休市天数不超过x天
+                        if tdf.iloc[pos - i]['is_open'] == 1:
+                            pos = pos - i
+                            break
+                    else:
+                        add_log(20, '[fn]Raw_Data.previous_trade_day() exceed span')
+                        return
             except KeyError:
                 log_args = [dt_str]
                 add_log(10, '[fn]Raw_Data.previous_trade_day() dt_str "{0[0]}" not in stock_basic.csv. check date_str and pull Raw_Data', log_args)
                 return
+            previous_trade_date = tdf.iloc[pos].name  # 是Series，所以用.name
+            # print('[L167] previous_trade_date: {}'.format())
+            return str(previous_trade_date)
         else:
             log_args = [dt_str]
             add_log(20, '[fn]Raw_Data.previous_trade_day() dt_str "{0[0]}" incorrect format', log_args)
