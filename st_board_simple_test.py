@@ -766,34 +766,9 @@ class Asset:
         obj.high_pct = None  # <float> (high_in_pool - in_price) / in_price
         obj.low_in_pool = None  # <float> 在pool期间的最低价
         obj.low_pct = None  # <float> (low_in_pool - in_price) / in_price
+        obj.max_by = None  # <float> pool中历史最高的by_price
+        obj.min_by = None  # <float> pool中历史最低的by_price
         return obj
-
-
-    # def __init__(self, ts_code, in_date=None, load_daily='basic'):
-    #     """
-    #     in_date: None: 不提供
-    #              'latest': 根据基础数据里取有价格的最新那个时间
-    #              '20191231': 指定的日期
-    #     load_daily: 'basic': 读入[close][open][high][low][amount]基本字段到self.daily_data
-    #               : None: self.daily_data = None
-    #               : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
-    #     """
-    #     self.ts_code = ts_code
-    #     self.category = All_Assets_List.query_category_str(ts_code)
-    #     self.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
-    #     self.by_date = None  # <str> 当前计算的日期如"20191231"
-    #     self.stay_days = None  # <int> 在pool中的天数
-    #     self.in_price = None  # <float>加入pool的价格
-    #     self.by_price = None  # 当前计算的价格
-    #     self.out_price = None  # 出pool时的价格，受get_price()参数，及交割费用影响
-    #     self.out_date = None  # <str> 当前计算的日期如"20191231"
-    #     self.earn = None  # by_price - in_price
-    #     self.earn_pct = None  # earn / in_price
-    #     self.daily_data = None  # <df>
-    #     self.high_in_pool = None  # <float> 在pool期间的最高价
-    #     self.high_pct = None  # <float> (high_in_pool - in_price) / in_price
-    #     self.low_in_pool = None  # <float> 在pool期间的最低价
-    #     self.low_pct = None  # <float> (low_in_pool - in_price) / in_price
 
     def load_daily_data(self):
         """
@@ -810,7 +785,7 @@ class Asset:
               'open' 返回当日的open开盘价，股票都为后复权值
               'high' 返回当日的high最高价，股票都为后复权值
               'low' 返回当日的low最低价，股票都为后复权值
-              'close_sxd' 返回当日偏离x周期的close收盘价，股票都为后复权值
+              'close_sxd' 返回当日偏离shift_days周期的close收盘价，股票都为后复权值
               'close_open'
               'high_sxd'
               'low_sxd'
@@ -824,23 +799,26 @@ class Asset:
                 None 并报错
         """
         global raw_data
-        SEEK_DAYS = 365  # 前后查找数据的最大天数
-        is_open = raw_data.valid_trade_date(trade_date)
-        if is_open is True:
-            if mode == 'close' or mode == 'open' or mode == 'high' or mode == 'low':
+        SEEK_DAYS = 50  # 前后查找的最大交易日天数，如果超过次数值就是个股长期停牌的情况
+
+        def _get_price(trade_date, head_name):
+            if head_name is None:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Asset.get_price() {0[0]} mode invalid', log_args)
+                return
+            try:
+                rslt = self.daily_data.loc[int(trade_date)][head_name]
+                return rslt, trade_date
+            except KeyError:
                 if seek_direction is None:
-                    try:
-                        rslt = self.daily_data.loc[int(trade_date)][mode]
-                        return rslt, trade_date
-                    except KeyError:
-                        log_args = [self.ts_code, trade_date]
-                        add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
-                        return
+                    log_args = [self.ts_code, trade_date]
+                    add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
+                    return
                 elif seek_direction == 'forwards':
-                    _trade_date = trade_date
-                    for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    _trade_date = raw_data.next_trade_day(trade_date)
+                    for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
                         if int(_trade_date) in self.daily_data.index:
-                            rslt = self.daily_data.loc[int(_trade_date)][mode]
+                            rslt = self.daily_data.loc[int(_trade_date)][head_name]
                             return rslt, _trade_date
                         else:
                             _trade_date = raw_data.next_trade_day(_trade_date)
@@ -849,21 +827,28 @@ class Asset:
                     add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} and next {0[2]} days', log_args)
                     return
                 elif seek_direction == 'backwards':
-                    _trade_date = trade_date
-                    for i in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    _trade_date = raw_data.previous_trade_day(trade_date)
+                    for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
                         if int(_trade_date) in self.daily_data.index:
-                            rslt = self.daily_data.loc[int(_trade_date)][mode]
+                            rslt = self.daily_data.loc[int(_trade_date)][head_name]
                             return rslt, _trade_date
                         else:
                             _trade_date = raw_data.previous_trade_day(_trade_date)
                             continue
                     log_args = [self.ts_code, trade_date, SEEK_DAYS]
                     add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]} and previous {0[2]} days', log_args)
-                else:
-                    log_args = [seek_direction]
-                    add_log(20, '[fn]Asset.get_price() seek_direction "{0[0]}" invalid',
-                            log_args)
                     return
+
+        is_open = raw_data.valid_trade_date(trade_date)
+        if is_open is True:
+            # 普通的4种价格模式
+            if mode == 'close' or mode == 'open' or mode == 'high' or mode == 'low':
+                head_name = mode
+                _rslt = _get_price(trade_date=trade_date, head_name=head_name)
+                if _rslt is not None:
+                    return _rslt
+
+            # 含偏移周期数shift_days的，4种价格模式
             elif mode == 'close_sxd' or mode == 'open_sxd' or mode == 'high_sxd' or mode == 'low_sxd':
                 if mode == 'close_sxd':
                     head_name = 'close'
@@ -876,24 +861,19 @@ class Asset:
                 else:
                     head_name = None
 
-                if seek_direction is None:
-                    try:
-                        pos = self.daily_data.index.get_loc(int(trade_date))
-                        rslt = self.daily_data.iloc[pos - shift_days][head_name]
-                        trade_date = str(self.daily_data.iloc[pos - shift_days].name)
-                        return rslt, trade_date
-                    except (KeyError, IndexError):
-                        log_args = [self.ts_code, trade_date]
-                        add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
-                        return
-                else:
-                    log_args = [self.ts_code, seek_direction]
-                    add_log(20, '[fn]Asset.get_price() ts_code:{0[0]}, seek_direction of  {0[1]} not configured yet', log_args)
-                    return
+                if shift_days >= 1:
+                    trade_date = raw_data.next_trade_day(trade_date, int(shift_days))
+                elif shift_days <= -1:
+                    trade_date = raw_data.previous_trade_day(trade_date, - int(shift_days))
+
+                _rslt = _get_price(trade_date=trade_date, head_name=head_name)
+                if _rslt is not None:
+                    return _rslt
+
             # ----------------其它模式待完善-----------------
-        else:
-            log_args = [self.ts_code, trade_date]
-            add_log(20, '[fn]Asset.get_price(). {0[0]} trade_date:"{0[1]}" is not a trade day', log_args)
+            else:
+                log_args = [self.ts_code, trade_date]
+                add_log(20, '[fn]Asset.get_price(). {0[0]} trade_date:"{0[1]}" is not a trade day', log_args)
 
     def add_indicator(self, idt_class, **post_args):
         """
@@ -2291,26 +2271,28 @@ class Pool:
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
                 f.write(msg + msg2)
-        except Exception:
-            log_args = [txt_path]
-            add_log(10, '[fn]:Pool.csv_in_out() write strategy to {0[0]} failed', log_args)
+        except Exception as e:
+            log_args = [txt_path, type(e)]
+            add_log(10, '[fn]:Pool.csv_in_out() write strategy to {0[0]} failed, except:{0[1]}', log_args)
 
     def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
         add the condition to the pool
         pre_argsN: <dict> refer indicator.idt_name() pre_args 创建para的必要输入参数
         e.g.
-        {'idt_type': 'macd',
-         'long_n1': 26,
+        {'idt_type': 'macd', 'const', 'stay_days',
+                     'earn_pct', 'max_by_pct', 'min_by_pct', 'earn_return'
+         'long_n1': 26,  # depends on idt type
          'short_n2': 12,
          'dea_n3': 9,
          'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
          'source': 'close',
-         'subtype': 'w',
+         'subtype': 'd', 'w',
          'update_csv': False,  # 指标文件结果是否保存到csv文件
          'reload': False  # 功能待查看代码
          'bias': 0.05  # 偏置量
          'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
+         'earn_return': 0.5  # <50% of max_by to sale
          }
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 需要保持多少个周期来达成条件
@@ -2440,46 +2422,47 @@ class Pool:
                 add_log(20, '[fn]Pool.op_cnds_matrix(). both ts_code and al are not specified, del aborted')
                 return
 
-    def filter_cnd(self, cnd_index, datetime_='latest', csv=None, al=None, update_matrix=None):
+    def filter_cnd(self, cnd_index, datetime_, csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
         本函数不会发起基础数据的下载和或指标的重新计算
         cnd_index: <int>, self.conditions 的序号
-        datetime_: <str> 'latest' or like '20190723' YYYYMMDD
+        datetime_: <str> '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              'default' = <pool_desc>_output.csv
         al: 输入资产列表 None=self.assets.values(); <list> of ts_code
         update_matrix: 是否更新self.cnds_matrix, True=更新
         return: <list> 成立ts_code列表
         """
+        from st_common import CND_SPC_TYPES
         try:
             cnd = self.conditions[cnd_index]  # <Condition>, 过滤的条件
         except IndexError:
             log_args = [cnd_index]
             add_log(20, '[fn]Pool.filter_cnd(). invalid cnd_index:{0[0]}', log_args)
             return
-        if datetime_ == 'latest':
-            # -----para1
-            if cnd.para1.shift_periods is None:
-                shift1 = 0  # 前后移动周期数
-            elif cnd.para1.shift_periods > 0:
-                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
-                return
-            else:  # 负值，取前值
-                shift1 = cnd.para1.shift_periods
-            val_fetcher1 = lambda df, column_name: df.iloc[0 - shift1][column_name]  # [fn] 获取最新idt记录值
-            date_fetcher1 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
-            # -----para2
-            if cnd.para2.shift_periods is None:
-                shift2 = 0  # 前后移动周期数
-            elif cnd.para2.shift_periods > 0:
-                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
-                return
-            else:  # 负值，取前值
-                shift2 = cnd.para2.shift_periods
-            val_fetcher2 = lambda df, column_name: df.iloc[0 - shift2][column_name]  # [fn] 获取最新idt记录值
-            date_fetcher2 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
-        elif valid_date_str_fmt(datetime_):
+        # if datetime_ == 'latest':  # 准备取消'latest'功能
+        #     # -----para1
+        #     if cnd.para1.shift_periods is None:
+        #         shift1 = 0  # 前后移动周期数
+        #     elif cnd.para1.shift_periods > 0:
+        #         add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+        #         return
+        #     else:  # 负值，取前值
+        #         shift1 = cnd.para1.shift_periods
+        #     val_fetcher1 = lambda df, column_name: df.iloc[0 - shift1][column_name]  # [fn] 获取最新idt记录值
+        #     date_fetcher1 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+        #     # -----para2
+        #     if cnd.para2.shift_periods is None:
+        #         shift2 = 0  # 前后移动周期数
+        #     elif cnd.para2.shift_periods > 0:
+        #         add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+        #         return
+        #     else:  # 负值，取前值
+        #         shift2 = cnd.para2.shift_periods
+        #     val_fetcher2 = lambda df, column_name: df.iloc[0 - shift2][column_name]  # [fn] 获取最新idt记录值
+        #     date_fetcher2 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+        if valid_date_str_fmt(datetime_):
             dt_int = int(datetime_)
             # -----para1
             if cnd.para1.shift_periods is None:
@@ -2514,6 +2497,14 @@ class Pool:
 
             for asset in al_list:
                 # print("[L1383] ts_code: {}".format(asset.ts_code))
+                if asset.in_date is None:
+                    log_args = [datetime_, asset.ts_code]
+                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} in_date is None on {0[0]}}, skip', log_args)
+                    continue
+                elif int(datetime_) <= int(asset.in_date):
+                    log_args = [datetime_, asset.ts_code, asset.in_date]
+                    add_log(40, '[fn]Pool.filter_cnd(). datetime_:{0[0]} earlier than {0[1]} in_date:{0[2]}, skip', log_args)
+                    continue
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
@@ -2529,6 +2520,18 @@ class Pool:
                         idt_value1 = 0
                     else:
                         idt_date1 = asset.by_date
+                elif idt_name1 == 'earn_pct':
+                    idt_value1 = asset.earn_pct
+                    idt_date1 = asset.by_date
+                elif idt_name1 == 'max_by_pct':
+                    idt_value1 = (asset.max_by - asset.in_price) / asset.in_price
+                    idt_date1 = asset.by_date
+                elif idt_name1 == 'min_by_pct':
+                    idt_value1 = (asset.min_by - asset.in_price) / asset.in_price
+                    idt_date1 = asset.by_date
+                elif idt_name1 == 'earn_return':
+                    idt_value1 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_date1 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para1.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
@@ -2568,6 +2571,18 @@ class Pool:
                         idt_value2 = 0
                     else:
                         idt_date2 = asset.by_date
+                elif idt_name2 == 'earn_pct':
+                    idt_value2 = asset.earn_pct
+                    idt_date2 = asset.by_date
+                elif idt_name2 == 'max_by_pct':
+                    idt_value2 = (asset.max_by - asset.in_price) / asset.in_price
+                    idt_date2 = asset.by_date
+                elif idt_name2 == 'min_by_pct':
+                    idt_value2 = (asset.min_by - asset.in_price) / asset.in_price
+                    idt_date2 = asset.by_date
+                elif idt_name2 == 'earn_return':
+                    idt_value2 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_date2 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para2.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
@@ -2595,7 +2610,7 @@ class Pool:
                 # print('[L1428] idt_value2: {}'.format(idt_value2))
 
                 # -------------调用Condition.calcer()处理---------------------
-                if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
+                if idt_date1 == 'const' or idt_date2 == 'const' or idt_date1 == idt_date2:
                     fl_result = cnd.calcer(idt_value1, idt_value2)  # condition结果
                     # print('[L1410] fl_result:{}'.format(fl_result))
                 else:
@@ -2722,49 +2737,55 @@ class Pool:
             if rslt is not None:
                 asset.in_price, asset.in_date = rslt
 
-        # 遍历assets, 更新by_date, by_price, stay_days
+        # 遍历assets, 更新by_date, by_price, earn, earn_pct, max_by, min_by
         for asset in self.assets.values():
             rslt = asset.get_price(self.by_date)  # 永远当日收盘价
             if rslt is not None:  # 不停牌有收盘价
                 _price, _ = rslt
                 if asset.by_date is None:
                     asset.by_date = self.by_date
-                    asset.by_price = _price
-                    asset.earn = asset.by_price - asset.in_price
-                    asset.earn_pct = (asset.earn / asset.in_price)
-                elif int(asset.by_date) > int(self.by_date):
+                if int(asset.by_date) > int(self.by_date):
                     log_args = [asset.ts_code, asset.by_date, self.by_date]
                     add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
                     continue  # skip this asset
-                else:
+                if int(self.by_date) > int(asset.in_date):
                     asset.by_date = self.by_date
                     asset.by_price = _price
                     asset.earn = asset.by_price - asset.in_price
                     asset.earn_pct = (asset.earn / asset.in_price)
+                    if asset.max_by is None:
+                        asset.max_by = _price
+                    elif _price > asset.max_by:
+                        asset.max_by = _price
+                    if asset.min_by is None:
+                        asset.min_by = _price
+                    elif _price < asset.min_by:
+                        asset.min_by = _price
 
             # 更新stay_days
             if asset.in_date is not None:
-                asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
+                if int(self.by_date) > int(asset.in_date):
+                    asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
 
-                # 更新high_in_pool, low_in_pool
-                rslt = asset.get_price(self.by_date, mode='high')
-                if rslt is not None:  # 不停牌有收盘价
-                    _high, _ = rslt
-                    if asset.high_in_pool is None:
-                        asset.high_in_pool = _high
-                        asset.high_pct = (_high - asset.in_price) / asset.in_price
-                    elif asset.high_in_pool < _high:
-                        asset.high_in_pool = _high
-                        asset.high_pct = (_high - asset.in_price) / asset.in_price
-                rslt = asset.get_price(self.by_date, mode='low')  # 永远当日收盘价
-                if rslt is not None:  # 不停牌有收盘价
-                    _low, _ = rslt
-                    if asset.low_in_pool is None:
-                        asset.low_in_pool = _low
-                        asset.low_pct = (_low - asset.in_price) / asset.in_price
-                    elif asset.low_in_pool > _low:
-                        asset.low_in_pool = _low
-                        asset.low_pct = (_low - asset.in_price) / asset.in_price
+                    # 更新high_in_pool, low_in_pool
+                    rslt = asset.get_price(self.by_date, mode='high')
+                    if rslt is not None:  # 不停牌有收盘价
+                        _high, _ = rslt
+                        if asset.high_in_pool is None:
+                            asset.high_in_pool = _high
+                            asset.high_pct = (_high - asset.in_price) / asset.in_price
+                        elif asset.high_in_pool < _high:
+                            asset.high_in_pool = _high
+                            asset.high_pct = (_high - asset.in_price) / asset.in_price
+                    rslt = asset.get_price(self.by_date, mode='low')  # 永远当日收盘价
+                    if rslt is not None:  # 不停牌有收盘价
+                        _low, _ = rslt
+                        if asset.low_in_pool is None:
+                            asset.low_in_pool = _low
+                            asset.low_pct = (_low - asset.in_price) / asset.in_price
+                        elif asset.low_in_pool > _low:
+                            asset.low_in_pool = _low
+                            asset.low_pct = (_low - asset.in_price) / asset.in_price
 
         # 依次遍历所有filters
         rslt_to_return = []  # 返回的结果
@@ -3076,6 +3097,10 @@ class Para:
         idt_type: <str> in indicator.IDT_CLASS.keys, or
                         'const' 常量
                         'stay_days' 资产在pool中停留的交易日数
+                        'earn_pct' 收益%
+                        'max_by_pct' pool中历史最高by_price对应earn pct
+                        'min_by_pct' pool中历史最低by_price对应loss pct
+                        'earn_return' 有盈利后，回撤对应盈利的比例
         field: <str> 指标结果列名
                      'default' 指标结果是单列的，使用此默认值
                      如'DEA' 指标结果是多列的，非与指标名同名的列，用大写指定
@@ -3093,6 +3118,18 @@ class Para:
         elif idt_type == 'stay_days':
             self.idt_name = 'stay_days'
             self.idt_type = 'stay_days'
+        elif idt_type == 'earn_pct':
+            self.idt_name = 'earn_pct'
+            self.idt_type = 'earn_pct'
+        elif idt_type == 'max_by_pct':
+            self.idt_name = 'max_by_pct'
+            self.idt_type = 'max_by_pct'
+        elif idt_type == 'min_by_pct':
+            self.idt_name = 'min_by_pct'
+            self.idt_type = 'min_by_pct'
+        elif idt_type == 'earn_return':
+            self.idt_name = 'earn_return'
+            self.idt_type = 'earn_return'
         else:
             self.field = None  # <str> string of the indicator result csv column name
             if 'field' in pre_args:
@@ -3248,8 +3285,8 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
 
     stg = Strategy('简单模式')
-    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
@@ -3279,7 +3316,7 @@ if __name__ == "__main__":
                  'dq_n1': 1,
                  'shift_periods': -1,
                  'update_csv': True}
-    p10.add_condition(pre_args1, pre_args2, '>')
+    p10.add_condition(pre_args1, pre_args2, '<')
     # ------condition_1
     pre_args1 = {'idt_type': 'madq',
                  'period': 5,
@@ -3287,14 +3324,14 @@ if __name__ == "__main__":
     pre_args2 = {'idt_type': 'madq',
                  'period': 20,
                  'dq_n1': 1}
-    p10.add_condition(pre_args1, pre_args2, '<=')
+    p10.add_condition(pre_args1, pre_args2, '>=')
     # ------condition_2
     pre_args1 = {'idt_type': 'maqs',
                  'period': 5,
                  'specific_asset': '000001.SH'}
     pre_args2 = {'idt_type': 'const',
                  'const_value': -0.005}
-    p10.add_condition(pre_args1, pre_args2, '<=')
+    p10.add_condition(pre_args1, pre_args2, '>')
     # ------condition_3
     # pre_args1 = {'idt_type': 'maqs',
     #              'period': 20}
@@ -3309,22 +3346,23 @@ if __name__ == "__main__":
     pre_args2 = {'idt_type': 'const',
                  'const_value': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
-    # # ------condition_1
-    # pre_args1 = {'idt_type': 'maqs',
-    #              'period': 60}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 0}
-    # p20.add_condition(pre_args1, pre_args2, '>=')
-    #
+
     p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    # # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.1}
+    p20.add_condition(pre_args1, pre_args2, '>=')
+
+    p20.add_filter(cnd_indexes={1}, down_pools={'discard'})
     # # ---pool20 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 5}
-    # p20.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    # ------condition_2
+    pre_args1 = {'idt_type': 'min_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.05}
+    p20.add_condition(pre_args1, pre_args2, '<=')
+
+    p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
     #
     # # ---pool30 conditions-----------
     # # ------condition_0

@@ -2422,46 +2422,47 @@ class Pool:
                 add_log(20, '[fn]Pool.op_cnds_matrix(). both ts_code and al are not specified, del aborted')
                 return
 
-    def filter_cnd(self, cnd_index, datetime_='latest', csv=None, al=None, update_matrix=None):
+    def filter_cnd(self, cnd_index, datetime_, csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
         本函数不会发起基础数据的下载和或指标的重新计算
         cnd_index: <int>, self.conditions 的序号
-        datetime_: <str> 'latest' or like '20190723' YYYYMMDD
+        datetime_: <str> '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              'default' = <pool_desc>_output.csv
         al: 输入资产列表 None=self.assets.values(); <list> of ts_code
         update_matrix: 是否更新self.cnds_matrix, True=更新
         return: <list> 成立ts_code列表
         """
+        from st_common import CND_SPC_TYPES
         try:
             cnd = self.conditions[cnd_index]  # <Condition>, 过滤的条件
         except IndexError:
             log_args = [cnd_index]
             add_log(20, '[fn]Pool.filter_cnd(). invalid cnd_index:{0[0]}', log_args)
             return
-        if datetime_ == 'latest':
-            # -----para1
-            if cnd.para1.shift_periods is None:
-                shift1 = 0  # 前后移动周期数
-            elif cnd.para1.shift_periods > 0:
-                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
-                return
-            else:  # 负值，取前值
-                shift1 = cnd.para1.shift_periods
-            val_fetcher1 = lambda df, column_name: df.iloc[0 - shift1][column_name]  # [fn] 获取最新idt记录值
-            date_fetcher1 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
-            # -----para2
-            if cnd.para2.shift_periods is None:
-                shift2 = 0  # 前后移动周期数
-            elif cnd.para2.shift_periods > 0:
-                add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
-                return
-            else:  # 负值，取前值
-                shift2 = cnd.para2.shift_periods
-            val_fetcher2 = lambda df, column_name: df.iloc[0 - shift2][column_name]  # [fn] 获取最新idt记录值
-            date_fetcher2 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
-        elif valid_date_str_fmt(datetime_):
+        # if datetime_ == 'latest':  # 准备取消'latest'功能
+        #     # -----para1
+        #     if cnd.para1.shift_periods is None:
+        #         shift1 = 0  # 前后移动周期数
+        #     elif cnd.para1.shift_periods > 0:
+        #         add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+        #         return
+        #     else:  # 负值，取前值
+        #         shift1 = cnd.para1.shift_periods
+        #     val_fetcher1 = lambda df, column_name: df.iloc[0 - shift1][column_name]  # [fn] 获取最新idt记录值
+        #     date_fetcher1 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+        #     # -----para2
+        #     if cnd.para2.shift_periods is None:
+        #         shift2 = 0  # 前后移动周期数
+        #     elif cnd.para2.shift_periods > 0:
+        #         add_log(20, '[fn]Pool.filter_cnd(). can not shift forward is datetime is latest')
+        #         return
+        #     else:  # 负值，取前值
+        #         shift2 = cnd.para2.shift_periods
+        #     val_fetcher2 = lambda df, column_name: df.iloc[0 - shift2][column_name]  # [fn] 获取最新idt记录值
+        #     date_fetcher2 = lambda df: str(df.index[0])  # [fn] 用以获取当前资产idt的最新记录时间
+        if valid_date_str_fmt(datetime_):
             dt_int = int(datetime_)
             # -----para1
             if cnd.para1.shift_periods is None:
@@ -2496,6 +2497,14 @@ class Pool:
 
             for asset in al_list:
                 # print("[L1383] ts_code: {}".format(asset.ts_code))
+                if asset.in_date is None:
+                    log_args = [datetime_, asset.ts_code]
+                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} in_date is None on {0[0]}}, skip', log_args)
+                    continue
+                elif int(datetime_) <= int(asset.in_date):
+                    log_args = [datetime_, asset.ts_code, asset.in_date]
+                    add_log(40, '[fn]Pool.filter_cnd(). datetime_:{0[0]} earlier than {0[1]} in_date:{0[2]}, skip', log_args)
+                    continue
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
@@ -2513,12 +2522,16 @@ class Pool:
                         idt_date1 = asset.by_date
                 elif idt_name1 == 'earn_pct':
                     idt_value1 = asset.earn_pct
+                    idt_date1 = asset.by_date
                 elif idt_name1 == 'max_by_pct':
                     idt_value1 = (asset.max_by - asset.in_price) / asset.in_price
+                    idt_date1 = asset.by_date
                 elif idt_name1 == 'min_by_pct':
                     idt_value1 = (asset.min_by - asset.in_price) / asset.in_price
+                    idt_date1 = asset.by_date
                 elif idt_name1 == 'earn_return':
                     idt_value1 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_date1 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para1.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
@@ -2560,12 +2573,16 @@ class Pool:
                         idt_date2 = asset.by_date
                 elif idt_name2 == 'earn_pct':
                     idt_value2 = asset.earn_pct
+                    idt_date2 = asset.by_date
                 elif idt_name2 == 'max_by_pct':
                     idt_value2 = (asset.max_by - asset.in_price) / asset.in_price
+                    idt_date2 = asset.by_date
                 elif idt_name2 == 'min_by_pct':
                     idt_value2 = (asset.min_by - asset.in_price) / asset.in_price
+                    idt_date2 = asset.by_date
                 elif idt_name2 == 'earn_return':
                     idt_value2 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_date2 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para2.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
@@ -2593,7 +2610,7 @@ class Pool:
                 # print('[L1428] idt_value2: {}'.format(idt_value2))
 
                 # -------------调用Condition.calcer()处理---------------------
-                if idt_date1 == "const" or idt_date2 == "const" or idt_date1 == idt_date2:
+                if idt_date1 == 'const' or idt_date2 == 'const' or idt_date1 == idt_date2:
                     fl_result = cnd.calcer(idt_value1, idt_value2)  # condition结果
                     # print('[L1410] fl_result:{}'.format(fl_result))
                 else:
@@ -2727,6 +2744,12 @@ class Pool:
                 _price, _ = rslt
                 if asset.by_date is None:
                     asset.by_date = self.by_date
+                if int(asset.by_date) > int(self.by_date):
+                    log_args = [asset.ts_code, asset.by_date, self.by_date]
+                    add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
+                    continue  # skip this asset
+                if int(self.by_date) > int(asset.in_date):
+                    asset.by_date = self.by_date
                     asset.by_price = _price
                     asset.earn = asset.by_price - asset.in_price
                     asset.earn_pct = (asset.earn / asset.in_price)
@@ -2738,39 +2761,31 @@ class Pool:
                         asset.min_by = _price
                     elif _price < asset.min_by:
                         asset.min_by = _price
-                elif int(asset.by_date) > int(self.by_date):
-                    log_args = [asset.ts_code, asset.by_date, self.by_date]
-                    add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
-                    continue  # skip this asset
-                else:
-                    asset.by_date = self.by_date
-                    asset.by_price = _price
-                    asset.earn = asset.by_price - asset.in_price
-                    asset.earn_pct = (asset.earn / asset.in_price)
 
             # 更新stay_days
             if asset.in_date is not None:
-                asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
+                if int(self.by_date) > int(asset.in_date):
+                    asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
 
-                # 更新high_in_pool, low_in_pool
-                rslt = asset.get_price(self.by_date, mode='high')
-                if rslt is not None:  # 不停牌有收盘价
-                    _high, _ = rslt
-                    if asset.high_in_pool is None:
-                        asset.high_in_pool = _high
-                        asset.high_pct = (_high - asset.in_price) / asset.in_price
-                    elif asset.high_in_pool < _high:
-                        asset.high_in_pool = _high
-                        asset.high_pct = (_high - asset.in_price) / asset.in_price
-                rslt = asset.get_price(self.by_date, mode='low')  # 永远当日收盘价
-                if rslt is not None:  # 不停牌有收盘价
-                    _low, _ = rslt
-                    if asset.low_in_pool is None:
-                        asset.low_in_pool = _low
-                        asset.low_pct = (_low - asset.in_price) / asset.in_price
-                    elif asset.low_in_pool > _low:
-                        asset.low_in_pool = _low
-                        asset.low_pct = (_low - asset.in_price) / asset.in_price
+                    # 更新high_in_pool, low_in_pool
+                    rslt = asset.get_price(self.by_date, mode='high')
+                    if rslt is not None:  # 不停牌有收盘价
+                        _high, _ = rslt
+                        if asset.high_in_pool is None:
+                            asset.high_in_pool = _high
+                            asset.high_pct = (_high - asset.in_price) / asset.in_price
+                        elif asset.high_in_pool < _high:
+                            asset.high_in_pool = _high
+                            asset.high_pct = (_high - asset.in_price) / asset.in_price
+                    rslt = asset.get_price(self.by_date, mode='low')  # 永远当日收盘价
+                    if rslt is not None:  # 不停牌有收盘价
+                        _low, _ = rslt
+                        if asset.low_in_pool is None:
+                            asset.low_in_pool = _low
+                            asset.low_pct = (_low - asset.in_price) / asset.in_price
+                        elif asset.low_in_pool > _low:
+                            asset.low_in_pool = _low
+                            asset.low_pct = (_low - asset.in_price) / asset.in_price
 
         # 依次遍历所有filters
         rslt_to_return = []  # 返回的结果
