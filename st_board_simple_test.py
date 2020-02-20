@@ -1886,8 +1886,10 @@ class Strategy:
             in_price_mode = transfer[3]
             out_shift_days = transfer[4]
             in_shift_days = transfer[5]
+            out_seek_direction = transfer[6]
+            in_seek_direction = transfer[7]
             for ts_code in al:  # 给in_pool添加assets
-                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days)
+                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days, out_seek_direction=out_seek_direction, in_seek_direction=in_seek_direction)
                 if _rslt == 'duplicated':
                     continue
                 elif _rslt is True:
@@ -1904,7 +1906,7 @@ class Strategy:
                     out_pool.del_asset(ts_code)
                     out_pool.op_cnds_matrix(mode='d', ts_code=ts_code)
 
-    def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', out_shift_days=0, in_shift_days=0, volume=None):
+    def trans_asset_down(self, ts_code, trade_date, out_pool_index, in_pool_index, out_price_mode=None, in_price_mode='close', out_shift_days=0, in_shift_days=0, out_seek_direction=None, in_seek_direction=None, volume=None):
         """
         将单个asset加载到下游in_pool,但不删除原out_pool的asset（因为1个循环同1资产可能转去多个pool)； 给self.trans_logs添加1条记录； 给out_pool.
         手续税费等还未考虑
@@ -1921,6 +1923,7 @@ class Strategy:
                         None 根据in的情况在设out_price和out_date
         in_price_mode: <str> 详见Asset.get_price()
         in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        in_seek_direction, out_seek_direction: <str> or None refer Asset.get_price() attr: seek_direction
         volume: <int> 成交股数
                 <None> 不适用
 
@@ -1953,10 +1956,10 @@ class Strategy:
             return
 
         # 处理in_price 和 in_date
-        _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode, shift_days=in_shift_days)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+        _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode, shift_days=in_shift_days, seek_direction=in_seek_direction)  # 因为有资产交割shift_days的设置，所以实际的in_date可能与条件触发日不是同一天而停牌，此时向后找一段价格更合实际
         if _rslt is None:
-            log_args = [ts_code, trade_date, in_price_mode]
-            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode: {0[2]}) not available on {0[1]}, aborted', log_args)
+            log_args = [ts_code, trade_date, in_price_mode, in_shift_days, in_seek_direction]
+            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode:{0[2]}, shift:{0[3]}, seek:{0[4]}) not available on {0[1]}, aborted', log_args)
             return  # 未找到价格
         in_price, in_date = _rslt
 
@@ -1964,7 +1967,7 @@ class Strategy:
         if out_price_mode is None:  # 根据in_price, in_date来
             out_price, out_date = in_price, in_date
         else:
-            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode, shift_days=out_shift_days)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode, shift_days=out_shift_days, seek_direction=out_seek_direction)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
             if _rslt is None:
                 add_log(20, '[fn]Strategy.trans_asset_down() out_price not available, aborted')
                 return  # 未找到价格
@@ -2307,19 +2310,20 @@ class Pool:
         for i in range(len(self.conditions)):
             print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
 
-    def add_filter(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_shift_days=0, in_shift_days=0):
+    def add_filter(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_seek_direction=None, in_seek_direction=None, out_shift_days=0, in_shift_days=0):
         """
         add the filter to the pool
         cnd_indexes: <set> {0, 1, 2}
         down_pools: <set> {0, 1}
         in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
         in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        in_seek_direction, out_seek_direction: <str> or None refer Asset.get_price() attr: seek_direction
         """
         if cnd_indexes is None:
             cnd_indexes = set()
         if down_pools is None:
             down_pools = set()
-        self.filters.append(Filter(cnd_indexes, down_pools, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days))
+        self.filters.append(Filter(cnd_indexes, down_pools, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days, out_seek_direction=out_seek_direction, in_seek_direction=in_seek_direction))
 
     def iter_al(self):
         """
@@ -2501,10 +2505,15 @@ class Pool:
                     log_args = [datetime_, asset.ts_code]
                     add_log(40, '[fn]Pool.filter_cnd(). {0[1]} in_date is None on {0[0]}}, skip', log_args)
                     continue
-                elif int(datetime_) <= int(asset.in_date):
+                elif asset.by_price is None:  # 移入新pool后马上停牌，没有刷新到by_price和其它数值
+                    log_args = [datetime_, asset.ts_code]
+                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}}, skip', log_args)
+                    continue
+                elif int(datetime_) <= int(asset.in_date):  # asset跳后加入，处理的日子早于等于asset.in_date
                     log_args = [datetime_, asset.ts_code, asset.in_date]
                     add_log(40, '[fn]Pool.filter_cnd(). datetime_:{0[0]} earlier than {0[1]} in_date:{0[2]}, skip', log_args)
                     continue
+
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
@@ -2796,7 +2805,7 @@ class Pool:
             if rslt_assets is not None:
                 if len(rslt_assets) > 0:
                     for index in filter_.down_pools:
-                        rslt_item = (index, rslt_assets, filter_.out_price_mode, filter_.in_price_mode, filter_.out_shift_days, filter_.in_shift_days)
+                        rslt_item = (index, rslt_assets, filter_.out_price_mode, filter_.in_price_mode, filter_.out_shift_days, filter_.in_shift_days, filter_.out_seek_direction, filter_.in_seek_direction)
                         rslt_to_return.append(rslt_item)
 
         if len(rslt_to_return) > 0:
@@ -2838,15 +2847,19 @@ class Pool:
             msg = msg + 'pool[{}]:{};    al:{}\n'.format(pool_index, pool.desc, pool.al_file)
             fltr = pool.filters[filter_index]
             msg = msg + '----filter[{}] down_pools:{}\n'.format(filter_index, fltr.down_pools)
-            # price mode and shift_days
+            # in price mode, shift_days, seek_direction
             in_shift_days = fltr.in_shift_days
-            str_in_shift_days = '    shift_days:{}'.format(in_shift_days) if in_shift_days != 0 else ""
-            msg = msg + 'in_price_mode:{}'.format(fltr.in_price_mode) + str_in_shift_days + '\n'
+            str_in_shift_days = '    shift:{} days '.format(in_shift_days) if in_shift_days != 0 else ""
+            in_seek_direction = fltr.in_seek_direction
+            str_in_seek = '    seek:{}'.format(in_seek_direction) if in_seek_direction is not None else ""
+            msg = msg + 'in_price_mode:{}'.format(fltr.in_price_mode) + str_in_shift_days + str_in_seek + '\n'
             out_price_mode = fltr.out_price_mode
             if out_price_mode is not None:
                 out_shift_days = fltr.out_shift_days
-                str_out_shift_days = '    shift_days:{}'.format(out_shift_days) if out_shift_days != 0 else ""
-                msg = msg + 'out_price_mode:{}'.format(fltr.out_price_mode) + str_out_shift_days + '\n'
+                str_out_shift_days = '    shift:{} days '.format(out_shift_days) if out_shift_days != 0 else ""
+                out_seek_direction = fltr.out_seek_direction
+                str_out_seek = '    seek:{}'.format(out_seek_direction) if out_seek_direction is not None else ""
+                msg = msg + 'out_price_mode:{}'.format(fltr.out_price_mode) + str_out_shift_days + str_out_seek + '\n'
 
             for cnd_index in fltr.cnd_indexes:
                 cnd = pool.conditions[cnd_index]
@@ -3160,7 +3173,7 @@ class Filter:
     """
     Condition的集合，assets在pools间按过滤条件流转的通道
     """
-    def __new__(cls, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', in_shift_days=0, out_shift_days=0):
+    def __new__(cls, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_seek_direction=None, in_seek_direction=None, in_shift_days=0, out_shift_days=0):
         if down_pools is None:
             down_pools = set()
         if cnd_indexes is None:
@@ -3172,10 +3185,11 @@ class Filter:
             log_args = [type(cnd_indexes), type(down_pools)]
             add_log(10, '[fn]Filter.__new__() cnd_indexes type:{0[0]}, down_pools type:{0[1]} are not <set>', log_args)
 
-    def __init__(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', in_shift_days=0, out_shift_days=0):
+    def __init__(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_seek_direction=None, in_seek_direction=None, in_shift_days=0, out_shift_days=0):
         """
         in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
         in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        in_seek_direction, out_seek_direction: <str> or None refer Asset.get_price() attr: seek_direction
         """
         if down_pools is None:
             down_pools = set()
@@ -3187,6 +3201,8 @@ class Filter:
         self.in_price_mode = in_price_mode
         self.in_shift_days = in_shift_days
         self.out_shift_days = out_shift_days
+        self.out_seek_direction = out_seek_direction
+        self.in_seek_direction = in_seek_direction
 
 
 class Register_Buffer:
@@ -3285,8 +3301,8 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
 
     stg = Strategy('简单模式')
-    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
@@ -3325,13 +3341,13 @@ if __name__ == "__main__":
                  'period': 20,
                  'dq_n1': 1}
     p10.add_condition(pre_args1, pre_args2, '>=')
-    # ------condition_2
-    pre_args1 = {'idt_type': 'maqs',
-                 'period': 5,
-                 'specific_asset': '000001.SH'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.005}
-    p10.add_condition(pre_args1, pre_args2, '>')
+    # # ------condition_2
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 5,
+    #              'specific_asset': '000001.SH'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.005}
+    # p10.add_condition(pre_args1, pre_args2, '>')
     # ------condition_3
     # pre_args1 = {'idt_type': 'maqs',
     #              'period': 20}
@@ -3339,7 +3355,7 @@ if __name__ == "__main__":
     #              'const_value': 0.001}
     # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1, in_seek_direction='forwards')
     # ---pool20 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
@@ -3347,32 +3363,39 @@ if __name__ == "__main__":
                  'const_value': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
     # # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.1}
+                 'const_value': 0.18}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={1}, down_pools={'discard'})
-    # # ---pool20 conditions-----------
-    # ------condition_2
+    p20.add_filter(cnd_indexes={1}, down_pools={'discard'}, in_seek_direction='forwards')
+    # # ------condition_2
     pre_args1 = {'idt_type': 'min_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.05}
+                 'const_value': -0.1}
     p20.add_condition(pre_args1, pre_args2, '<=')
 
-    p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
-    #
+    p20.add_filter(cnd_indexes={2}, down_pools={'discard'}, in_seek_direction='forwards')
+
     # # ---pool30 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'stay_days'}
     # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 30}
+    #              'const_value': 20}
     # p30.add_condition(pre_args1, pre_args2, '>=')
     
     # p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    #
+    
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'min_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.1}
+    # p30.add_condition(pre_args1, pre_args2, '<=')
+
+    # p30.add_filter(cnd_indexes={1}, down_pools={'discard'})
+    
     # # ---pool40 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'stay_days'}
@@ -3413,10 +3436,10 @@ if __name__ == "__main__":
     stg.init_ref_assets()
 
     # ---stg循环-----------
-    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
     # stg.update_cycles(start_date='20190514', end_date='20200101')
-    stg.update_cycles(start_date='20180101', cycles=50)
+    # stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
     # p30.csv_in_out()

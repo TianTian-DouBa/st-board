@@ -1488,26 +1488,21 @@ class Plot_Assets_Racing:
     """资产竞速图表：不同资产从同一基准起跑，一定时间内的价格表现
     """
 
-    def __init__(self, al_file, period=30):
+    def __init__(self, al_df, period=30):
         """
-        al_file: <str> 资产表的文件名e.g.'al_SW_Index_L1.csv'
+        al_df: <df> 资产表的<df>
         period: <int> 比较的周期
         """
         global raw_data
-        al_path = sub_path + sub_path_al + '\\' + al_file
-        try:
-            al_df = pd.read_csv(al_path)
-            # print("[debug L335] al_df:{}".format(al_df))
-        except FileNotFoundError:
-            log_args = [al_path]
-            add_log(10, '[fn]Plot_Assets_Racing.__init__(). file "{0[0]}" not found', log_args)
+        if not isinstance(al_df, pd.DataFrame):
+            log_args = [type(al_df)]
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). invalid type:{0[0]} of al_df', log_args)
             return
-        al_df.set_index('ts_code', inplace=True)
+        # al_df.set_index('ts_code', inplace=True)
         # print("[debug L341] al_df:{}".format(al_df))
         self.al = al_df[al_df == 'T'].index  # index of ts_code
         if len(self.al) == 0:
-            log_args = [al_path]
-            add_log(10, '[fn]Plot_Assets_Racing.__init__(). no item in "{0[0]}"', log_args)
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). no item in al_df')
             return
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -1558,8 +1553,9 @@ class Plot_Assets_Racing:
         # print("[L383] self.raw_data:{}".format(self.raw_data))
         self.raw_data.sort_values(by='last_chg', inplace=True, ascending=False)
         result = self.raw_data[['name', 'last_chg']]
+        print('资产竞速{}周期涨幅比较'.format(period))
         print(result)
-        file_name = str('资产竞速{}周期涨幅比较_{}'.format(period, al_file[3:-4])) + '_' + today_str() + '.csv'
+        file_name = str('资产竞速{}周期涨幅比较'.format(period)) + '_' + today_str() + '.csv'
         file_path = sub_path_result + r'\Plot_Assets_Racing' + '\\' + file_name
         result.to_csv(file_path, encoding="utf-8")
         log_args = [file_path]
@@ -1574,7 +1570,7 @@ class Plot_Assets_Racing:
         mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
         mpl.rcParams['axes.unicode_minus'] = False  # 解决保存图像是负号'-'显示为方块的问题
         plt.xticks(df.index, rotation='vertical')
-        plt.title('资产竞速{}周期涨幅比较 - {}'.format(period, al_file[3:-4]))
+        plt.title('资产竞速{}周期涨幅比较'.format(period))
         plt.ylabel('收盘%')
         plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
         plt.legend(bbox_to_anchor=(1, 1), bbox_transform=plt.gcf().transFigure)
@@ -1886,8 +1882,10 @@ class Strategy:
             in_price_mode = transfer[3]
             out_shift_days = transfer[4]
             in_shift_days = transfer[5]
+            out_seek_direction = transfer[6]
+            in_seek_direction = transfer[7]
             for ts_code in al:  # 给in_pool添加assets
-                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days)
+                _rslt = self.trans_asset_down(ts_code=ts_code, trade_date=trade_date, out_pool_index=out_pool_index, in_pool_index=in_pool_index, out_price_mode=out_price_mode, in_price_mode=in_price_mode, out_shift_days=out_shift_days, in_shift_days=in_shift_days, out_seek_direction=out_seek_direction, in_seek_direction=in_seek_direction)
                 if _rslt == 'duplicated':
                     continue
                 elif _rslt is True:
@@ -1956,8 +1954,8 @@ class Strategy:
         # 处理in_price 和 in_date
         _rslt = asset.get_price(trade_date=trade_date, mode=in_price_mode, shift_days=in_shift_days, seek_direction=in_seek_direction)  # 因为有资产交割shift_days的设置，所以实际的in_date可能与条件触发日不是同一天而停牌，此时向后找一段价格更合实际
         if _rslt is None:
-            log_args = [ts_code, trade_date, in_price_mode]
-            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode: {0[2]}) not available on {0[1]}, aborted', log_args)
+            log_args = [ts_code, trade_date, in_price_mode, in_shift_days, in_seek_direction]
+            add_log(20, '[fn]Strategy.trans_asset_down() {0[0]} in_price (mode:{0[2]}, shift:{0[3]}, seek:{0[4]}) not available on {0[1]}, aborted', log_args)
             return  # 未找到价格
         in_price, in_date = _rslt
 
@@ -1965,7 +1963,7 @@ class Strategy:
         if out_price_mode is None:  # 根据in_price, in_date来
             out_price, out_date = in_price, in_date
         else:
-            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode, shift_days=out_shift_days)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
+            _rslt = asset.get_price(trade_date=trade_date, mode=out_price_mode, shift_days=out_shift_days, seek_direction=out_seek_direction)  # 资产的交割应该都在交易日，所以get_price的seek_direction默认放None，不搜索
             if _rslt is None:
                 add_log(20, '[fn]Strategy.trans_asset_down() out_price not available, aborted')
                 return  # 未找到价格
@@ -2803,7 +2801,7 @@ class Pool:
             if rslt_assets is not None:
                 if len(rslt_assets) > 0:
                     for index in filter_.down_pools:
-                        rslt_item = (index, rslt_assets, filter_.out_price_mode, filter_.in_price_mode, filter_.out_shift_days, filter_.in_shift_days)
+                        rslt_item = (index, rslt_assets, filter_.out_price_mode, filter_.in_price_mode, filter_.out_shift_days, filter_.in_shift_days, filter_.out_seek_direction, filter_.in_seek_direction)
                         rslt_to_return.append(rslt_item)
 
         if len(rslt_to_return) > 0:
@@ -2845,15 +2843,19 @@ class Pool:
             msg = msg + 'pool[{}]:{};    al:{}\n'.format(pool_index, pool.desc, pool.al_file)
             fltr = pool.filters[filter_index]
             msg = msg + '----filter[{}] down_pools:{}\n'.format(filter_index, fltr.down_pools)
-            # price mode and shift_days
+            # in price mode, shift_days, seek_direction
             in_shift_days = fltr.in_shift_days
-            str_in_shift_days = '    shift_days:{}'.format(in_shift_days) if in_shift_days != 0 else ""
-            msg = msg + 'in_price_mode:{}'.format(fltr.in_price_mode) + str_in_shift_days + '\n'
+            str_in_shift_days = '    shift:{} days '.format(in_shift_days) if in_shift_days != 0 else ""
+            in_seek_direction = fltr.in_seek_direction
+            str_in_seek = '    seek:{}'.format(in_seek_direction) if in_seek_direction is not None else ""
+            msg = msg + 'in_price_mode:{}'.format(fltr.in_price_mode) + str_in_shift_days + str_in_seek + '\n'
             out_price_mode = fltr.out_price_mode
             if out_price_mode is not None:
                 out_shift_days = fltr.out_shift_days
-                str_out_shift_days = '    shift_days:{}'.format(out_shift_days) if out_shift_days != 0 else ""
-                msg = msg + 'out_price_mode:{}'.format(fltr.out_price_mode) + str_out_shift_days + '\n'
+                str_out_shift_days = '    shift:{} days '.format(out_shift_days) if out_shift_days != 0 else ""
+                out_seek_direction = fltr.out_seek_direction
+                str_out_seek = '    seek:{}'.format(out_seek_direction) if out_seek_direction is not None else ""
+                msg = msg + 'out_price_mode:{}'.format(fltr.out_price_mode) + str_out_shift_days + str_out_seek + '\n'
 
             for cnd_index in fltr.cnd_indexes:
                 cnd = pool.conditions[cnd_index]
@@ -3646,7 +3648,7 @@ if __name__ == "__main__":
     #              'const_value': 0}
     # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1}, down_pools={20, 30, 40, 50, 60, 70}, in_price_mode='open_sxd', in_shift_days=1, in_seek_direction='forwards')
+    p10.add_filter(cnd_indexes={0, 1}, down_pools={20, 30, 40, 50, 60, 70}, in_price_mode='open_sxd', in_shift_days=1)
     # # ---pool20 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'ema',
@@ -3669,7 +3671,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
@@ -3686,7 +3688,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p30.add_condition(pre_args1, pre_args2, '>=')
 
-    p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p30.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
@@ -3703,7 +3705,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p40.add_condition(pre_args1, pre_args2, '>=')
 
-    p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p40.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
@@ -3720,7 +3722,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p50.add_condition(pre_args1, pre_args2, '>=')
 
-    p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p50.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'min_by_pct'}
@@ -3737,7 +3739,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p60.add_condition(pre_args1, pre_args2, '>=')
 
-    p60.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p60.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'min_by_pct'}
@@ -3754,7 +3756,7 @@ if __name__ == "__main__":
                  'const_value': 20}
     p70.add_condition(pre_args1, pre_args2, '>=')
 
-    p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    p70.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'min_by_pct'}
