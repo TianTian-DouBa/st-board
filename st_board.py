@@ -7,7 +7,7 @@ from st_common import raw_data  # 不能去掉
 from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
-from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
 import tushare as ts

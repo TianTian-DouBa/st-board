@@ -7,7 +7,7 @@ from st_common import raw_data  # 不能去掉
 from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
-from XF_common.XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable, log_print
 import matplotlib.pyplot as plt
 from pylab import mpl
 import tushare as ts
@@ -2507,7 +2507,7 @@ class Pool:
                     continue
                 elif asset.by_price is None:  # 移入新pool后马上停牌，没有刷新到by_price和其它数值
                     log_args = [datetime_, asset.ts_code]
-                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}}, skip', log_args)
+                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}, skip', log_args)
                     continue
                 elif int(datetime_) <= int(asset.in_date):  # asset跳后加入，处理的日子早于等于asset.in_date
                     log_args = [datetime_, asset.ts_code, asset.in_date]
