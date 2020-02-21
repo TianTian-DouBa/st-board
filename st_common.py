@@ -72,7 +72,9 @@ CND_SPC_TYPES = {'const',  # 常量
                  'earn_pct',  # 盈利%
                  'max_by_pct',  # pool中历史最高by_price对应的earn pct
                  'min_by_pct',  # pool中历史最低by_price对应的loss pct
-                 'earn_return'}  # 从max_by回落一定比例触发
+                 'earn_return',  # 从max_by回落一定比例触发
+                 'dymc_return_lmt',  # 动态dynamic earn return limit, 根据max_by_pct计算，用于earn_return的动态设定
+                 }
 
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 

@@ -2291,7 +2291,8 @@ class Pool:
          'reload': False  # 功能待查看代码
          'bias': 0.05  # 偏置量
          'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
-         'earn_return': 0.5  # <50% of max_by to sale
+         'earn_return': 0.5  # >50% of max_by to sale
+         ‘dymc_return_lmt': 0.5  # 动态dynamic回撤限, 根据max_by_pct计算，用于earn_return的动态设定
          }
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 需要保持多少个周期来达成条件
@@ -2434,7 +2435,12 @@ class Pool:
         update_matrix: 是否更新self.cnds_matrix, True=更新
         return: <list> 成立ts_code列表
         """
-        from st_common import CND_SPC_TYPES
+        # 用于dymc_return_lmt的设置表
+        dymc_lmt_set = ((0.1, 0.6),  # ((max_by_pct, earn_return_lmt), ...)
+                        (0.3, 0.5),  # 共5个条目，不能多不能少
+                        (0.5, 0.4),  # 如果Pool.add_condition()含dymc_lmt_set参数，则覆盖此参数
+                        (1.0, 0.3),
+                        (2.0, 0.2))
         try:
             cnd = self.conditions[cnd_index]  # <Condition>, 过滤的条件
         except IndexError:
@@ -2537,6 +2543,33 @@ class Pool:
                 elif idt_name1 == 'earn_return':
                     idt_value1 = (asset.max_by - asset.by_price) / asset.max_by
                     idt_date1 = asset.by_date
+                elif idt_name1 == 'dymc_return_lmt':
+                    if cnd.para1.dymc_lmt_set is not None:
+                        dymc_lmt_set = cnd.para1.dymc_lmt_set
+                    max_by_pct = (asset.max_by - asset.in_price) / asset.in_price
+                    if max_by_pct < dymc_lmt_set[0][0]:  # 设置第0行前
+                        idt_value1 = dymc_lmt_set[0][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[0][0] <= max_by_pct < dymc_lmt_set[1][0]:  # 设置第0，1行间
+                        idt_value1 = dymc_lmt_set[0][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[1][0] <= max_by_pct < dymc_lmt_set[2][0]:  # 设置第1，2行间
+                        idt_value1 = dymc_lmt_set[1][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[2][0] <= max_by_pct < dymc_lmt_set[3][0]:  # 设置第2，3行间
+                        idt_value1 = dymc_lmt_set[2][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[3][0] <= max_by_pct < dymc_lmt_set[4][0]:  # 设置第3，4行间
+                        idt_value1 = dymc_lmt_set[3][1]
+                        idt_date1 = asset.by_date
+                    elif max_by_pct >= dymc_lmt_set[4][0]:  # 设置第4行后
+                        idt_value1 = dymc_lmt_set[4][1]
+                        idt_date1 = asset.by_date
+                    else:  # 未知意外情况
+                        log_args = [asset.ts_code, asset.by_date]
+                        add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
+                        idt_value1 = dymc_lmt_set[4][1]  # 使用保守值
+                        idt_date1 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para1.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
@@ -2588,6 +2621,33 @@ class Pool:
                 elif idt_name2 == 'earn_return':
                     idt_value2 = (asset.max_by - asset.by_price) / asset.max_by
                     idt_date2 = asset.by_date
+                elif idt_name2 == 'dymc_return_lmt':
+                    if cnd.para2.dymc_lmt_set is not None:
+                        dymc_lmt_set = cnd.para2.dymc_lmt_set
+                    max_by_pct = (asset.max_by - asset.in_price) / asset.in_price
+                    if max_by_pct < dymc_lmt_set[0][0]:  # 设置第0行前
+                        idt_value2 = dymc_lmt_set[0][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[0][0] <= max_by_pct < dymc_lmt_set[1][0]:  # 设置第0，1行间
+                        idt_value2 = dymc_lmt_set[0][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[1][0] <= max_by_pct < dymc_lmt_set[2][0]:  # 设置第1，2行间
+                        idt_value2 = dymc_lmt_set[1][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[2][0] <= max_by_pct < dymc_lmt_set[3][0]:  # 设置第2，3行间
+                        idt_value2 = dymc_lmt_set[2][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[3][0] <= max_by_pct < dymc_lmt_set[4][0]:  # 设置第3，4行间
+                        idt_value2 = dymc_lmt_set[3][1]
+                        idt_date2 = asset.by_date
+                    elif max_by_pct >= dymc_lmt_set[4][0]:  # 设置第4行后
+                        idt_value2 = dymc_lmt_set[4][1]
+                        idt_date2 = asset.by_date
+                    else:  # 未知意外情况
+                        log_args = [asset.ts_code, asset.by_date]
+                        add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
+                        idt_value2 = dymc_lmt_set[4][1]  # 使用保守值
+                        idt_date2 = asset.by_date
                 else:  # 普通Indicator类condition
                     if cnd.para2.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
@@ -2597,7 +2657,7 @@ class Pool:
                         idt2 = getattr(_asset, idt_name2)
                     except Exception as e:  # 待细化
                         log_args = [_asset.ts_code, e.__class__.__name__, e]
-                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
+                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_df2 = idt2.df_idt
                     idt_field2 = cnd.para2.field
@@ -3110,6 +3170,7 @@ class Para:
                         'max_by_pct' pool中历史最高by_price对应earn pct
                         'min_by_pct' pool中历史最低by_price对应loss pct
                         'earn_return' 有盈利后，回撤对应盈利的比例
+                        'dymc_return_lmt' 可与earn_return配合使用
         field: <str> 指标结果列名
                      'default' 指标结果是单列的，使用此默认值
                      如'DEA' 指标结果是多列的，非与指标名同名的列，用大写指定
@@ -3139,6 +3200,10 @@ class Para:
         elif idt_type == 'earn_return':
             self.idt_name = 'earn_return'
             self.idt_type = 'earn_return'
+        elif idt_type == 'dymc_return_lmt':
+            self.idt_name = 'dymc_return_lmt'
+            self.idt_type = 'dymc_return_lmt'
+            self.dymc_lmt_set = None  # None则使用默认值
         else:
             self.field = None  # <str> string of the indicator result csv column name
             if 'field' in pre_args:
@@ -3161,6 +3226,12 @@ class Para:
         if 'bias' in pre_args:
             self.bias = pre_args['bias']
             del pre_args['bias']
+        if 'dymc_lmt_set' in pre_args:
+            _dymc = pre_args['dymc_lmt_set']
+            if isinstance(_dymc, set):
+                if len(_dymc) == 5:
+                    self.dymc_lmt_set = _dymc
+            del pre_args['dymc_lmt_set']
         else:
             self.bias = 0
 
@@ -3600,22 +3671,22 @@ if __name__ == "__main__":
     # pool10.filter_cnd(cnd=cond0, al=al)
     # pool10.dashboard.disp_board()
     print('================Strategy测试================')
-    stg = Strategy('卖出止盈止损')
-    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg = Strategy('测试')
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
-    stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p30 = stg.pools[30]
-    stg.add_pool(desc='p40持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p40 = stg.pools[40]
-    stg.add_pool(desc='p50持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p50 = stg.pools[50]
-    stg.add_pool(desc='p60持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p60 = stg.pools[60]
-    stg.add_pool(desc='p70持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    p70 = stg.pools[70]
+    # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p30 = stg.pools[30]
+    # stg.add_pool(desc='p40持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p40 = stg.pools[40]
+    # stg.add_pool(desc='p50持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p50 = stg.pools[50]
+    # stg.add_pool(desc='p60持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p60 = stg.pools[60]
+    # stg.add_pool(desc='p70持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    # p70 = stg.pools[70]
     # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
@@ -3648,7 +3719,7 @@ if __name__ == "__main__":
     #              'const_value': 0}
     # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1}, down_pools={20, 30, 40, 50, 60, 70}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
     # # ---pool20 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'ema',
@@ -3666,105 +3737,111 @@ if __name__ == "__main__":
     # p20.add_filter(cnd_indexes={0}, down_pools={30})
     # ====pool20 conditions=============
     # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    # p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.18}
+                 'const_value': 0.1}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={1}, down_pools={'discard'})
+    p20.add_filter(cnd_indexes={0, 1}, down_pools={'discard'}, in_seek_direction='forwards')
 
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.2}
+    p20.add_condition(pre_args1, pre_args2, '<=')
+
+    p20.add_filter(cnd_indexes={2}, down_pools={'discard'}, in_seek_direction='forwards')
     # ====pool30 conditions=============
     # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p30.add_condition(pre_args1, pre_args2, '>=')
+    # pre_args1 = {'idt_type': 'earn_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.2}
+    # p30.add_condition(pre_args1, pre_args2, '<=')
+    #
+    # p30.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
 
-    p30.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'max_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.15}
+    # p30.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p30.add_filter(cnd_indexes={1}, down_pools={'discard'})
 
-    # ------condition_1
-    pre_args1 = {'idt_type': 'max_by_pct'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.15}
-    p30.add_condition(pre_args1, pre_args2, '>=')
+    # # ====pool40 conditions=============
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p40.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p40.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    #
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'max_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0.12}
+    # p40.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p40.add_filter(cnd_indexes={1}, down_pools={'discard'})
 
-    p30.add_filter(cnd_indexes={1}, down_pools={'discard'})
-
-    # ====pool40 conditions=============
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p40.add_condition(pre_args1, pre_args2, '>=')
-
-    p40.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
-
-    # ------condition_1
-    pre_args1 = {'idt_type': 'max_by_pct'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.12}
-    p40.add_condition(pre_args1, pre_args2, '>=')
-
-    p40.add_filter(cnd_indexes={1}, down_pools={'discard'})
-
-    # ====pool50 conditions=============
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p50.add_condition(pre_args1, pre_args2, '>=')
-
-    p50.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
-
-    # ------condition_1
-    pre_args1 = {'idt_type': 'min_by_pct'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.06}
-    p50.add_condition(pre_args1, pre_args2, '<=')
-
-    p50.add_filter(cnd_indexes={1}, down_pools={'discard'})
-
-    # ====pool60 conditions=============
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p60.add_condition(pre_args1, pre_args2, '>=')
-
-    p60.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
-
-    # ------condition_1
-    pre_args1 = {'idt_type': 'min_by_pct'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.08}
-    p60.add_condition(pre_args1, pre_args2, '<=')
-
-    p60.add_filter(cnd_indexes={1}, down_pools={'discard'})
-
-    # ====pool70 conditions=============
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
-    p70.add_condition(pre_args1, pre_args2, '>=')
-
-    p70.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
-
-    # ------condition_1
-    pre_args1 = {'idt_type': 'min_by_pct'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.1}
-    p70.add_condition(pre_args1, pre_args2, '<=')
-
-    p70.add_filter(cnd_indexes={1}, down_pools={'discard'})
+    # # ====pool50 conditions=============
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p50.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p50.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    #
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'min_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.06}
+    # p50.add_condition(pre_args1, pre_args2, '<=')
+    #
+    # p50.add_filter(cnd_indexes={1}, down_pools={'discard'})
+    #
+    # # ====pool60 conditions=============
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p60.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p60.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    #
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'min_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.08}
+    # p60.add_condition(pre_args1, pre_args2, '<=')
+    #
+    # p60.add_filter(cnd_indexes={1}, down_pools={'discard'})
+    #
+    # # ====pool70 conditions=============
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p70.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p70.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    #
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'min_by_pct'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': -0.1}
+    # p70.add_condition(pre_args1, pre_args2, '<=')
+    #
+    # p70.add_filter(cnd_indexes={1}, down_pools={'discard'})
 
     # ---初始化各pool.cnds_matrix, strategy.ref_assets-----------
     stg.init_pools_cnds_matrix()
@@ -3776,11 +3853,11 @@ if __name__ == "__main__":
     # stg.update_cycles(start_date='20180101', cycles=50)
     # ---报告-----------
     p20.csv_in_out()
-    p30.csv_in_out()
-    p40.csv_in_out()
-    p50.csv_in_out()
-    p60.csv_in_out()
-    p70.csv_in_out()
+    # p30.csv_in_out()
+    # p40.csv_in_out()
+    # p50.csv_in_out()
+    # p60.csv_in_out()
+    # p70.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()

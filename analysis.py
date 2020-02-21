@@ -40,6 +40,7 @@ def in_out_agg(io_df):
     s_low_pct = io_df['low_pct']  # <series>
     dscb_l_pct = s_low_pct.describe(percentiles=[.1, .5, .9])
     low_10, low_50, low_90 = dscb_l_pct[['90%', '50%', '10%']]  # 高低价有意倒过来
+    avg_20d_earn_pct = avg_earn_pct / stay_days * 20  # 20交易日标杆的平均涨幅
 
     # 结果展示
     msg = '\n======================================================================================\n'
@@ -52,6 +53,7 @@ def in_out_agg(io_df):
     msg = msg + 'Average Earn%: {:12.2%}        90% High%:   {:12.2%}\n'.format(avg_earn_pct, high_90)
     msg = msg + 'Median Earn%:  {:12.2%}        50% High%:   {:12.2%}\n'.format(median_earn_pct, high_50)
     msg = msg + 'Std Dev Earn%: {:12.2%}        10% High%:   {:12.2%}\n'.format(std_earn_pct, high_10)
+    msg = msg + 'Avg 20D Earn%: {:12.2%}\n'.format()
     msg = msg + '\n'
 
     msg = msg + '90% Earn%:     {:12.2%}        90% Low%:    {:12.2%}\n'.format(med_90, low_90)

@@ -2,8 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/analysis.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board_simple_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board_simple_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_common.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -186,10 +190,10 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="613" y="414" key="#com.jetbrains.python.refactoring.move.PyMoveModuleMembersDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1581669539329" />
-    <state x="641" y="378" width="883" height="587" key="#xdebugger.evaluate" timestamp="1582107595285">
+    <state x="641" y="378" width="883" height="587" key="#xdebugger.evaluate" timestamp="1582269487304">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="641" y="378" width="883" height="587" key="#xdebugger.evaluate/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582107595285" />
+    <state x="641" y="378" width="883" height="587" key="#xdebugger.evaluate/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269487304" />
     <state x="383" y="118" key="CommitChangelistDialog2" timestamp="1576504312241">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -198,46 +202,46 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="755" height="466" key="DebuggerActiveHint/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580095705002" />
-    <state width="1584" height="378" key="GridCell.Tab.0.bottom" timestamp="1582160592957">
+    <state width="1584" height="378" key="GridCell.Tab.0.bottom" timestamp="1582269632812">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592957" />
-    <state width="1584" height="378" key="GridCell.Tab.0.center" timestamp="1582160592956">
+    <state width="1584" height="378" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632812" />
+    <state width="1584" height="378" key="GridCell.Tab.0.center" timestamp="1582269632811">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592956" />
-    <state width="1584" height="378" key="GridCell.Tab.0.left" timestamp="1582160592956">
+    <state width="1584" height="378" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632811" />
+    <state width="1584" height="378" key="GridCell.Tab.0.left" timestamp="1582269632811">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592956" />
-    <state width="1584" height="378" key="GridCell.Tab.0.right" timestamp="1582160592956">
+    <state width="1584" height="378" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632811" />
+    <state width="1584" height="378" key="GridCell.Tab.0.right" timestamp="1582269632812">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592956" />
-    <state width="1584" height="378" key="GridCell.Tab.1.bottom" timestamp="1582160592958">
+    <state width="1584" height="378" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632812" />
+    <state width="1584" height="378" key="GridCell.Tab.1.bottom" timestamp="1582269632736">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592958" />
-    <state width="1584" height="378" key="GridCell.Tab.1.center" timestamp="1582160592957">
+    <state width="1584" height="378" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632736" />
+    <state width="1584" height="378" key="GridCell.Tab.1.center" timestamp="1582269632736">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592957" />
-    <state width="1584" height="378" key="GridCell.Tab.1.left" timestamp="1582160592957">
+    <state width="1584" height="378" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632736" />
+    <state width="1584" height="378" key="GridCell.Tab.1.left" timestamp="1582269632736">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592957" />
-    <state width="1584" height="378" key="GridCell.Tab.1.right" timestamp="1582160592958">
+    <state width="1584" height="378" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632736" />
+    <state width="1584" height="378" key="GridCell.Tab.1.right" timestamp="1582269632736">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="378" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582160592958" />
+    <state width="1584" height="378" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1582269632736" />
     <state x="498" y="235" key="RollbackChangesDialog" timestamp="1579358481751">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -284,6 +288,11 @@
           <url>file://$PROJECT_DIR$/st_board_simple_test.py</url>
           <line>3454</line>
           <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/st_board.py</url>
+          <line>2648</line>
+          <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -2295,7 +2295,7 @@ class Pool:
          'reload': False  # 功能待查看代码
          'bias': 0.05  # 偏置量
          'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
-         'earn_return': 0.5  # <50% of max_by to sale
+         'earn_return': 0.5  # >50% of max_by to sale
          }
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 需要保持多少个周期来达成条件
@@ -3301,8 +3301,8 @@ if __name__ == "__main__":
     raw_data = Raw_Data(pull=False)
 
     stg = Strategy('简单模式')
-    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    #stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
@@ -3355,7 +3355,7 @@ if __name__ == "__main__":
     #              'const_value': 0.001}
     # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1, in_seek_direction='forwards')
+    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
     # ---pool20 conditions-----------
     # ------condition_0
     pre_args1 = {'idt_type': 'stay_days'}
@@ -3363,21 +3363,21 @@ if __name__ == "__main__":
                  'const_value': 20}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+    p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
     # # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0.18}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={1}, down_pools={'discard'}, in_seek_direction='forwards')
+    p20.add_filter(cnd_indexes={1}, down_pools={'discard'})
     # # ------condition_2
     pre_args1 = {'idt_type': 'min_by_pct'}
     pre_args2 = {'idt_type': 'const',
                  'const_value': -0.1}
     p20.add_condition(pre_args1, pre_args2, '<=')
 
-    p20.add_filter(cnd_indexes={2}, down_pools={'discard'}, in_seek_direction='forwards')
+    p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
 
     # # ---pool30 conditions-----------
     # # ------condition_0
