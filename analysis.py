@@ -53,7 +53,7 @@ def in_out_agg(io_df):
     msg = msg + 'Average Earn%: {:12.2%}        90% High%:   {:12.2%}\n'.format(avg_earn_pct, high_90)
     msg = msg + 'Median Earn%:  {:12.2%}        50% High%:   {:12.2%}\n'.format(median_earn_pct, high_50)
     msg = msg + 'Std Dev Earn%: {:12.2%}        10% High%:   {:12.2%}\n'.format(std_earn_pct, high_10)
-    msg = msg + 'Avg 20D Earn%: {:12.2%}\n'.format()
+    msg = msg + 'Avg 20D Earn%: {:12.2%}\n'.format(avg_20d_earn_pct)
     msg = msg + '\n'
 
     msg = msg + '90% Earn%:     {:12.2%}        90% Low%:    {:12.2%}\n'.format(med_90, low_90)
