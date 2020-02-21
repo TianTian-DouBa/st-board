@@ -2541,7 +2541,7 @@ class Pool:
                     idt_value1 = (asset.min_by - asset.in_price) / asset.in_price
                     idt_date1 = asset.by_date
                 elif idt_name1 == 'earn_return':
-                    idt_value1 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_value1 = (asset.max_by - asset.by_price) / (asset.max_by - asset.in_price)
                     idt_date1 = asset.by_date
                 elif idt_name1 == 'dymc_return_lmt':
                     if cnd.para1.dymc_lmt_set is not None:
@@ -2619,7 +2619,7 @@ class Pool:
                     idt_value2 = (asset.min_by - asset.in_price) / asset.in_price
                     idt_date2 = asset.by_date
                 elif idt_name2 == 'earn_return':
-                    idt_value2 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_value2 = (asset.max_by - asset.by_price) / (asset.max_by - asset.in_price)
                     idt_date2 = asset.by_date
                 elif idt_name2 == 'dymc_return_lmt':
                     if cnd.para2.dymc_lmt_set is not None:
@@ -3713,13 +3713,13 @@ if __name__ == "__main__":
                  'dq_n1': 1}
     p10.add_condition(pre_args1, pre_args2, '>=')
     # ------condition_2
-    # pre_args1 = {'idt_type': 'maqs',
-    #              'period': 20}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 0}
-    # p10.add_condition(pre_args1, pre_args2, '>')
+    pre_args1 = {'idt_type': 'maqs',
+                 'period': 60}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0}
+    p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
     # # ---pool20 conditions-----------
     # # ------condition_0
     # pre_args1 = {'idt_type': 'ema',
@@ -3749,7 +3749,7 @@ if __name__ == "__main__":
                  'const_value': 0.1}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0, 1}, down_pools={'discard'}, in_seek_direction='forwards')
+    p20.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
 
     # ------condition_2
     pre_args1 = {'idt_type': 'earn_pct'}
@@ -3757,7 +3757,7 @@ if __name__ == "__main__":
                  'const_value': -0.2}
     p20.add_condition(pre_args1, pre_args2, '<=')
 
-    p20.add_filter(cnd_indexes={2}, down_pools={'discard'}, in_seek_direction='forwards')
+    p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
     # ====pool30 conditions=============
     # ------condition_0
     # pre_args1 = {'idt_type': 'earn_pct'}
