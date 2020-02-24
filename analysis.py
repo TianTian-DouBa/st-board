@@ -18,9 +18,11 @@ def select_df_csv():
     return df
 
 
-def in_out_agg(io_df):
+def in_out_agg(io_df, trade_cost=0.005):
     """
     显示<df>in_out的统计信息
+    io_df: <df> of in_out
+    trade_cost: <float> 每次交易的固定成本，加可能的滑点损失
     """
     if not isinstance(io_df, pd.DataFrame):
         log_args = [type(io_df)]
@@ -41,6 +43,8 @@ def in_out_agg(io_df):
     dscb_l_pct = s_low_pct.describe(percentiles=[.1, .5, .9])
     low_10, low_50, low_90 = dscb_l_pct[['90%', '50%', '10%']]  # 高低价有意倒过来
     avg_20d_earn_pct = avg_earn_pct / stay_days * 20  # 20交易日标杆的平均涨幅
+    net_avg_earn_pct = avg_earn_pct - trade_cost  # 平均单次交易的净收益%
+    net_avg_20d_earn_pct = net_avg_earn_pct / stay_days * 20  # 20交易日标杆的平均净收益%
 
     # 结果展示
     msg = '\n======================================================================================\n'
@@ -60,6 +64,10 @@ def in_out_agg(io_df):
     msg = msg + '75% Earn%:     {:12.2%}        50% Low%:    {:12.2%}\n'.format(med_75, low_50)
     msg = msg + '25% Earn%:     {:12.2%}        10% Low%:    {:12.2%}\n'.format(med_25, low_10)
     msg = msg + '10% Earn%:     {:12.2%}\n'.format(med_10)
+    msg = msg + '\n'
+    msg = msg + 'Net avg Earn%: {:12.2%}\n'.format(net_avg_earn_pct)
+    msg = msg + 'Net 20D Earn%: {:12.2%}\n'.format(net_avg_20d_earn_pct)
+
     msg = msg + '======================================================================================\n'
     return msg
 

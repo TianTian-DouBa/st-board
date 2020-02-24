@@ -3675,9 +3675,9 @@ if __name__ == "__main__":
     # pool10.dashboard.disp_board()
     print('================Strategy测试================')
     stg = Strategy('测试')
-    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
 
-    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
 
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
@@ -3695,8 +3695,9 @@ if __name__ == "__main__":
     stg.add_pool(desc='p60持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p60 = stg.pools[60]
 
-    # stg.add_pool(desc='p70持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p70 = stg.pools[70]
+    stg.add_pool(desc='p70持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p70 = stg.pools[70]
+
     # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
@@ -3758,7 +3759,7 @@ if __name__ == "__main__":
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.05}
+                 'const_value': 0.2}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
     p20.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
@@ -3766,7 +3767,7 @@ if __name__ == "__main__":
     # ------condition_2
     pre_args1 = {'idt_type': 'earn_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.2}
+                 'const_value': -0.125}
     p20.add_condition(pre_args1, pre_args2, '<=')
 
     p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
@@ -3782,7 +3783,7 @@ if __name__ == "__main__":
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.25}
+                 'const_value': 0.2}
     p30.add_condition(pre_args1, pre_args2, '>=')
 
     p30.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
@@ -3790,7 +3791,7 @@ if __name__ == "__main__":
     # ------condition_2
     pre_args1 = {'idt_type': 'earn_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.2}
+                 'const_value': -0.1}
     p30.add_condition(pre_args1, pre_args2, '<=')
 
     p30.add_filter(cnd_indexes={2}, down_pools={'discard'})
@@ -3806,7 +3807,7 @@ if __name__ == "__main__":
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.3}
+                 'const_value': 0.2}
     p40.add_condition(pre_args1, pre_args2, '>=')
 
     p40.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
@@ -3814,7 +3815,7 @@ if __name__ == "__main__":
     # ------condition_2
     pre_args1 = {'idt_type': 'earn_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.2}
+                 'const_value': -0.075}
     p40.add_condition(pre_args1, pre_args2, '<=')
 
     p40.add_filter(cnd_indexes={2}, down_pools={'discard'})
@@ -3830,7 +3831,7 @@ if __name__ == "__main__":
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.1}
+                 'const_value': 0.175}
     p50.add_condition(pre_args1, pre_args2, '>=')
 
     p50.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
@@ -3854,7 +3855,7 @@ if __name__ == "__main__":
     # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.1}
+                 'const_value': 0.2}
     p60.add_condition(pre_args1, pre_args2, '>=')
 
     p60.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
@@ -3862,10 +3863,34 @@ if __name__ == "__main__":
     # ------condition_2
     pre_args1 = {'idt_type': 'earn_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.05}
+                 'const_value': -0.1}
     p60.add_condition(pre_args1, pre_args2, '<=')
 
     p60.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
+    # ====pool70 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p70.add_condition(pre_args1, pre_args2, '>=')
+
+    # p70.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.225}
+    p70.add_condition(pre_args1, pre_args2, '>=')
+
+    p70.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.1}
+    p70.add_condition(pre_args1, pre_args2, '<=')
+
+    p70.add_filter(cnd_indexes={2}, down_pools={'discard'})
 
     # ---初始化各pool.cnds_matrix, strategy.ref_assets-----------
     stg.init_pools_cnds_matrix()
@@ -3881,7 +3906,7 @@ if __name__ == "__main__":
     p40.csv_in_out()
     p50.csv_in_out()
     p60.csv_in_out()
-    # p70.csv_in_out()
+    p70.csv_in_out()
 
     print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()
