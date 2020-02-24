@@ -18,16 +18,39 @@ def select_df_csv():
     return df
 
 
-def in_out_agg(io_df, trade_cost=0.005):
+def in_out_agg(io_df, trade_cost=0.005, yearly=True):
     """
     显示<df>in_out的统计信息
     io_df: <df> of in_out
     trade_cost: <float> 每次交易的固定成本，加可能的滑点损失
+    yearly: True or None 是否显示按年汇总信息
     """
     if not isinstance(io_df, pd.DataFrame):
         log_args = [type(io_df)]
         add_log(20, '[fns]Analysis.in_out_agg(). io_df type:{} is not <df>', log_args)
         return
+    if len(io_df) == 0:
+        add_log(30, '[fns]Analysis.in_out_agg(). empty <df>, summary aborted')
+        return
+
+    def _calc(df):
+        """
+        计算以下关键参数
+        net_avg_20d_earn_pct; avg_20d_earn_pct; n_records; n_positive; stay_days
+        """
+        if len(df) <= 0:
+            return None
+        s_earn_pct = df['earn_pct']  # <Series>
+        n_records = len(df)  # 记录条数
+        n_positive = s_earn_pct[s_earn_pct > 0].count()
+        avg_earn_pct, = s_earn_pct.agg(['mean']).values  # 平均值，中位数
+        stay_days, = df['stay_days'].agg(['mean']).values
+        avg_20d_earn_pct = avg_earn_pct / stay_days * 20  # 20交易日标杆的平均涨幅
+        net_avg_earn_pct = avg_earn_pct - trade_cost  # 平均单次交易的净收益%
+        net_avg_20d_earn_pct = net_avg_earn_pct / stay_days * 20  # 20交易日标杆的平均净收益%
+        rslt = (net_avg_20d_earn_pct, avg_20d_earn_pct, n_records, n_positive, stay_days)
+        return rslt
+
     s_earn_pct = io_df['earn_pct']  # <Series>
     n_records = len(io_df)  # 记录条数
     n_positive = s_earn_pct[s_earn_pct > 0].count()
@@ -67,7 +90,131 @@ def in_out_agg(io_df, trade_cost=0.005):
     msg = msg + '\n'
     msg = msg + 'Net avg Earn%: {:12.2%}\n'.format(net_avg_earn_pct)
     msg = msg + 'Net 20D Earn%: {:12.2%}\n'.format(net_avg_20d_earn_pct)
+    msg = msg + '\n'
 
+    # yearly信息
+    if yearly is True:
+        # 开仓yearly汇总
+        fst_in_date_int, last_in_date_int = io_df['in_date'].agg(['min', 'max'])
+        fst_year = int(fst_in_date_int / 10000)
+        last_year = int(last_in_date_int / 10000)
+        l_year = []
+        l_net_avg_20d_earn_pct = []
+        l_avg_20d_earn_pct = []
+        l_n_records = []
+        l_pos_pct = []
+        l_stay_days = []
+
+        for year in range(fst_year, last_year + 1):
+            _start = year * 10000 + 100  # e.g. 20050100
+            _end = year * 10000 + 1232  # e.g. 20051232
+            df = io_df[(io_df.in_date > _start) & (io_df.in_date < _end)]
+            if len(df) > 0:
+                l_year.append(year)
+                rslt = _calc(df)
+                if rslt is not None:
+                    net_avg_20d_earn_pct, avg_20d_earn_pct, n_records, n_positive, stay_days = rslt
+                    l_net_avg_20d_earn_pct.append(net_avg_20d_earn_pct)
+                    l_avg_20d_earn_pct.append(avg_20d_earn_pct)
+                    l_n_records.append(n_records)
+                    l_pos_pct.append(n_positive / n_records)
+                    l_stay_days.append(stay_days)
+
+        if len(l_year) > 0:
+            # print head line of years
+            msg = msg + '开仓时间' + ' ' * 6
+            for year in l_year:
+                msg = msg + '{:>10}'.format(year)
+            msg = msg + '\n'
+            width = len(l_year) * 10 + 15
+            msg = msg + '-' * width + '\n'
+            # print line of net 20D Earn%
+            msg = msg + 'net 20D Earn% '
+            for val in l_net_avg_20d_earn_pct:
+                msg = msg + '{:10.2%}'.format(val)
+            msg = msg + '\n'
+            # print line of avg_20d_earn_pct
+            msg = msg + '20D Earn%     '
+            for val in l_avg_20d_earn_pct:
+                msg = msg + '{:10.2%}'.format(val)
+            msg = msg + '\n'
+            # print line of no. records
+            msg = msg + 'no. records   '
+            for val in l_n_records:
+                msg = msg + '{:>10}'.format(val)
+            msg = msg + '\n'
+            # print line of % of Pos. records
+            msg = msg + '% of Pos.     '
+            for val in l_pos_pct:
+                msg = msg + '{:10.2%}'.format(val)
+            msg = msg + '\n'
+            # print line of average days
+            msg = msg + 'avg days      '
+            for val in l_stay_days:
+                msg = msg + '{:10.1f}'.format(val)
+            msg = msg + '\n\n'
+
+            # 平仓yearly汇总
+            fst_out_date_int, last_out_date_int = io_df['out_date'].agg(['min', 'max'])
+            fst_year = int(fst_out_date_int / 10000)
+            last_year = int(last_out_date_int / 10000)
+            l_year = []
+            l_net_avg_20d_earn_pct = []
+            l_avg_20d_earn_pct = []
+            l_n_records = []
+            l_pos_pct = []
+            l_stay_days = []
+
+            for year in range(fst_year, last_year + 1):
+                _start = year * 10000 + 100  # e.g. 20050100
+                _end = year * 10000 + 1232  # e.g. 20051232
+                df = io_df[(io_df.out_date > _start) & (io_df.out_date < _end)]
+                if len(df) > 0:
+                    l_year.append(year)
+                    rslt = _calc(df)
+                    if rslt is not None:
+                        net_avg_20d_earn_pct, avg_20d_earn_pct, n_records, n_positive, stay_days = rslt
+                        l_net_avg_20d_earn_pct.append(net_avg_20d_earn_pct)
+                        l_avg_20d_earn_pct.append(avg_20d_earn_pct)
+                        l_n_records.append(n_records)
+                        l_pos_pct.append(n_positive / n_records)
+                        l_stay_days.append(stay_days)
+
+            if len(l_year) > 0:
+                # print head line of years
+                msg = msg + '平仓时间' + ' ' * 6
+                for year in l_year:
+                    msg = msg + '{:>10}'.format(year)
+                msg = msg + '\n'
+                width = len(l_year) * 10 + 15
+                msg = msg + '-' * width + '\n'
+                # print line of net 20D Earn%
+                msg = msg + 'net 20D Earn% '
+                for val in l_net_avg_20d_earn_pct:
+                    msg = msg + '{:10.2%}'.format(val)
+                msg = msg + '\n'
+                # print line of avg_20d_earn_pct
+                msg = msg + '20D Earn%     '
+                for val in l_avg_20d_earn_pct:
+                    msg = msg + '{:10.2%}'.format(val)
+                msg = msg + '\n'
+                # print line of no. records
+                msg = msg + 'no. records   '
+                for val in l_n_records:
+                    msg = msg + '{:>10}'.format(val)
+                msg = msg + '\n'
+                # print line of % of Pos. records
+                msg = msg + '% of Pos.     '
+                for val in l_pos_pct:
+                    msg = msg + '{:10.2%}'.format(val)
+                msg = msg + '\n'
+                # print line of average days
+                msg = msg + 'avg days      '
+                for val in l_stay_days:
+                    msg = msg + '{:10.1f}'.format(val)
+                msg = msg + '\n'
+
+    # 打印结束行
     msg = msg + '======================================================================================\n'
     return msg
 
