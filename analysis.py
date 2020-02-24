@@ -96,8 +96,8 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
     if yearly is True:
         # 开仓yearly汇总
         fst_in_date_int, last_in_date_int = io_df['in_date'].agg(['min', 'max'])
-        fst_year = int(fst_in_date_int / 10000)
-        last_year = int(last_in_date_int / 10000)
+        fst_year = int(int(fst_in_date_int) / 10000)
+        last_year = int(int(last_in_date_int) / 10000)
         l_year = []
         l_net_avg_20d_earn_pct = []
         l_avg_20d_earn_pct = []
@@ -156,8 +156,8 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
 
             # 平仓yearly汇总
             fst_out_date_int, last_out_date_int = io_df['out_date'].agg(['min', 'max'])
-            fst_year = int(fst_out_date_int / 10000)
-            last_year = int(last_out_date_int / 10000)
+            fst_year = int(int(fst_out_date_int) / 10000)
+            last_year = int(int(last_out_date_int) / 10000)
             l_year = []
             l_net_avg_20d_earn_pct = []
             l_avg_20d_earn_pct = []

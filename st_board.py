@@ -2264,6 +2264,8 @@ class Pool:
             log_args = [file_path]
             add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
             msg2 = in_out_agg(self.in_out)
+            if msg2 is None:
+                msg2 = 'in_out_agg not available\n'
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
