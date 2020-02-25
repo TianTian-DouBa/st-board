@@ -3732,7 +3732,7 @@ if __name__ == "__main__":
                  'const_value': 0}
     p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50, 60}, in_price_mode='open_sxd', in_shift_days=1)
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50, 60, 70}, in_price_mode='open_sxd', in_shift_days=1)
 
     # # ---pool20 conditions-----------
     # # ------condition_0

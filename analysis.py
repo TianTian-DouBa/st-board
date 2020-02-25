@@ -1,5 +1,6 @@
 from XF_common.XF_LOG_MANAGE import add_log
 import pandas as pd
+import numpy as np
 
 
 def select_df_csv():
@@ -32,6 +33,13 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
     if len(io_df) == 0:
         add_log(30, '[fns]Analysis.in_out_agg(). empty <df>, summary aborted')
         return
+    try:
+        io_df = io_df.astype({'in_date': 'int32', 'out_date': 'int32'})
+    except Exception as e:
+        log_args = [type(e)]
+        add_log(20, '[fns]Analysis.in_out_agg(). failed to convert in/out_date to int, error type:{}', log_args)
+        return
+
 
     def _calc(df):
         """
@@ -96,8 +104,8 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
     if yearly is True:
         # 开仓yearly汇总
         fst_in_date_int, last_in_date_int = io_df['in_date'].agg(['min', 'max'])
-        fst_year = int(int(fst_in_date_int) / 10000)
-        last_year = int(int(last_in_date_int) / 10000)
+        fst_year = int(fst_in_date_int / 10000)
+        last_year = int(last_in_date_int / 10000)
         l_year = []
         l_net_avg_20d_earn_pct = []
         l_avg_20d_earn_pct = []
@@ -156,8 +164,8 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
 
             # 平仓yearly汇总
             fst_out_date_int, last_out_date_int = io_df['out_date'].agg(['min', 'max'])
-            fst_year = int(int(fst_out_date_int) / 10000)
-            last_year = int(int(last_out_date_int) / 10000)
+            fst_year = int(fst_out_date_int / 10000)
+            last_year = int(last_out_date_int / 10000)
             l_year = []
             l_net_avg_20d_earn_pct = []
             l_avg_20d_earn_pct = []
