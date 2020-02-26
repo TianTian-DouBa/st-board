@@ -373,7 +373,7 @@ def bulk_dl_appendix(al_file, reload=False):
     al_file:<str> path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
     reload:<bool> True重新下载完整文件
     """
-    print('[L697] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
+    print('[L376] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
@@ -507,7 +507,7 @@ class All_Assets_List:
         que_from_ts: <bool> F：从文件读 T:从tushare 接口读
         """
         global raw_data
-        file_name = "all_assets_list_rebuild.csv"  # 不同名避免误操作
+        file_name = "all_assets_list.csv"  # 不同名避免误操作
         file_path_al = sub_path + sub_path_config + '\\' + file_name
         df_al = pd.DataFrame(columns=['ts_code', 'valid', 'selected', 'name', 'type', 'stype1', 'stype2'])
         df_al = df_al.set_index('ts_code')
@@ -619,7 +619,7 @@ class All_Assets_List:
         df_al = pd.concat(_frame, sort=False)
         # --------------结尾---------------
         df_al.to_csv(file_path_al, encoding="utf-8")
-        return
+        return len(df_al)
 
     @staticmethod
     def query_category_str(ts_code):
@@ -702,7 +702,7 @@ class All_Assets_List:
 
         mode = "w" if overwrite is True else "x"
 
-        print("[L697] except for file overwrite not ready")
+        print("[L705] except for file overwrite not ready")
         with open(file_path, mode) as f:
             f.write("ts_code,selected\n")
             for ts_code in input_list:
@@ -723,6 +723,78 @@ class All_Assets_List:
         s_ts_code = df[df.trade_date == trade_date]['con_code']
         al_list = s_ts_code.tolist()
         All_Assets_List.create_al_file(al_list, 'HS300成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_swl123_al():
+        """
+        更新申万 L123的指数列表al_SW_Index_Lx.csv
+        return: n_l1, n_l2, n_l3
+        """
+        df = raw_data.all_assets_list
+
+        # SW L1
+        s_swl1 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (df.stype2 == 'L1')].index
+        l1 = s_swl1.tolist()
+        n_l1 = len(l1)
+        if n_l1 > 0:
+            All_Assets_List.create_al_file(l1, 'SW_Index_L1')
+
+        # SW L2
+        s_swl2 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (df.stype2 == 'L2')].index
+        l2 = s_swl2.tolist()
+        n_l2 = len(l2)
+        if n_l2 > 0:
+            All_Assets_List.create_al_file(l2, 'SW_Index_L2')
+
+        # SW L3
+        s_swl3 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (
+                    df.stype2 == 'L3')].index
+        l3 = s_swl3.tolist()
+        n_l3 = len(l3)
+        if n_l3 > 0:
+            All_Assets_List.create_al_file(l3, 'SW_Index_L3')
+
+        return n_l1, n_l2, n_l3
+
+    @staticmethod
+    def update_download_all():
+        """
+        更新al_download_all.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        n = len(df)
+        if n > 0:
+            s_al = df.index.tolist()
+            All_Assets_List.create_al_file(s_al, 'download_all')
+            return n
+
+    @staticmethod
+    def update_dl_stocks():
+        """
+        更新al_dl_stocks.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        al_list = df[df.type == 'stock'].index.tolist()
+        n = len(df)
+        if n > 0:
+            All_Assets_List.create_al_file(al_list, 'dl_stocks')
+            return n
+
+    @staticmethod
+    def update_dl_indexes():
+        """
+        更新al_dl_indexes.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        al_list = df[df.type == 'index'].index.tolist()
+        n = len(df)
+        if n > 0:
+            All_Assets_List.create_al_file(al_list, 'dl_indexes')
+            return n
 
 
 class Asset:

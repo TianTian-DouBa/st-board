@@ -345,7 +345,7 @@ class Raw_Data:
         file_name = "all_assets_list.csv"
         file_path = sub_path + sub_path_config + '\\' + file_name
         try:
-            df = pd.read_csv(file_path,index_col='ts_code')
+            df = pd.read_csv(file_path, index_col='ts_code')
         except FileNotFoundError:
             log_args = [file_path]
             add_log(10, '[fn]Raw_Data.load_all_assets_list. "{0[0]}" not found', log_args)
@@ -363,9 +363,9 @@ class Index_Basic:
         """
         self.index_basic_df = None
         self.idx_ts_code = None  # <df> ts_code indexed
-        self.valid = {'index_basic_sse':STATUS_WORD[3],  # 上交所
-                      'index_basic_szse':STATUS_WORD[3],  # 深交所
-                      'index_basic_sw':STATUS_WORD[3]}  # 申万
+        self.valid = {'index_basic_sse': STATUS_WORD[3],  # 上交所
+                      'index_basic_szse': STATUS_WORD[3],  # 深交所
+                      'index_basic_sw': STATUS_WORD[3]}  # 申万
         self._sse = None
         self._szse = None
         self._sw = None
@@ -378,25 +378,29 @@ class Index_Basic:
     def get_index_basic(self):
         """
         从ts_pro获取指数的基本信息列表
-        待续：获取数据失败时，self.valid对应项的设-bad-处理
+        无用-待续：获取数据失败时，self.valid对应项的设-bad-处理
+        return: 上交指数个数，深交指数个数， 申万指数个数
         """
         # 上交所指数
         file_name = "index_basic_sse.csv"
         self._sse = ts_pro.index_basic(market='SSE')
-        self.valid['index_basic_sse']=STATUS_WORD[1]
+        self.valid['index_basic_sse'] = STATUS_WORD[1]  # 无用，考虑取消
         self._sse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        n_sse = len(self._sse)
         # 深交所指数
         file_name = "index_basic_szse.csv"
         self._szse = ts_pro.index_basic(market='SZSE')
-        self.valid['index_basic_szse']=STATUS_WORD[1]
+        self.valid['index_basic_szse'] = STATUS_WORD[1]  # 无用，考虑取消
         self._szse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        n_szse = len(self._szse)
         # 申万指数
         file_name = "index_basic_sw.csv"
         self._sw = ts_pro.index_basic(market='SW')
-        self.valid['index_basic_sw']=STATUS_WORD[1]
+        self.valid['index_basic_sw'] = STATUS_WORD[1]  # 无用，考虑取消
         self._sw.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        n_sw = len(self._sw)
         self._update_index_basic_df()
-        return
+        return n_sse, n_szse, n_sw
     
     def load_index_basic(self):
         """
@@ -405,8 +409,8 @@ class Index_Basic:
         # 上交所指数
         file_name = "index_basic_sse.csv"
         try:
-            self._sse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
-            self.valid['index_basic_sse']=STATUS_WORD[1]
+            self._sse = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self.valid['index_basic_sse'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
@@ -414,8 +418,8 @@ class Index_Basic:
         # 深交所指数
         file_name = "index_basic_szse.csv"
         try:
-            self._szse = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
-            self.valid['index_basic_szse']=STATUS_WORD[1]
+            self._szse = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self.valid['index_basic_szse'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
@@ -423,8 +427,8 @@ class Index_Basic:
         # 申万指数
         file_name = "index_basic_sw.csv"
         try:
-            self._sw = pd.read_csv(sub_path + '\\' + file_name,dtype = {'base_date':str, 'list_date':str})
-            self.valid['index_basic_sw']=STATUS_WORD[1]
+            self._sw = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self.valid['index_basic_sw'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
