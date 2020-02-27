@@ -1176,6 +1176,10 @@ class Stock(Asset):
         """
         global raw_data
         df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
+        if len(df_fq) == 0:
+            log_args = [ts_code]
+            add_log(30, '[fn]calc_dfq() ts_code:{0[0]} empty df_fq, skipped', log_args)
+            return
         fq_head_index_str, = df_fq.head(1).index.values
         # print('[354] latest_date_str:{}'.format(fq_head_index_str))
         df_stock = Stock.load_stock_daily(ts_code)[['close', 'open', 'high', 'low', 'vol', 'amount']]
@@ -3458,7 +3462,7 @@ if __name__ == "__main__":
     print('[msg] index_basic_sse.csv:{}, index_basic_szse.csv:{}, index_basic_sw.csv:{} updated'.format(n_sse, n_szse, n_sw))
 
     # 全资产列表
-    n = All_Assets_List.rebuild_all_assets_list()
+    n = All_Assets_List.rebuild_all_assets_list(True)
     if n is not None:
         print(('[msg] config.all_assets_list.csv updated, items:{}'.format(n)))
 
@@ -3490,17 +3494,17 @@ if __name__ == "__main__":
         print(('[msg] al_dl_indexes.csv updated, items:{}'.format(n)))
 
     # #------------------------批量下载数据-----------------------
-    # download_path = r"download_all"
-    download_path = r"try_001"
+    download_path = r"download_all"
+    # download_path = r"try_001"
     # download_path = r"dl_stocks"
     bulk_download(download_path, reload=False)  # 批量下载数据
 
-    download_path = r"try_001"
-    # download_path = r"dl_stocks"
+    # download_path = r"try_001"
+    download_path = r"dl_stocks"
     bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
 
-    # al_file_str = r"dl_stocks"
-    al_file_str = r"try_001"
+    al_file_str = r"dl_stocks"
+    # al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
 
     # #------------------------收尾-----------------------

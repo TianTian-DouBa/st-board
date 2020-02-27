@@ -512,15 +512,18 @@ class All_Assets_List:
         df_al = pd.DataFrame(columns=['ts_code', 'valid', 'selected', 'name', 'type', 'stype1', 'stype2'])
         df_al = df_al.set_index('ts_code')
         # --------------SW 指数---------------
+        file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
+        file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
+        file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
         if que_from_ts is True:
             df_l1, df_l2, df_l3 = Index.get_sw_index_classify()
+            df_l1.to_csv(file_path_sw_l1, encoding="utf-8")
+            df_l2.to_csv(file_path_sw_l2, encoding="utf-8")
+            df_l3.to_csv(file_path_sw_l3, encoding="utf-8")
             df_l1 = df_l1[['index_code', 'industry_name']]
             df_l2 = df_l2[['index_code', 'industry_name']]
             df_l3 = df_l3[['index_code', 'industry_name']]
         else:
-            file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
-            file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
-            file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
             try:
                 _file_path = file_path_sw_l1
                 df_l1 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
@@ -1174,6 +1177,10 @@ class Stock(Asset):
         """
         global raw_data
         df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
+        if len(df_fq) == 0:
+            log_args = [ts_code]
+            add_log(30, '[fn]calc_dfq() ts_code:{0[0]} empty df_fq, skipped', log_args)
+            return
         fq_head_index_str, = df_fq.head(1).index.values
         # print('[354] latest_date_str:{}'.format(fq_head_index_str))
         df_stock = Stock.load_stock_daily(ts_code)[['close', 'open', 'high', 'low', 'vol', 'amount']]
