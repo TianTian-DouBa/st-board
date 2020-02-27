@@ -726,6 +726,30 @@ class All_Assets_List:
         return len(al_list)
 
     @staticmethod
+    def update_sz50_al():
+        """
+        更新 上证50 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000016.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '上证50成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_zz500_al():
+        """
+        更新 中证500 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000905.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '中证500成分股')
+        return len(al_list)
+
+    @staticmethod
     def update_swl123_al():
         """
         更新申万 L123的指数列表al_SW_Index_Lx.csv
@@ -3477,6 +3501,14 @@ if __name__ == "__main__":
     print(('[msg] al_SW_Index_L1.csv updated, items:{}'.format(n_l1)))
     print(('[msg] al_SW_Index_L2.csv updated, items:{}'.format(n_l2)))
     print(('[msg] al_SW_Index_L3.csv updated, items:{}'.format(n_l3)))
+
+    # 上证50成分股
+    n = All_Assets_List.update_sz50_al()
+    print(('[msg] al_上证50成分股.csv updated, items:{}'.format(n)))
+
+    # 中证500成分股
+    n = All_Assets_List.update_zz500_al()
+    print(('[msg] al_中证500成分股.csv updated, items:{}'.format(n)))
 
     # download_all
     n = All_Assets_List.update_download_all()

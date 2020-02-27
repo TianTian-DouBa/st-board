@@ -36,6 +36,7 @@ def today_str():
     today_str_ = dt.strftime("%Y%m%d")
     return today_str_
 
+
 def now_time_str():
     """
     return: <str> e.g.'13-90-45'
@@ -43,6 +44,7 @@ def now_time_str():
     dt = datetime.now()
     now_str = dt.strftime("%H-%M-%S")
     return now_str
+
 
 def valid_file_path(file_path):
     r"""
@@ -104,6 +106,8 @@ def download_data(ts_code, category, reload=False):
             file_name = 'fq_' + ts_code + '.csv'
         elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
             file_name = 'd_' + ts_code + '.csv'
+        elif category == 'hsgt_flow':  # 沪深港通资金流向
+            file_name = 'd_hsgt_flow.csv'
         # ----------其它类型时修改------------
         else:
             log_args = [category]
@@ -130,6 +134,9 @@ def download_data(ts_code, category, reload=False):
         # -----------复权因子--------------
         elif category == 'adj_factor':
             start_date_str = str(raw_data.stock.que_list_date(ts_code))
+        # -------沪深港通资金流向-----------
+        elif category == 'hsgt_flow':
+            start_date_str = '20141117'  # 沪深港通数据起点
         # -----------其它类型(未完成)--------------
         else:
             log_args = [ts_code, category]
@@ -139,40 +146,12 @@ def download_data(ts_code, category, reload=False):
 
     if raw_data.valid_ts_code(ts_code):
         if reload is True:  # 重头开始下载
-            # #-----------index类别--------------
-            # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-            #     start_date_str = str(raw_data.index.que_base_date(ts_code))
-            # #-----------stock类别--------------
-            # elif category == 'stock':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------stock每日指标类别--------------
-            # elif category == 'stock_daily_basic':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------复权因子--------------
-            # elif category == 'adj_factor':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------其它类型(未完成)--------------
-            # else:
-            #     log_args = [ts_code,category]
-            #     add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
-            #     return
             start_date_str = _category_to_start_date_str(ts_code, category)
             if start_date_str is None:
                 return
             end_date_str = today_str()
             df = sgmt_download(ts_code, start_date_str, end_date_str, que_limit, category)
             if isinstance(df, pd.DataFrame):
-                # if category == 'stock_daily_basic':
-                #     file_name = 'db_' + ts_code + '.csv'
-                # elif category == 'adj_factor':
-                #     file_name = 'fq_' + ts_code + '.csv'
-                # elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
-                #     file_name = 'd_' + ts_code + '.csv'
-                # #----------其它类型时修改------------
-                # else:
-                #     log_args = [category]
-                #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
-                #     return
                 file_name = _category_to_file_name(ts_code, category)
                 if file_name is None:
                     return
@@ -729,6 +708,30 @@ class All_Assets_List:
         return len(al_list)
 
     @staticmethod
+    def update_sz50_al():
+        """
+        更新 上证50 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000016.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '上证50成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_zz500_al():
+        """
+        更新 中证500 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000905.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '中证500成分股')
+        return len(al_list)
+
+    @staticmethod
     def update_swl123_al():
         """
         更新申万 L123的指数列表al_SW_Index_Lx.csv
@@ -1079,8 +1082,7 @@ class Stock(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = 'fq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'],
-                                 index_col='trade_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -1435,6 +1437,53 @@ class Index(Asset):
             return
 
 
+class Hsgt:
+    """
+    沪港通相关
+    """
+    @staticmethod
+    def get_moneyflow():
+        """
+        下载沪港通资金流向数据
+        ts_code: <str> 'hsgt_flow' 只做形式
+        category: <str> 'hsgt_flow'
+        """
+        ts_code = 'hsgt_flow'
+        category = 'hsgt_flow'
+        file_name = 'd_hsgt_flow.csv'
+        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        reload = not os.path.exists(file_path)
+
+        df = download_data(ts_code=ts_code, category=category, reload=reload)
+        if isinstance(df, pd.DataFrame):
+            log_args = [len(df)]
+            add_log(40, '[fn]Hsgt.get_moneyflow() d_hsgt_flow.csv updated, items:{}', log_args)
+
+    @staticmethod
+    def load_moneyflow(ts_code=None, nrows=None):
+        """
+        从文件读入资金流向
+        ts_code: 没有作用，仅为了保持相同签名
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        file_name = 'd_hsgt_flow.csv'
+        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        result = pd.read_csv(file_path, dtype={'trade_date': str}, index_col='trade_date', nrows=nrows)
+        return result
+
+    @staticmethod
+    def getter_flow(start_date, end_date, ts_code=None):
+        """
+        供sgmt_download()调用，获取ts_pro的数据
+        ts_code: 无作用，只为保持一致的签名
+        start_date: <str> e.g. '20141117'
+        end_date: <str> e.g. '20200227'
+        """
+        df = ts_pro.moneyflow_hsgt(start_date=start_date, end_date=end_date)
+        return df
+
+
 class Analysis:
     """
     分析相关
@@ -1487,21 +1536,29 @@ LOADER = {'index_sse': Index.load_index_daily,
           'index_sw': Index.load_sw_daily,
           'stock': Stock.load_stock_daily,
           'stock_daily_basic': Stock.load_stock_daily_basic,
-          'adj_factor': Stock.load_adj_factor}
+          'adj_factor': Stock.load_adj_factor,
+          'hsgt_flow': Hsgt.load_moneyflow,
+          }
+
 # GETTER从Tushare下载数据的接口
 GETTER = {'index_sse': ts_pro.index_daily,
           'index_szse': ts_pro.index_daily,
           'index_sw': ts_pro.sw_daily,
           'stock': ts_pro.daily,
           'stock_daily_basic': ts_pro.daily_basic,
-          'adj_factor': ts_pro.adj_factor}
+          'adj_factor': ts_pro.adj_factor,
+          'hsgt_flow': Hsgt.getter_flow,
+          }
+
 # QUE_LIMIT,Tushare接口的单查询条目上限
 QUE_LIMIT = {'index_sse': 8000,
              'index_szse': 8000,
              'index_sw': 1000,
              'stock': 4000,
              'stock_daily_basic': 4000,  # changed on '20200105', 8000 before
-             'adj_factor': 8000}
+             'adj_factor': 8000,
+             'hsgt_flow': 300,
+             }
 
 
 class Plot_Utility:

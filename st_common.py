@@ -76,6 +76,10 @@ CND_SPC_TYPES = {'const',  # 常量
                  'dymc_return_lmt',  # 动态dynamic earn return limit, 根据max_by_pct计算，用于earn_return的动态设定
                  }
 
+# 特殊的ts_code
+SPC_TS_CODE = {'hsgt_flow',  # 沪深港通数据起点
+               }
+
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 
 
@@ -316,6 +320,8 @@ class Raw_Data:
         """验证在raw_data内ts_code是否有效,
         return: <bool> True=valid
         """
+        if ts_code in SPC_TS_CODE:
+            return True
         # --------------------Index---------------
         try:
             name = self.all_assets_list.loc[ts_code]['name']
