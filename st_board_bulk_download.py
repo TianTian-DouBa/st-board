@@ -1458,6 +1458,54 @@ class Index(Asset):
             return
 
 
+class Hsgt:
+    """
+    沪港通相关
+    """
+    @staticmethod
+    def get_moneyflow():
+        """
+        下载沪港通资金流向数据
+        ts_code: <str> 'hsgt_flow' 只做形式
+        category: <str> 'hsgt_flow'
+        """
+        ts_code = 'hsgt_flow'
+        category = 'hsgt_flow'
+        file_name = 'd_hsgt_flow.csv'
+        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        reload = not os.path.exists(file_path)
+
+        df = download_data(ts_code=ts_code, category=category, reload=reload)
+        if isinstance(df, pd.DataFrame):
+            log_args = [len(df)]
+            add_log(40, '[fn]Hsgt.get_moneyflow() d_hsgt_flow.csv updated, items:{0[0]}', log_args)
+            return df
+
+    @staticmethod
+    def load_moneyflow(ts_code=None, nrows=None):
+        """
+        从文件读入资金流向
+        ts_code: 没有作用，仅为了保持相同签名
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        file_name = 'd_hsgt_flow.csv'
+        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        result = pd.read_csv(file_path, dtype={'trade_date': str}, index_col='trade_date', nrows=nrows)
+        return result
+
+    @staticmethod
+    def getter_flow(start_date, end_date, ts_code=None):
+        """
+        供sgmt_download()调用，获取ts_pro的数据
+        ts_code: 无作用，只为保持一致的签名
+        start_date: <str> e.g. '20141117'
+        end_date: <str> e.g. '20200227'
+        """
+        df = ts_pro.moneyflow_hsgt(start_date=start_date, end_date=end_date)
+        return df
+
+
 class Analysis:
     """
     分析相关
@@ -3526,6 +3574,10 @@ if __name__ == "__main__":
         print(('[msg] al_dl_indexes.csv updated, items:{}'.format(n)))
 
     # #------------------------批量下载数据-----------------------
+    df = Hsgt.get_moneyflow()  # 沪深港股通资金流向
+    if df is not None:
+        print('[msg] d_hsgt_flow.csv updated, items:{}'.format(len(df)))
+
     download_path = r"download_all"
     # download_path = r"try_001"
     # download_path = r"dl_stocks"

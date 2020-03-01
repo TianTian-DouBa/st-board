@@ -422,7 +422,7 @@ def bulk_calc_dfq(al_file, reload=False):
         add_log(10, '[fn]bulk_calc_dfq(). al_file "{0[0]}" not exist', log_args)
         return
     log_args = [len(df_al)]
-    add_log(40, '[fn]bulk_calc_dfq(). df_al loaded -sucess, items:"{0[0]}"', log_args)
+    add_log(40, '[fn]bulk_calc_dfq(). df_al loaded -success, items:"{0[0]}"', log_args)
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
@@ -1457,7 +1457,8 @@ class Hsgt:
         df = download_data(ts_code=ts_code, category=category, reload=reload)
         if isinstance(df, pd.DataFrame):
             log_args = [len(df)]
-            add_log(40, '[fn]Hsgt.get_moneyflow() d_hsgt_flow.csv updated, items:{}', log_args)
+            add_log(40, '[fn]Hsgt.get_moneyflow() d_hsgt_flow.csv updated, items:{0[0]}', log_args)
+            return df
 
     @staticmethod
     def load_moneyflow(ts_code=None, nrows=None):

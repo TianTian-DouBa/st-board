@@ -3,7 +3,9 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
+import tushare as ts
 
+ts_pro = ts.pro_api()
 register_matplotlib_converters()
 
 
@@ -56,8 +58,13 @@ def plot_in_out(df_io):
 
 
 if __name__ == '__main__':
-    df_io = select_df_csv()
-    plot_in_out(df_io)
+    # from st_board import Hsgt
+    # Hsgt.get_moneyflow()
+    ts_code = '600739.SH'
+    start_date = '20140101'
+    end_date = '20200229'
+    df = ts_pro.hk_hold(ts_code=ts_code, start_date=start_date, end_date=end_date, exchange='SH')
+
 
 
 
