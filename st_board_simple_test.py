@@ -1306,7 +1306,7 @@ class Index(Asset):
                 result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)  # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Index.load_index_daily() attribute columns "{0[0]}" invalid', log_args)
@@ -1339,7 +1339,7 @@ class Index(Asset):
                 result['vol'] = result['vol'].astype(np.int64)
             elif columns == 'basic':
                 try:
-                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
                 except FileNotFoundError:
                     log_args = [file_path]
                     add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
