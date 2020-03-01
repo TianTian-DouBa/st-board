@@ -60,11 +60,22 @@ def plot_in_out(df_io):
 if __name__ == '__main__':
     # from st_board import Hsgt
     # Hsgt.get_moneyflow()
-    ts_code = '600739.SH'
-    start_date = '20140101'
-    end_date = '20200229'
-    df = ts_pro.hk_hold(ts_code=ts_code, start_date=start_date, end_date=end_date, exchange='SH')
+    # ts_code = '600739.SH'
+    # start_date = '20140101'
+    # end_date = '20200229'
+    # df = ts_pro.hk_hold(ts_code=ts_code, start_date=start_date, end_date=end_date, exchange='SH')
+    # data = {'trade_date': ['20200101', '20200102', '20200103', '20200104'], 'close': [1, 2, 3, 4]}
+    # df1 = pd.DataFrame.from_dict(data)
+    # df1.set_index('trade_date', inplace=True)
+    #
+    # data = {'trade_date': ['20200102', '20200104'], 'vol': [22, 44]}
+    # df2 = pd.DataFrame.from_dict(data)
+    # df2.set_index('trade_date', inplace=True)
+    #
+    # df1.loc[:, 'vol'] = df2['vol']
 
+    from st_board import Stock, bulk_calc_dfq
+    bulk_calc_dfq('dl_stocks', reload=True)
 
 
 

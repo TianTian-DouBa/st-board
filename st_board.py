@@ -1067,6 +1067,12 @@ class Stock(Asset):
         """
         if load_daily == 'basic':
             self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')
+            sl_db = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate']  # 换手率
+            try:
+                self.daily_data.loc[:, 'turnover_rate'] = sl_db
+            except Exception as e:
+                log_args = [self.ts_code, type(e)]
+                add_log(20, '[fn]Stock.load_daily_data() ts_code:{0[0]}; failed to load turnover_rate; error_type:{0[1]}', log_args)  # 换手率未加载成功
             return
         elif isinstance(load_daily, set):
             print('[L972] 扩展字段的情况待完成')
@@ -1129,9 +1135,7 @@ class Stock(Asset):
             file_name = 'db_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                 usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f',
-                                          'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share',
-                                          'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
+                                 usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f', 'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share', 'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
                                  nrows=nrows)
             return result
         else:
@@ -1154,12 +1158,9 @@ class Stock(Asset):
             file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if columns == 'all':
-                result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'],
-                                     index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Stock.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
@@ -1198,8 +1199,7 @@ class Stock(Asset):
                     df_fq.index.get_loc(stock_head_index_str)
                 except KeyError:
                     log_args = [ts_code]
-                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem',
-                            log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
                     return
             # print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
             if fq_head_in_stock is not None:
@@ -1212,9 +1212,9 @@ class Stock(Asset):
                 df_stock.loc[:, 'dfq_open'] = df_stock['open'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_high'] = df_stock['high'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_low'] = df_stock['low'] * df_stock['adj_factor']
-            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low']]
-            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low'},
-                          inplace=True)
+                df_stock.loc[:, 'dfq_vol'] = df_stock['vol'] / df_stock['adj_factor']
+            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol']]
+            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low', 'dfq_vol': 'vol'}, inplace=True)
             return df_dfq
 
         def _generate_from_begin():
