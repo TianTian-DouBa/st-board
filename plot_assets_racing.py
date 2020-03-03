@@ -20,7 +20,7 @@ def select_df_csv():
 
 
 if __name__ == '__main__':
-    period = 5
+    period = 3
     df = select_df_csv()
     plot = Plot_Assets_Racing(df, period)
 

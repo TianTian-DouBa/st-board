@@ -3503,6 +3503,28 @@ class Dashboard:
         self.records = []
 
 
+class Select_Collect:
+    """
+    手动选择文件集合
+    """
+    @staticmethod
+    def al_file_name():
+        """
+        return: <str> of [name], al_[name].csv
+        """
+        import tkinter as tk
+        from tkinter import filedialog
+        import re
+
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主窗口
+        patten = re.compile(r'al_.*\.csv$')
+        file_path = filedialog.askopenfilename(filetypes=[("al files", "al_*.csv")])
+        match = patten.search(file_path)
+        if match:
+            return match.group()[3: -4]
+
+
 if __name__ == "__main__":
     from st_common import Raw_Data
     global raw_data
