@@ -2,6 +2,7 @@ from st_common import Raw_Data
 from st_common import sub_path_rpt
 from st_board import Select_Collect
 import xlsxwriter as xlw
+from XF_LOG_MANAGE import add_log, logable
 
 al_file_name = Select_Collect.al_file_name
 
@@ -27,12 +28,14 @@ def rpt_d_basic(al_file):
     # stg.add_pool(desc='p10', al_file=al_file, assets_daily_data=dd, del_trsfed=None)
     stg.add_pool(desc='p10', al_file=al_file, assets_daily_data='basic', del_trsfed=None)
     p10 = stg.pools[10]
+
     # ------condition_0
     pre_args1 = {'idt_type': 'ma',
                  'period': 20}
     pre_args2 = {'idt_type': 'maqs',
                  'period': 20}
     p10.add_condition(pre_args1, pre_args2, '>')
+
     # ------condition_1
     pre_args1 = {'idt_type': 'majh',
                  'long_n1': 60,
@@ -41,6 +44,7 @@ def rpt_d_basic(al_file):
     pre_args2 = {'idt_type': 'maqs',
                  'period': 60}
     p10.add_condition(pre_args1, pre_args2, '>')
+
     # ------condition_2
     pre_args1 = {'idt_type': 'macd',  # 日线macd
                  'long_n1': 26,
@@ -52,6 +56,13 @@ def rpt_d_basic(al_file):
                  'dea_n3': 45}
     p10.add_condition(pre_args1, pre_args2, '>')
 
+    # ------condition_3
+    pre_args1 = {'idt_type': 'jdxz',  # 绝对吸资比例
+                 'period': 10}
+    pre_args2 = {'idt_type': 'jdxz',  # 绝对吸资比例
+                 'period': 250}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
     stg.init_pools_cnds_matrix()
     stg.init_ref_assets()
     end_date = today_str()
@@ -60,23 +71,27 @@ def rpt_d_basic(al_file):
 
     # =================数据准备=================
     data = []  # [(数据1, 数据2, 数据3）, (...)]存放用于报告显示的数据
+    X = 2  # 聚合的程度%限值
     for asset in p10.assets.values():
         ts_code = asset.ts_code
         name = asset.name
         comment1 = ''
         comment2 = ''
+
         # ----20日归%
         ma20_last, = asset.ma_20.df_idt.head(1)['MA'].values
         by_price = asset.by_price
         ma20_gl = (by_price / ma20_last - 1) * 100  # close与ma_20的归离率
+
         # ----20MA变化
         maqs20, = asset.maqs_20.df_idt.head(1)['MAQS'].values
         maqs20 = maqs20 * 1000
+
         # ----60MA变化
         maqs60, = asset.maqs_60.df_idt.head(1)['MAQS'].values
         maqs60 = maqs60 * 1000
+
         # ----价聚合<x%天数的占比（最近20个交易日中）
-        X = 2  # 聚合的程度%限值
         df = asset.majh_60_20_5.df_idt
         DAYS = 20  # 交易日窗口
         sr = df.head(DAYS)['MAJH']  # 如果数据少于20个，有几个取几个
@@ -86,8 +101,29 @@ def rpt_d_basic(al_file):
             jh_pct = n_meet / n  # 聚合天数的占比
         else:
             jh_pct = 0
+
+        # ----吸资归离, 10D 与 250D
+        try:
+            jdxz10, = asset.jdxz_10.df_idt.head(1)['JDXZ'].values
+            jdxz250, = asset.jdxz_250.df_idt.head(1)['JDXZ'].values
+            xz_rate = jdxz10 / jdxz250 - 1
+        except Exception as e:
+            log_args = [asset.ts_code, e]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xz_rate explicit type:{0[1]} to catch', log_args)
+            xz_rate = 9999.9
+
+        # ----吸资10QS
+        try:
+            xz_current, xz_previous = asset.jdxz_10.df_idt.head(2)['JDXZ'].values
+            xzqs = (xz_current / xz_previous - 1) * 100
+        except Exception as e:
+            log_args = [asset.ts_code, e]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xzqs explicit type:{0[1]} to catch', log_args)
+            xzqs = 99999.9
+
         # ----添加数据
-        data.append((ts_code, name, comment1, comment2, ma20_gl, maqs20, maqs60, jh_pct))
+        data.append((ts_code, name, comment1, comment2, ma20_gl, maqs20, maqs60,
+                     jh_pct, xz_rate, xzqs))
 
     # =================报告基础=================
     workbook = xlw.Workbook(file_path)
@@ -95,6 +131,7 @@ def rpt_d_basic(al_file):
 
     fmt_std = workbook.add_format()
     fmt_center = workbook.add_format({'align': 'center', 'valign': 'vcenter'})  # 居中
+    fmt_f1d = workbook.add_format({'num_format': '0.0', 'valign': 'vcenter'})  # 1位小数
     fmt_f2d = workbook.add_format({'num_format': '0.00', 'valign': 'vcenter'})  # 2位小数
     fmt_f3d = workbook.add_format({'num_format': '0.000', 'valign': 'vcenter'})  # 3位小数
     fmt_pct = workbook.add_format({'num_format': '0%', 'valign': 'vcenter'})  # 0%
@@ -104,18 +141,20 @@ def rpt_d_basic(al_file):
     # 与data对应的显示格式
     #           ts_code       名称      备注     备注    20日归    maqs20   maqs60
     formats = [fmt_center, fmt_center, fmt_std, fmt_std, fmt_f2d, fmt_f2d, fmt_f2d]
-    #                    聚合占比
-    formats = formats + [fmt_pct]
+    #                    聚合占比 吸资归离  吸资10QS
+    formats = formats + [fmt_pct, fmt_f2d, fmt_f2d]
 
     # =================报告数据=================
     # ----标题栏
-    head = ('代码', '名称', '备注', '备注', '20日归 %', 'MAQS20 ‰', 'MAQS60 ‰',
-            '聚2%天比')
+    head = ('代码', '名称', '备注', '备注', '20日归%', 'MAQS20‰', 'MAQS60‰',
+            '聚2%天比', '吸资归离', '吸资10QS')
     ws1.write_row('A1', head, fmt_center)
     ws1.write_comment('E1', '(by_price / ma20_last - 1) * 100')
     ws1.write_comment('F1', 'maqs_20 * 1000')
     ws1.write_comment('G1', 'maqs_60 * 1000')
     ws1.write_comment('H1', '在20个交易日内，majh<' + str(X) + '%天数的占比')
+    ws1.write_comment('I1', '10日吸资比 / 250日吸资比 -1')
+    ws1.write_comment('J1', '10日吸资比变化率 * 100')
     # ----填充数据
     row = 1
     assert len(head) == len(formats)

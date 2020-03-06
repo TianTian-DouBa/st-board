@@ -115,7 +115,9 @@ class Indicator:
         调用st_board.load_source_df()来准备计算用原数据
         ts_code:<str> e.g. '000001.SH'
         nrows: <int> 指定读入最近n个周期的记录,None=全部
-        return:<sr> trade_date(index); source, None if failed
+        return:<sr> 从asset.daily_data中获得 trade_date(index); source,
+               <df> 从csv中读取，很少情况
+               None if failed
         """
         from st_board import LOADER, Stock
         asset = self.par_asset()
@@ -256,7 +258,6 @@ class Ma(Indicator):
             log_args = [ts_code, subtype]
             add_log(10, '[fn]Ma.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
-        period = int(period)
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
@@ -312,6 +313,10 @@ class Ma(Indicator):
                         del values[0]
                     if len(values) == period:
                         rvs_rslt.append(np.average(values))
+            else:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Ma._calc_res() ts_code:{0[0]}; idt_head unknown value', log_args)
+                return
         else:  # .csv file not exist
             try:
                 source_column_name = SOURCE_TO_COLUMN[self.source]
@@ -334,6 +339,23 @@ class Ma(Indicator):
         data = {idt_column_name: rslt}
         df_idt_append = pd.DataFrame(data, index=index_source)
         return df_idt_append
+
+    @staticmethod
+    def idt_bare(sr_data, period):
+        """
+        ma计算
+        sr_data: <pd.Series> 原数据，从旧到新排列；
+        period: <int> 周期数
+        return: <pd.Series> 从新到旧排列
+        """
+        if isinstance(sr_data, pd.Series):
+            sr_mean = sr_data.rolling(period).mean()
+            sr_mean.dropna(inplace=True)
+            sr_mean.sort_index(ascending=False, inplace=True)
+            return sr_mean
+        else:
+            log_args = [type(sr_data)]
+            add_log(20, '[fn]Ma.idt_bare() sr_data type:{0[0]} is not pd.Series', log_args)
 
 
 class Ema(Indicator):
@@ -467,7 +489,7 @@ class Ema(Indicator):
             return sr_result
         else:
             log_args = [type(sr_data)]
-            add_log(20, '[fn]idt_bare() sr_data type:{0[0]} is not pd.Series', log_args)
+            add_log(20, '[fn]Ema.idt_bare() sr_data type:{0[0]} is not pd.Series', log_args)
 
 
 class Macd(Indicator):
@@ -589,7 +611,7 @@ class Macd(Indicator):
         else:
             # ----------重头生成df_idt----------
             _pre_idt_hdl()
-        sr_diff_append = pd.Series()
+        # sr_diff_append = pd.Series()
         short_col_name = 'EMA'
         long_col_name = 'EMA'
         # print('[L538]', df_ema_short)
@@ -735,7 +757,7 @@ class Majh(Indicator):
                 df_ma_short = idt_ma_short.df_idt.head(n)
 
         # ---------主要部分开始------------
-        last_majh = None
+        # last_majh = None
         if isinstance(df_idt, pd.DataFrame):
             # ------df_idt有效-----
             idt_head_index_str, = df_idt.head(1).index.values
@@ -751,14 +773,9 @@ class Majh(Indicator):
                 return
             elif idt_head_in_source > 0:
                 _pre_idt_hdl(idt_head_in_source)  # 前置指标处理，保留新增记录
-                # last_majh = self.df_idt.iloc[0]['MAJH']
         else:
             # ----------重头生成df_idt----------
             _pre_idt_hdl()
-        # sr_dif_long_middle = pd.Series()
-        # sr_dif_long_short = pd.Series()
-        # sr_dif_middle_short = pd.Series()
-        # sr_dif_middle_short.to_frame(name="")
         short_col_name = 'MA'
         middle_col_name = 'MA'
         long_col_name = 'MA'
@@ -1082,7 +1099,7 @@ class Jdxz(Indicator):
     JDXZ: 绝对吸引资金比，成交额 / 两市总成交额
     """
     # 新指标编制方式探索，优先利用asset.daily_data中的数据
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='amount', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close' #SOURCE
         return:<ins jdxz> if valid; None if invalid
@@ -1113,11 +1130,65 @@ class Jdxz(Indicator):
         """
         计算idt_df要补完的数据
         """
-        df_source = self.load_sources()
+        from st_board import Index
+        dfsr_source = self.load_sources()  # 可能是<sr>或<df>
         df_idt = self.load_idt()
         period = self.period
         parent = self.par_asset()
-        df_ma = None  # 前置idt
+
+        # ---------基础数据---------
+        shzs = Index('000001.SH')  # 上证指数
+        szzs = Index('399001.SZ')  # 深证成指
+        sr_shzs_amt = shzs.daily_data['amount']
+        sr_szzs_amt = szzs.daily_data['amount']
+        sr_amt = parent.daily_data['amount']
+
+        # ---------主要部分开始------------
+        if isinstance(df_idt, pd.DataFrame):
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = dfsr_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                dfsr_source.drop(dfsr_source.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些df_source记录用于计算
+                sr_amt.drop(sr_amt.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些记录用于计算
+                # values = []
+                # rvs_rslt = []
+                # source_column_name = self.source  # 此处以之前的indicator不同
+                # for idx in reversed(df_source.index):
+                #     values.append(df_source[source_column_name][idx])
+                #     if len(values) > period:
+                #         del values[0]
+                #     if len(values) == period:
+                #         rvs_rslt.append(np.average(values))
+            else:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head unknown value', log_args)
+                return
+        # else:  # .csv file not exist
+        #     values = []
+        #     rvs_rslt = []
+        #     source_column_name = self.source  # 此处以之前的indicator不同
+        #     for idx in reversed(dfsr_source.index):
+        #         values.append(df_source[source_column_name][idx])
+        #         if len(values) > period:
+        #             del values[0]
+        #         if len(values) == period:
+        #             rvs_rslt.append(np.average(values))
+        # iter_rslt = reversed(rvs_rslt)
+        # rslt = list(iter_rslt)
+        sr_jdxz = sr_amt / (sr_shzs_amt + sr_szzs_amt) * 10000
+        sr_jdxz.dropna(inplace=True)
+        sr_mean = Ma.idt_bare(sr_jdxz, period)
+        df_idt_append = sr_mean.to_frame(name='JDXZ')
+        return df_idt_append
 
 
 IDT_CLASS = {'ma': Ma,

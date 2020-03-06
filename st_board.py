@@ -1894,7 +1894,7 @@ class Strategy:
                 # pptx黄框中，end_date内的每cycles次循环后进行aggregate()处理
                 if cycles is None:  # 不管cycles，一次做到end_date结束
                     return_ok = None
-                    while int(self.by_date) < int(end_date):
+                    while int(self.by_date) <= int(end_date):
                         return_ok = _cycle()
                         if return_ok is not True:  # _cycle()出错跳出
                             log_args = [self.by_date]

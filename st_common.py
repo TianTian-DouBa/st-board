@@ -23,6 +23,11 @@ SOURCE = {'close': '收盘数据，能复权则后复权',  # 修改的是，原
           }
 
 SOURCE_TO_COLUMN = {'close': 'close',  # 修改的是，原来'close_hfq'
+                    'open': 'open',
+                    'high': 'high',
+                    'low': 'low',
+                    'vol': 'vol',
+                    'amount': 'amount',
                     }
 
 STATUS_WORD = {0: '-bad-',
