@@ -96,7 +96,7 @@ class Indicator:
     def __init__(self, ts_code, par_asset, idt_type, reload=False, update_csv=True, subtype='D'):
         """
         ts_code:<str> e.g. '000001.SH'
-        reload:<bool> True: ignore the csv, generate the df from the beginning
+        reload:<bool> True: ignore the csv, generate the df from tushare interface
         update_csv:<bool> True: update the csv; False: keep the original csv as it is
         """
         self.ts_code = ts_code
@@ -115,7 +115,7 @@ class Indicator:
         调用st_board.load_source_df()来准备计算用原数据
         ts_code:<str> e.g. '000001.SH'
         nrows: <int> 指定读入最近n个周期的记录,None=全部
-        return:<df> trade_date(index); close; high..., None if failed
+        return:<sr> trade_date(index); source, None if failed
         """
         from st_board import LOADER, Stock
         asset = self.par_asset()
@@ -124,13 +124,15 @@ class Indicator:
         ts_code = asset.ts_code
         # 如果在asset的daily_data中直接有该源，则直接使用
         if hasattr(asset.daily_data, source):
-            df = getattr(asset.daily_data, source)
-            if isinstance(df, pd.DataFrame):
-                return df
+            sr = getattr(asset.daily_data, source)
+            sr.rename(source.upper())
+            if isinstance(sr, pd.DataFrame):
+                return sr
         # 直接从.csv中读入
         # ----确定column_name
-        if self.source == 'close':
-            column_name = 'close'
+        BASIC = {'close', 'open', 'high', 'low', 'vol', 'amount'}
+        if self.source in BASIC:
+            column_name = self.source
         # elif  其它source待完善
         else:
             log_args = [source]
@@ -139,7 +141,7 @@ class Indicator:
 
         INDEX = {'index_sw', 'index_sse', 'index_szse'}
         if category == 'stock':
-            loader = lambda ts_code, nrows: Stock.load_stock_dfq(ts_code=ts_code,nrows=nrows)[[column_name]]
+            loader = lambda ts_code, nrows: Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
         elif category in INDEX:
             loader = lambda ts_code, nrows: LOADER[category](ts_code=ts_code, nrows=nrows)[[column_name]]
         else:
@@ -1075,13 +1077,58 @@ class Madq(Indicator):
         return df_idt_append
 
 
+class Jdxz(Indicator):
+    """
+    JDXZ: 绝对吸引资金比，成交额 / 两市总成交额
+    """
+    # 新指标编制方式探索，优先利用asset.daily_data中的数据
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close' #SOURCE
+        return:<ins jdxz> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Jdxz.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='close', reload=False, update_csv=True, subtype='D'):
+        """
+        period: <int> 周期数
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'jdxz'
+        self.period = period
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period = self.period
+        parent = self.par_asset()
+        df_ma = None  # 前置idt
+
+
 IDT_CLASS = {'ma': Ma,
              'maqs': Maqs,  # ma的趋势变化率
              'madq': Madq,  # ma抵扣x周期
              'ema': Ema,
              'emaqs': Emaqs,  # ema的趋势变化率
              'macd': Macd,
-             'majh': Majh}
+             'majh': Majh,
+             'jdxz': Jdxz,  # 吸引资金绝对占比、成交额占两市比例
+             }
 
 if __name__ == '__main__':
     start_time = datetime.now()

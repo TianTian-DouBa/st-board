@@ -10,6 +10,7 @@ sub_path = r".\data_csv"
 sub_path_2nd_daily = r"\daily_data"  # 日线数据
 sub_path_config = r"\config"  # 配置文件
 sub_path_al = r"\assets_lists"  # 资产列表
+sub_path_rpt = r"\reports"  # 报告
 sub_path_result = r".\plot_result"  # 分析模板运行结果
 sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
 sub_analysis = r"\analysis"  # 分析数据
@@ -357,6 +358,18 @@ class Raw_Data:
             add_log(10, '[fn]Raw_Data.load_all_assets_list. "{0[0]}" not found', log_args)
             df = None
         self.all_assets_list = df
+
+    def query_name(self, ts_code):
+        """
+        查询asset的name
+        """
+        try:
+            name = self.all_assets_list.loc[ts_code]['name']
+        except Exception as e:  # 具体except待细化
+            log_args = [ts_code, type(e)]
+            add_log(20, '[fn]Raw_Data.query_name(). ts_code:{0[0]} failed to get name, except:{0[1]}', log_args)
+            return
+        return name
 
 
 class Index_Basic:

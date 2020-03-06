@@ -458,22 +458,23 @@ def load_source_df(ts_code, source, nrows=None):
     return:<df> trade_date(index); 数据只有一列 close; high...
     """
     print('[L481] load_source_df() 此函数可能不再需要')
-    try:
-        # SOURCE[source]
-        column_name = SOURCE_TO_COLUMN[source]
-    except KeyError:
-        log_args = [ts_code, source]
-        add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
-        return
-    # ---------------close_hfq 收盘后复权---------------
-    if source == 'close':
-        result = Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
-        return result
-    # ---------------无匹配，报错---------------
-    else:
-        log_args = [ts_code, source]
-        add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
-        return
+    pass
+    # try:
+    #     # SOURCE[source]
+    #     column_name = SOURCE_TO_COLUMN[source]
+    # except KeyError:
+    #     log_args = [ts_code, source]
+    #     add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+    #     return
+    # # ---------------close_hfq 收盘后复权---------------
+    # if source == 'close':
+    #     result = Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
+    #     return result
+    # # ---------------无匹配，报错---------------
+    # else:
+    #     log_args = [ts_code, source]
+    #     add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
+    #     return
 
 
 class All_Assets_List:
@@ -888,7 +889,7 @@ class Asset:
             try:
                 rslt = self.daily_data.loc[int(trade_date)][head_name]
                 return rslt, trade_date
-            except KeyError:
+            except (KeyError, AttributeError):
                 if seek_direction is None:
                     log_args = [self.ts_code, trade_date]
                     add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
@@ -1018,7 +1019,7 @@ class Stock(Asset):
 
     def __init__(self, ts_code, in_price=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
         """
-        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][vol]基本字段到self.daily_data
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         in_price: <float> 进入价格
@@ -1061,21 +1062,38 @@ class Stock(Asset):
     def load_daily_data(self, load_daily='basic'):
         """
         根据load_daily输入字段，从csv文件将数据读入self.daily_data
-        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][vol][amount]基本字段到self.daily_data
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
-        if load_daily == 'basic':
-            self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')
+        def _load_basic():
+            self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')  # self.daily_data在Asset.__new__()中已定义
             sl_db = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate']  # 换手率
+            sl_amount = self.load_stock_daily(ts_code=self.ts_code)['amount']
             try:
+                self.daily_data.loc[:, 'amount'] = sl_amount
                 self.daily_data.loc[:, 'turnover_rate'] = sl_db
             except Exception as e:
                 log_args = [self.ts_code, type(e)]
                 add_log(20, '[fn]Stock.load_daily_data() ts_code:{0[0]}; failed to load turnover_rate; error_type:{0[1]}', log_args)  # 换手率未加载成功
-            return
-        elif isinstance(load_daily, set):
-            print('[L972] 扩展字段的情况待完成')
+
+        if load_daily == 'basic':
+            _load_basic()
+        elif isinstance(load_daily, set):  # <set>增加额外字段的情况
+            _load_basic()  # 加载基础数据
+            if len(load_daily) == 0:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Stock.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
+                return
+            for item in load_daily:
+                if item == 'turnover_rate_f':  # 流通换手率
+                    sl_trf = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate_f']  # 流通换手率
+                    self.daily_data.loc[:, 'turnover_rate_f'] = sl_trf
+                # --------后续修改--------
+                elif item == 'xxxx':
+                    pass
+                else:
+                    print('[L972] 扩展字段的情况待完成')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
@@ -1213,7 +1231,7 @@ class Stock(Asset):
                 df_stock.loc[:, 'dfq_high'] = df_stock['high'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_low'] = df_stock['low'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_vol'] = df_stock['vol'] / df_stock['adj_factor']
-            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol']]
+            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol', 'amount']]
             df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low', 'dfq_vol': 'vol'}, inplace=True)
             return df_dfq
 
@@ -1337,18 +1355,31 @@ class Index(Asset):
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
         global raw_data
-
-        if load_daily == 'basic':
+        def _load_basic():
             if self.category == 'index_sw':
                 self.daily_data = self.load_sw_daily(ts_code=self.ts_code, columns='basic')
             elif self.category == 'index_sse' or self.category == 'index_szse':
-                self.daily_date = self.load_index_daily(ts_code=self.ts_code, columns='basic')
+                self.daily_data = self.load_index_daily(ts_code=self.ts_code, columns='basic')
             else:
                 log_args = [self.ts_code, self.category]
                 add_log(20, '[fn]Index.load_daily_data(). "{0[0]}" invalid category {0[0]}', log_args)
+
+        if load_daily == 'basic':
+            _load_basic()
+        elif isinstance(load_daily, set):  # <set>增加额外字段的情况
+            _load_basic()  # 加载基础数据
+            if len(load_daily) == 0:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Index.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
                 return
-        elif isinstance(load_daily, set):
-            print('[L1241] 扩展字段的情况待完成')
+            for item in load_daily:
+                if item == 'xxx':
+                    pass
+                # --------后续修改--------
+                elif item == 'yyy':
+                    pass
+                else:
+                    print('[L1241] 扩展字段的情况待完成')
 
     @staticmethod
     def get_sw_index_classify(return_df=True):
@@ -1377,7 +1408,7 @@ class Index(Asset):
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         columns: <str> 'all' = 所有可用的列
-                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'
         return: <df>
         """
         global raw_data
@@ -1388,7 +1419,7 @@ class Index(Asset):
                 result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)  # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Index.load_index_daily() attribute columns "{0[0]}" invalid', log_args)
@@ -1404,6 +1435,8 @@ class Index(Asset):
         """
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: 'all' all the columns in csv
+                 'basic' 6 basic attrs
         return: <df>
         """
         global raw_data
@@ -1421,7 +1454,7 @@ class Index(Asset):
                 result['vol'] = result['vol'].astype(np.int64)
             elif columns == 'basic':
                 try:
-                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 except FileNotFoundError:
                     log_args = [file_path]
                     add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
@@ -2157,7 +2190,7 @@ class Strategy:
                 log_args = [ts_code]
                 add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
             else:
-                self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+                self.ref_assets[ts_code] = Asset(ts_code=ts_code)
                 log_args = [ts_code]
                 add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
 
@@ -2202,7 +2235,7 @@ class Pool:
     """
     股票池
     """
-    def __init__(self, par_strategy, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True, log_in_out=None):
+    def __init__(self, par_strategy, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, assets_daily_data='basic', del_trsfed=True, log_in_out=None):
         r"""
         par_strategy: <weak ref> parent strategy
         desc: <str> 描述
@@ -2212,6 +2245,8 @@ class Pool:
                  None: 不提供
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
+        assets_daily_data: asset.daily_data中加载哪些数据，
+                           详见Index/Stock.load_daily_data
         del_trsfed: 当资产通过filter转到下游in_pool后，是否删除源out_pool中的资产
                     True or None
         log_in_out: True or None, True把asset在pool中的对应进出记录到self.io_out中
@@ -2223,7 +2258,7 @@ class Pool:
         self.log_in_out = log_in_out  # 是否记录资产的对应进出供分析
         self.init_in_out()
         self.in_date = in_date  # 仅做诊断用
-        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, load_daily=assets_daily_data, price_seek_direction=price_seek_direction)
         self.al_file = None  # <str> or None al file name
         self.conditions = []
         self.filters = []
@@ -2239,7 +2274,7 @@ class Pool:
         if al_file is not None:
             self.al_file = al_file
 
-    def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
+    def init_assets(self, al_file=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
         r"""
         初始化self.assets，可选赋值in_date和in_price
         al_file: None = create empty dict;
@@ -2248,6 +2283,7 @@ class Pool:
                  None: 不提供
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
+        load_daily: 每日数据包含项，详见Index/Stock.load_daily_data()
         in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
         price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
                                None: 返回None,不搜索
@@ -2270,7 +2306,7 @@ class Pool:
                     add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     continue
                 else:
-                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, load_daily=load_daily, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
                     log_args = [ts_code]
                     add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
             else:
@@ -3501,6 +3537,28 @@ class Dashboard:
         clear the content of the dashboard
         """
         self.records = []
+
+
+class Select_Collect:
+    """
+    手动选择文件集合
+    """
+    @staticmethod
+    def al_file_name():
+        """
+        return: <str> of [name], al_[name].csv
+        """
+        import tkinter as tk
+        from tkinter import filedialog
+        import re
+
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主窗口
+        patten = re.compile(r'al_.*\.csv$')
+        file_path = filedialog.askopenfilename(filetypes=[("al files", "al_*.csv")])
+        match = patten.search(file_path)
+        if match:
+            return match.group()[3: -4]
 
 
 if __name__ == "__main__":

@@ -818,6 +818,7 @@ class Asset:
                   : None: self.daily_data = None
                   : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
         """
+        global raw_data
         INDEX = {'index_sw', 'index_sse', 'index_szse'}
         category = All_Assets_List.query_category_str(ts_code)
         if category == 'stock':
@@ -831,6 +832,7 @@ class Asset:
             add_log(20, '[fn]Asset.__new__(). ts_code:{0[0]} category invalid, asset not initialized', log_args)
             return
         obj.ts_code = ts_code
+        obj.name = raw_data.query_name(ts_code)
         obj.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
         obj.by_date = None  # <str> 当前计算的日期如"20191231"
         obj.stay_days = None  # <int> 在pool中的天数
@@ -1167,7 +1169,7 @@ class Stock(Asset):
         从文件读入后复权的股票日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         columns: <str> 'all' = 所有可用的列
-                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'
         return: <df>
         """
         global raw_data
@@ -1176,9 +1178,9 @@ class Stock(Asset):
             file_name = 'dfq_' + ts_code + '.csv'
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if columns == 'all':
-                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Stock.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
@@ -1231,7 +1233,7 @@ class Stock(Asset):
                 df_stock.loc[:, 'dfq_high'] = df_stock['high'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_low'] = df_stock['low'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_vol'] = df_stock['vol'] / df_stock['adj_factor']
-            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol']]
+            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol', 'amount']]
             df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low', 'dfq_vol': 'vol'}, inplace=True)
             return df_dfq
 
@@ -2718,7 +2720,8 @@ class Pool:
                     idt_value1 = (asset.min_by - asset.in_price) / asset.in_price
                     idt_date1 = asset.by_date
                 elif idt_name1 == 'earn_return':
-                    idt_value1 = (asset.max_by - asset.by_price) / (asset.max_by - asset.in_price)
+                    dif = max(asset.max_by - asset.in_price, 0.001)
+                    idt_value1 = (asset.max_by - asset.by_price) / dif
                     idt_date1 = asset.by_date
                 elif idt_name1 == 'dymc_return_lmt':
                     if cnd.para1.dymc_lmt_set is not None:
@@ -3872,9 +3875,9 @@ if __name__ == "__main__":
     # pool10.dashboard.disp_board()
     print('================Strategy测试================')
     stg = Strategy('测试')
-    # stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
 
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
 
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)

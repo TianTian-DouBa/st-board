@@ -13,6 +13,7 @@
       <w>idts</w>
       <w>iloc</w>
       <w>iterrows</w>
+      <w>jdxz</w>
       <w>macd</w>
       <w>madq</w>
       <w>majh</w>
@@ -29,6 +30,8 @@
       <w>trsfed</w>
       <w>tushare</w>
       <w>uptodate</w>
+      <w>valign</w>
+      <w>vcenter</w>
       <w>weakref</w>
       <w>xticks</w>
       <w>xvalues</w>
