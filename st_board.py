@@ -3915,6 +3915,7 @@ if __name__ == "__main__":
                  'shift_periods': -1,
                  'update_csv': True}
     p10.add_condition(pre_args1, pre_args2, '<')
+
     # ------condition_1
     pre_args1 = {'idt_type': 'madq',
                  'period': 5,
@@ -3923,9 +3924,19 @@ if __name__ == "__main__":
                  'period': 20,
                  'dq_n1': 1}
     p10.add_condition(pre_args1, pre_args2, '>=')
+
     # ------condition_2
     pre_args1 = {'idt_type': 'maqs',
                  'period': 60}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
+    # ------condition_3
+    pre_args1 = {'idt_type': 'dktp',
+                 'short_n1': 5,
+                 'medium_n2': 10,
+                 'long_n3': 20}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0}
     p10.add_condition(pre_args1, pre_args2, '>')
@@ -4097,9 +4108,9 @@ if __name__ == "__main__":
     stg.init_ref_assets()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    # stg.update_cycles(start_date='20170101', cycles=200)
+    stg.update_cycles(start_date='20170101', cycles=200)
     # ---报告-----------
     p20.csv_in_out()
     p30.csv_in_out()

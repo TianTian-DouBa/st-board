@@ -566,6 +566,7 @@ class Macd(Indicator):
             idt_ema_short_name = kwargs_short['idt_name']
 
             # ------valid pre-idts uptodate------
+            # idt_ema_long
             if hasattr(parent, idt_ema_long_name):
                 idt_ema_long = getattr(parent, idt_ema_long_name)
                 if idt_ema_long.valid_utd() is not True:
@@ -573,7 +574,7 @@ class Macd(Indicator):
             else:
                 parent.add_indicator(**kwargs_long)
                 idt_ema_long = getattr(parent, idt_ema_long_name)
-                # idt_ema_long.calc_idt() #add_indicator()里自带calc_idt()
+
             # idt_ema_short
             if hasattr(parent, idt_ema_short_name):
                 idt_ema_short = getattr(parent, idt_ema_short_name)
@@ -582,7 +583,7 @@ class Macd(Indicator):
             else:
                 parent.add_indicator(**kwargs_short)
                 idt_ema_short = getattr(parent, idt_ema_short_name)
-                # idt_ema_short.calc_idt(), add_indicator()里自带calc_idt()
+
             if n is None:
                 df_ema_long = idt_ema_long.df_idt
                 df_ema_short = idt_ema_short.df_idt
@@ -1098,7 +1099,6 @@ class Jdxz(Indicator):
     """
     JDXZ: 绝对吸引资金比，成交额 / 两市总成交额
     """
-    # 新指标编制方式探索，优先利用asset.daily_data中的数据
     def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='amount', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close' #SOURCE
@@ -1191,6 +1191,188 @@ class Jdxz(Indicator):
         return df_idt_append
 
 
+class Dktp(Indicator):
+    """
+    多空头排列周期数，多头排列为正数，空头排列为负数
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, short_n1, medium_n2, long_n3, source='close', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close' #SOURCE
+
+        return:<ins Dktp> >0 多头排列周期数
+                          =0 散乱排列
+                          <0 空头排列周期数
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Dktp.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, short_n1, medium_n2, long_n3, source='close', reload=False, update_csv=True, subtype='D'):
+        """
+        subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
+        short_n1, medium_n2, long_n3: <int>
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'dktp'
+        self.short_n1 = short_n1
+        self.medium_n2 = medium_n2
+        self.long_n3 = long_n3
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        short_n1 = self.short_n1
+        medium_n2 = self.medium_n2
+        long_n3 = self.long_n3
+        parent = self.par_asset()
+        df_ma_short = None  # 前置idt
+        df_ma_medium = None  # 前置idt
+        df_ma_long = None  # 前置idt
+
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_ma_short, df_ma_medium, df_ma_long
+            """
+            nonlocal df_ma_short, df_ma_medium, df_ma_long
+            # 前置指标名idt_name计算
+            _kwargs = {
+                'idt_type': 'ma',
+                'period': short_n1,
+                'source': self.source,
+                'update_csv': True}
+            kwargs_short = idt_name(_kwargs)
+            idt_ma_short_name = kwargs_short['idt_name']
+
+            _kwargs = {
+                'idt_type': 'ma',
+                'period': medium_n2,
+                'source': self.source,
+                'update_csv': True}
+            kwargs_medium = idt_name(_kwargs)
+            idt_ma_medium_name = kwargs_medium['idt_name']
+
+            _kwargs = {
+                'idt_type': 'ma',
+                'period': long_n3,
+                'source': self.source,
+                'update_csv': True}
+            kwargs_long = idt_name(_kwargs)
+            idt_ma_long_name = kwargs_long['idt_name']
+
+            # ------valid pre-idts uptodate------
+            # idt_ma_short
+            if hasattr(parent, idt_ma_short_name):
+                idt_ma_short = getattr(parent, idt_ma_short_name)
+                if idt_ma_short.valid_utd() is not True:
+                    idt_ma_short.calc_idt()
+
+            else:
+                parent.add_indicator(**kwargs_short)
+                idt_ma_short = getattr(parent, idt_ma_short_name)
+
+            # idt_ma_medium
+            if hasattr(parent, idt_ma_medium_name):
+                idt_ma_medium = getattr(parent, idt_ma_medium_name)
+                if idt_ma_medium.valid_utd() is not True:
+                    idt_ma_medium.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_medium)
+                idt_ma_medium = getattr(parent, idt_ma_medium_name)
+
+            # idt_ma_long
+            if hasattr(parent, idt_ma_long_name):
+                idt_ma_long = getattr(parent, idt_ma_long_name)
+                if idt_ma_long.valid_utd() is not True:
+                    idt_ma_long.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_long)
+                idt_ma_long = getattr(parent, idt_ma_long_name)
+
+            # 获取df
+            if n is None:
+                df_ma_short = idt_ma_short.df_idt
+                df_ma_medium = idt_ma_medium.df_idt
+                df_ma_long = idt_ma_long.df_idt
+            else:
+                df_ma_short = idt_ma_short.df_idt.head(n)
+                df_ma_medium = idt_ma_medium.df_idt.head(n)
+                df_ma_long = idt_ma_long.df_idt.head(n)
+
+        # ---------主要部分开始------------
+        last_dktp = None  # 前次更新指标的最后一个指标值
+        if isinstance(df_idt, pd.DataFrame):
+            # ------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Dktp._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Dktp._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source)  # 前置指标处理
+                last_dktp = self.df_idt.iloc[0]['DKTP']
+        else:
+            # ----------重头生成df_idt----------
+            _pre_idt_hdl()
+        short_col_name = 'MA'
+        medium_col_name = 'MA'
+        long_col_name = 'MA'
+
+        if not isinstance(df_ma_long, pd.DataFrame):
+            log_args = [self.ts_code]
+            add_log(20, '[fn]Dktp._calc_res() ts_code:{0[0]}; df_ma_long is not available', log_args)
+            return
+        if len(df_ma_long) < 1:
+            log_args = [self.ts_code]
+            add_log(20, '[fn]Dktp._calc_res() ts_code:{0[0]}; df_ma_long is empty', log_args)
+            return
+        df_ma_long = df_ma_long.copy()  # deepcopy
+        df_ma_long.loc[:, 'DKTP'] = np.nan
+        for idx in reversed(df_ma_long.index):
+            short = df_ma_short.MA[idx]
+            medium = df_ma_medium.MA[idx]
+            long = df_ma_long.MA[idx]
+
+            if (short > medium) and (medium > long):  # 多头排列
+                if (last_dktp is None) or (last_dktp <= 0):
+                    df_ma_long.loc[idx].DKTP = 1
+                elif last_dktp > 0:
+                    df_ma_long.loc[idx].DKTP = last_dktp + 1
+            elif (short < medium) and (medium < long):  # 空头排列
+                if (last_dktp is None) or (last_dktp >= 0):
+                    df_ma_long.loc[idx].DKTP = -1
+                elif last_dktp < 0:
+                    df_ma_long.loc[idx].DKTP = last_dktp - 1
+            else:
+                df_ma_long.loc[idx].DKTP = 0
+            last_dktp = df_ma_long.DKTP[idx]
+
+        df_ma_long.drop(['MA'], axis=1, inplace=True)
+        df_append = df_ma_long
+
+        return df_append
+
+
 IDT_CLASS = {'ma': Ma,
              'maqs': Maqs,  # ma的趋势变化率
              'madq': Madq,  # ma抵扣x周期
@@ -1199,6 +1381,7 @@ IDT_CLASS = {'ma': Ma,
              'macd': Macd,
              'majh': Majh,
              'jdxz': Jdxz,  # 吸引资金绝对占比、成交额占两市比例
+             'dktp': Dktp,  # 多空头排列周期数
              }
 
 if __name__ == '__main__':

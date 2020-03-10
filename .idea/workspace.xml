@@ -8,7 +8,6 @@
       <change beforePath="$PROJECT_DIR$/report_daily_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/report_daily_basic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/reports/rpt_d_持仓_001_20200306.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/reports/rpt_d_持仓_001_20200306.xlsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/st_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_common.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,7 +37,6 @@
   <component name="PropertiesComponent">
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="ToolWindowDebug.ShowToolbar" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/plot_result" />
     <property name="settings.editor.selected.configurable" value="preferences.toDoOptions" />
   </component>
@@ -177,9 +175,9 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.report_daily_basic" />
+        <item itemvalue="Python.st_board" />
         <item itemvalue="Python.testing" />
         <item itemvalue="Python.st_board_bulk_download" />
-        <item itemvalue="Python.st_board" />
         <item itemvalue="Python.st_board_simple_test" />
       </list>
     </recent_temporary>
@@ -270,46 +268,46 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="755" height="466" key="DebuggerActiveHint/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580095705002" />
-    <state width="1584" height="334" key="GridCell.Tab.0.bottom" timestamp="1583506266825">
+    <state width="1584" height="660" key="GridCell.Tab.0.bottom" timestamp="1583831466326">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.0.center" timestamp="1583506266825">
+    <state width="1584" height="660" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831466326" />
+    <state width="1584" height="660" key="GridCell.Tab.0.center" timestamp="1583831466326">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.0.left" timestamp="1583506266825">
+    <state width="1584" height="660" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831466326" />
+    <state width="1584" height="660" key="GridCell.Tab.0.left" timestamp="1583831466326">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.0.right" timestamp="1583506266825">
+    <state width="1584" height="660" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831466326" />
+    <state width="1584" height="660" key="GridCell.Tab.0.right" timestamp="1583831466326">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.1.bottom" timestamp="1583506266825">
+    <state width="1584" height="660" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831466326" />
+    <state width="1584" height="334" key="GridCell.Tab.1.bottom" timestamp="1583831458257">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.1.center" timestamp="1583506266825">
+    <state width="1584" height="334" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831458257" />
+    <state width="1584" height="334" key="GridCell.Tab.1.center" timestamp="1583831458257">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.1.left" timestamp="1583506266825">
+    <state width="1584" height="334" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831458257" />
+    <state width="1584" height="334" key="GridCell.Tab.1.left" timestamp="1583831458257">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
-    <state width="1584" height="334" key="GridCell.Tab.1.right" timestamp="1583506266825">
+    <state width="1584" height="334" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831458257" />
+    <state width="1584" height="334" key="GridCell.Tab.1.right" timestamp="1583831458257">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="334" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583506266825" />
+    <state width="1584" height="334" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583831458257" />
     <state x="498" y="235" key="RollbackChangesDialog" timestamp="1579358481751">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -344,10 +342,10 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="498" y="188" key="refactoring.ChangeSignatureDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1579154912854" />
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1583483353560">
+    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1583825753705">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583483353560" />
+    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1583825753705" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -364,7 +362,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/report_daily_basic.py</url>
-          <line>166</line>
+          <line>197</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
       </breakpoints>

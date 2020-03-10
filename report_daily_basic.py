@@ -63,9 +63,21 @@ def rpt_d_basic(al_file):
                  'period': 250}
     p10.add_condition(pre_args1, pre_args2, '>')
 
+    # ------condition_4
+    pre_args1 = {'idt_type': 'dktp',  # 多空头排列
+                 'short_n1': 5,
+                 'medium_n2': 10,
+                 'long_n3': 20}
+    pre_args2 = {'idt_type': 'dktp',  # 多空头排列
+                 'source': 'vol',  # 成交量
+                 'short_n1': 5,
+                 'medium_n2': 10,
+                 'long_n3': 20}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
     stg.init_pools_cnds_matrix()
     stg.init_ref_assets()
-    end_date = today_str()
+    end_date = trade_day_str
     start_date = raw_data.previous_trade_day(end_date, 2)
     stg.update_cycles(start_date=start_date, end_date=end_date)
 
@@ -121,16 +133,24 @@ def rpt_d_basic(al_file):
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xzqs explicit type:{0[1]} to catch', log_args)
             xzqs = 99999.9
 
+        # ----价多空头排列天数
+        p_dktp, = asset.dktp_5_10_20.df_idt.head(1)['DKTP'].values
+
+        # ----量多空头排列天数
+        v_dktp, = asset.dktp_vol_5_10_20.df_idt.head(1)['DKTP'].values
+
         # ----添加数据
         data.append((ts_code, name, comment1, comment2, ma20_gl, maqs20, maqs60,
-                     jh_pct, xz_rate, xzqs))
+                     jh_pct, xz_rate, xzqs, p_dktp, v_dktp))
 
     # =================报告基础=================
     workbook = xlw.Workbook(file_path)
     ws1 = workbook.add_worksheet('日报')  # worksheet #1
 
     fmt_std = workbook.add_format()
+    fmt_rpt_title = workbook.add_format({'font_color': 'purple', 'font_size': 14, 'valign': 'vcenter', 'align': 'left'})
     fmt_center = workbook.add_format({'align': 'center', 'valign': 'vcenter'})  # 居中
+    fmt_int = workbook.add_format({'num_format': '0', 'valign': 'vcenter'})  # 整数
     fmt_f1d = workbook.add_format({'num_format': '0.0', 'valign': 'vcenter'})  # 1位小数
     fmt_f2d = workbook.add_format({'num_format': '0.00', 'valign': 'vcenter'})  # 2位小数
     fmt_f3d = workbook.add_format({'num_format': '0.000', 'valign': 'vcenter'})  # 3位小数
@@ -141,28 +161,39 @@ def rpt_d_basic(al_file):
     # 与data对应的显示格式
     #           ts_code       名称      备注     备注    20日归    maqs20   maqs60
     formats = [fmt_center, fmt_center, fmt_std, fmt_std, fmt_f2d, fmt_f2d, fmt_f2d]
-    #                    聚合占比 吸资归离  吸资10QS
-    formats = formats + [fmt_pct, fmt_f2d, fmt_f2d]
+    #                    聚合占比 吸资归离  吸资10QS 价多空排  量多空排
+    formats = formats + [fmt_pct, fmt_f2d, fmt_f2d, fmt_int, fmt_int]
 
     # =================报告数据=================
     # ----标题栏
+    ws1.write_string('A1', trade_day_str + '    ' + 'Report Daily Basic', fmt_rpt_title)
+    ws1.set_row(0, 19)  # 第一行，标题栏行高
+    ws1.set_row(1, options={'hidden': True})  # 第二行，分隔行行高
+    # ----表头
     head = ('代码', '名称', '备注', '备注', '20日归%', 'MAQS20‰', 'MAQS60‰',
-            '聚2%天比', '吸资归离', '吸资10QS')
-    ws1.write_row('A1', head, fmt_center)
-    ws1.write_comment('E1', '(by_price / ma20_last - 1) * 100')
-    ws1.write_comment('F1', 'maqs_20 * 1000')
-    ws1.write_comment('G1', 'maqs_60 * 1000')
-    ws1.write_comment('H1', '在20个交易日内，majh<' + str(X) + '%天数的占比')
-    ws1.write_comment('I1', '10日吸资比 / 250日吸资比 -1')
-    ws1.write_comment('J1', '10日吸资比变化率 * 100')
+            '聚2%天比', '吸资归离', '吸资10QS', '价多空排', '量多空排')
+    ws1.write_row('A3', head, fmt_center)
+    ws1.write_comment('A1', '确保下载数据当日数据后再生成报表！')
+    ws1.write_comment('E3', '(by_price / ma20_last - 1) * 100')
+    ws1.write_comment('F3', 'maqs_20 * 1000')
+    ws1.write_comment('G3', 'maqs_60 * 1000')
+    ws1.write_comment('H3', '在20个交易日内，majh<' + str(X) + '%天数的占比')
+    ws1.write_comment('I3', '10日吸资比 / 250日吸资比 -1')
+    ws1.write_comment('J3', '10日吸资比变化率 * 100')
+    ws1.write_comment('K3', '价多空头排列天数')
+    ws1.write_comment('L3', '量多空头排列天数')
     # ----填充数据
-    row = 1
+    row = 3
     assert len(head) == len(formats)
     for item in data:
         for column in range(len(head)):
             ws1.write(row, column, item[column], formats[column])
         row += 1
 
+    # =================收尾格式=================
+    ws1.set_column(0, 0, 10.2)  # 代码
+    ws1.set_column(1, 1, 8.2)  # 名称
+    ws1.set_column(2, 3, 15)  # 备注
     workbook.close()
     pass
 
