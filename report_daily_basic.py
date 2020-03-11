@@ -1,8 +1,10 @@
 from st_common import Raw_Data
-from st_common import sub_path_rpt
+from st_common import sub_path_rpt, sub_notes, sub_path
 from st_board import Select_Collect
 import xlsxwriter as xlw
 from XF_LOG_MANAGE import add_log, logable
+import xml.etree.ElementTree as ET
+from comments_update import load_xml
 
 al_file_name = Select_Collect.al_file_name
 
@@ -87,8 +89,15 @@ def rpt_d_basic(al_file):
     for asset in p10.assets.values():
         ts_code = asset.ts_code
         name = asset.name
-        comment1 = ''
-        comment2 = ''
+        # ----从an_<ts_code>.xml读入comment
+        tree = load_xml(ts_code)
+        if isinstance(tree, ET.ElementTree):
+            root = tree.getroot()
+            comment1 = root.find('comment1').find('content').text
+            comment2 = root.find('comment2').find('content').text
+        else:
+            comment1 = ''
+            comment2 = ''
 
         # ----20日归%
         ma20_last, = asset.ma_20.df_idt.head(1)['MA'].values
@@ -148,6 +157,7 @@ def rpt_d_basic(al_file):
     ws1 = workbook.add_worksheet('日报')  # worksheet #1
 
     fmt_std = workbook.add_format()
+    fmt_wrap = workbook.add_format({'text_wrap': True})
     fmt_rpt_title = workbook.add_format({'font_color': 'purple', 'font_size': 14, 'valign': 'vcenter', 'align': 'left'})
     fmt_center = workbook.add_format({'align': 'center', 'valign': 'vcenter'})  # 居中
     fmt_int = workbook.add_format({'num_format': '0', 'valign': 'vcenter'})  # 整数
@@ -159,8 +169,8 @@ def rpt_d_basic(al_file):
     fmt_pct2d = workbook.add_format({'num_format': '0.00%', 'valign': 'vcenter'})  # 2.22%
 
     # 与data对应的显示格式
-    #           ts_code       名称      备注     备注    20日归    maqs20   maqs60
-    formats = [fmt_center, fmt_center, fmt_std, fmt_std, fmt_f2d, fmt_f2d, fmt_f2d]
+    #           ts_code       名称      备注        备注    20日归    maqs20   maqs60
+    formats = [fmt_center, fmt_center, fmt_wrap, fmt_wrap, fmt_f2d, fmt_f2d, fmt_f2d]
     #                    聚合占比 吸资归离  吸资10QS 价多空排  量多空排
     formats = formats + [fmt_pct, fmt_f2d, fmt_f2d, fmt_int, fmt_int]
 
@@ -202,4 +212,5 @@ if __name__ == '__main__':
     raw_data = Raw_Data(pull=False)
     al_file = al_file_name()
     rpt_d_basic(al_file)
+    pass
 
