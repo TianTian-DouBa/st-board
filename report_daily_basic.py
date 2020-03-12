@@ -2,11 +2,19 @@ from st_common import Raw_Data
 from st_common import sub_path_rpt, sub_notes, sub_path
 from st_board import Select_Collect
 import xlsxwriter as xlw
+from xlsxwriter.utility import xl_range
 from XF_LOG_MANAGE import add_log, logable
 import xml.etree.ElementTree as ET
 from comments_update import load_xml
 
 al_file_name = Select_Collect.al_file_name
+
+
+def set_boarder(row0, col0, rowx, colx):
+    """
+    给指定范围的cells设置边框
+    """
+
 
 
 def rpt_d_basic(al_file):
@@ -77,6 +85,15 @@ def rpt_d_basic(al_file):
                  'long_n3': 20}
     p10.add_condition(pre_args1, pre_args2, '>')
 
+    # ------condition_5
+    pre_args1 = {'idt_type': 'maqs',  # 量趋势变化
+                 'period': 10,
+                 'source': 'vol'}
+    pre_args2 = {'idt_type': 'maqs',  # 量趋势变化
+                 'period': 20,
+                 'source': 'vol'}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
     stg.init_pools_cnds_matrix()
     stg.init_ref_assets()
     end_date = trade_day_str
@@ -111,6 +128,14 @@ def rpt_d_basic(al_file):
         # ----60MA变化
         maqs60, = asset.maqs_60.df_idt.head(1)['MAQS'].values
         maqs60 = maqs60 * 1000
+
+        # ----量20MA变化
+        maqs_vol_20, = asset.maqs_vol_20.df_idt.head(1)['MAQS'].values
+        maqs_vol_20 = maqs_vol_20 * 1000
+
+        # ----量10MA变化
+        maqs_vol_10, = asset.maqs_vol_10.df_idt.head(1)['MAQS'].values
+        maqs_vol_10 = maqs_vol_10 * 1000
 
         # ----价聚合<x%天数的占比（最近20个交易日中）
         df = asset.majh_60_20_5.df_idt
@@ -150,29 +175,45 @@ def rpt_d_basic(al_file):
 
         # ----添加数据
         data.append((ts_code, name, comment1, comment2, ma20_gl, maqs20, maqs60,
-                     jh_pct, xz_rate, xzqs, p_dktp, v_dktp))
+                     maqs_vol_10, maqs_vol_20, jh_pct, xz_rate, xzqs, p_dktp, v_dktp))
 
     # =================报告基础=================
     workbook = xlw.Workbook(file_path)
     ws1 = workbook.add_worksheet('日报')  # worksheet #1
 
-    fmt_std = workbook.add_format()
-    fmt_wrap = workbook.add_format({'text_wrap': True})
-    fmt_rpt_title = workbook.add_format({'font_color': 'purple', 'font_size': 14, 'valign': 'vcenter', 'align': 'left'})
-    fmt_center = workbook.add_format({'align': 'center', 'valign': 'vcenter'})  # 居中
-    fmt_int = workbook.add_format({'num_format': '0', 'valign': 'vcenter'})  # 整数
-    fmt_f1d = workbook.add_format({'num_format': '0.0', 'valign': 'vcenter'})  # 1位小数
-    fmt_f2d = workbook.add_format({'num_format': '0.00', 'valign': 'vcenter'})  # 2位小数
-    fmt_f3d = workbook.add_format({'num_format': '0.000', 'valign': 'vcenter'})  # 3位小数
-    fmt_pct = workbook.add_format({'num_format': '0%', 'valign': 'vcenter'})  # 0%
-    fmt_pct1d = workbook.add_format({'num_format': '0.0%', 'valign': 'vcenter'})  # 1.1%
-    fmt_pct2d = workbook.add_format({'num_format': '0.00%', 'valign': 'vcenter'})  # 2.22%
+    dfc_purple = {'font_color': 'purple'}  # 字体颜色
+    dfs_14 = {'font_size': 14}  # 字体大小
+    dtw = {'text_wrap': True}  # text_wrap
+    dnum_0 = {'num_format': '0'}  # 数字0位小数
+    dnum_1 = {'num_format': '0.0'}  # 数字1位小数
+    dnum_2 = {'num_format': '0.00'}  # 数字2位小数
+    dnum_3 = {'num_format': '0.000'}  # 数字2位小数
+    dpct_0 = {'num_format': '0%'}  # % 0位小数
+    dpct_1 = {'num_format': '0.0%'}  # % 1位小数
+    dpct_2 = {'num_format': '0.00%'}  # % 2位小数
+    dpct_3 = {'num_format': '0.000%'}  # % 3位小数
+    dal_left = {'align': 'left'}  # 横向排列
+    dal_center = {'align': 'center'}  # 横向排列
+    dval_center = {'valign': 'vcenter'}  # 纵向排列
+    dbd = {'border': 1}  # 单元格边框
+
+    fmt_std = workbook.add_format({**dbd})
+    fmt_wrap = workbook.add_format({**dbd, **dtw})
+    fmt_rpt_title = workbook.add_format({**dfc_purple, **dfs_14, **dval_center, **dal_left})
+    fmt_center = workbook.add_format({**dbd, **dal_center, **dval_center})  # 居中
+    fmt_int = workbook.add_format({**dbd, **dnum_0, **dval_center})  # 整数
+    fmt_f1d = workbook.add_format({**dbd, **dnum_1, **dval_center})  # 1位小数
+    fmt_f2d = workbook.add_format({**dbd, **dnum_2, **dval_center})  # 2位小数
+    fmt_f3d = workbook.add_format({**dbd, **dnum_3, **dval_center})  # 3位小数
+    fmt_pct = workbook.add_format({**dbd, **dpct_0, **dval_center})  # 0%
+    fmt_pct1d = workbook.add_format({**dbd, **dpct_1, **dval_center})  # 1.1%
+    fmt_pct2d = workbook.add_format({**dbd, **dpct_2, **dval_center})  # 2.22%
 
     # 与data对应的显示格式
     #           ts_code       名称      备注        备注    20日归    maqs20   maqs60
     formats = [fmt_center, fmt_center, fmt_wrap, fmt_wrap, fmt_f2d, fmt_f2d, fmt_f2d]
-    #                    聚合占比 吸资归离  吸资10QS 价多空排  量多空排
-    formats = formats + [fmt_pct, fmt_f2d, fmt_f2d, fmt_int, fmt_int]
+    #                    量10QS   量20QS    聚合占比 吸资归离 吸资10QS 价多空排  量多空排
+    formats = formats + [fmt_f2d, fmt_f2d, fmt_pct, fmt_f2d, fmt_f2d, fmt_int, fmt_int]
 
     # =================报告数据=================
     # ----标题栏
@@ -180,18 +221,20 @@ def rpt_d_basic(al_file):
     ws1.set_row(0, 19)  # 第一行，标题栏行高
     ws1.set_row(1, options={'hidden': True})  # 第二行，分隔行行高
     # ----表头
-    head = ('代码', '名称', '备注', '备注', '20日归%', 'MAQS20‰', 'MAQS60‰',
-            '聚2%天比', '吸资归离', '吸资10QS', '价多空排', '量多空排')
+    head = ('代码', '名称', '备注', '备注', '价20归%', '价20QS‰', '价60QS‰',
+            '量10QS‰', '量20QS‰', '聚2%天比', '吸资归离', '吸资10QS', '价多空排', '量多空排')
     ws1.write_row('A3', head, fmt_center)
     ws1.write_comment('A1', '确保下载数据当日数据后再生成报表！')
     ws1.write_comment('E3', '(by_price / ma20_last - 1) * 100')
     ws1.write_comment('F3', 'maqs_20 * 1000')
     ws1.write_comment('G3', 'maqs_60 * 1000')
-    ws1.write_comment('H3', '在20个交易日内，majh<' + str(X) + '%天数的占比')
-    ws1.write_comment('I3', '10日吸资比 / 250日吸资比 -1')
-    ws1.write_comment('J3', '10日吸资比变化率 * 100')
-    ws1.write_comment('K3', '价多空头排列天数')
-    ws1.write_comment('L3', '量多空头排列天数')
+    ws1.write_comment('H3', 'maqs_vol_10 * 1000')
+    ws1.write_comment('I3', 'maqs_vol_20 * 1000')
+    ws1.write_comment('J3', '在20个交易日内，majh<' + str(X) + '%天数的占比')
+    ws1.write_comment('K3', '10日吸资比 / 250日吸资比 -1')
+    ws1.write_comment('L3', '10日吸资比变化率 * 100')
+    ws1.write_comment('M3', '价多空头排列天数')
+    ws1.write_comment('N3', '量多空头排列天数')
     # ----填充数据
     row = 3
     assert len(head) == len(formats)
@@ -204,6 +247,17 @@ def rpt_d_basic(al_file):
     ws1.set_column(0, 0, 10.2)  # 代码
     ws1.set_column(1, 1, 8.2)  # 名称
     ws1.set_column(2, 3, 15)  # 备注
+    max_column = len(head) - 1
+    max_row = row - 1
+    ws1.set_landscape()  # 页面横向
+    ws1.set_paper(9)  # 设置A4纸
+    ws1.center_horizontally()  # 居中
+    ws1.set_margins(0.3, 0.3, 0.3, 1)
+    ws1.set_footer('&C&P of &N')  # 设置页脚
+    # Adjust the page top margin to allow space for the header image.
+    ws1.repeat_rows(3)  # 重复打印行
+    ws1.repeat_columns(2)  # 重复打印列
+    ws1.freeze_panes(3, 2)  # freeze行列
     workbook.close()
     pass
 
