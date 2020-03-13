@@ -636,6 +636,21 @@ class All_Assets_List:
         return category
 
     @staticmethod
+    def query_stype2(ts_code):
+        """
+        从all_assets_list中返回stype2字段，具体储存sw index的'L1', 'L2', 'L3'
+        return: <str> e.g. 'L1'
+                None if failed
+        """
+        try:
+            stype2 = raw_data.all_assets_list.loc[ts_code].stype2
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]All_Assets_List.query_type2(). ts_code:{0[0]} invalid', log_args)
+            return
+        return stype2
+
+    @staticmethod
     def load_al_file(al_file=None):
         r"""
         load al_file into assets
@@ -1130,13 +1145,14 @@ class Stock(Asset):
             file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
-                                              'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)
+                # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             elif columns == 'basic':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
                                      usecols=['trade_date', 'close', 'open', 'high', 'low', 'amount'], index_col='trade_date', nrows=nrows)
-            # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            else:
+                result = None
             return result
         else:
             log_args = [ts_code]
@@ -1405,6 +1421,25 @@ class Index(Asset):
         return df_l1, df_l2, df_l3
 
     @staticmethod
+    def load_sw_index_classify():
+        """
+        从文件index_sw_Lx_list.csv读入df_l1, df_l2, df_l3
+        """
+        l1_name = "index_sw_L1_list.csv"
+        l1_path = sub_path + '\\' + l1_name
+        l2_name = "index_sw_L2_list.csv"
+        l2_path = sub_path + '\\' + l2_name
+        l3_name = "index_sw_L3_list.csv"
+        l3_path = sub_path + '\\' + l3_name
+        df_l1 = pd.read_csv(l1_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l1['industry_code'] = df_l1['industry_code'].astype(np.int64)
+        df_l2 = pd.read_csv(l2_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l2['industry_code'] = df_l2['industry_code'].astype(np.int64)
+        df_l3 = pd.read_csv(l3_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l3['industry_code'] = df_l3['industry_code'].astype(np.int64)
+        return df_l1, df_l2, df_l3
+
+    @staticmethod
     def load_index_daily(ts_code, nrows=None,  columns='all'):
         """
         从文件读入指数日线数据
@@ -1470,6 +1505,48 @@ class Index(Asset):
             log_args = [ts_code]
             add_log(20, '[fn]Index.load_sw_daily() ts_code "{0[0]}" invalid', log_args)
             return
+
+    @staticmethod
+    def update_subsw_al(ts_code, ex_l3=None):
+        """
+        如果处理一般index层级关系，可能需要考虑将此函数融合
+        如果是申万L1或L2的指数，则将所含下一级指数更新到al_sw_lx_<ts_code>_<name>.csv中
+        ts_code: <str>
+        ex_l3: True 跳过L2直接返回L3的列表
+        """
+        category = All_Assets_List.query_category_str(ts_code)
+        if category == 'index_sw':
+            stype2 = All_Assets_List.query_stype2(ts_code)
+            if stype2 == 'L1':
+                df_l1, df_l2, df_l3 = Index.load_sw_index_classify()
+                code = df_l1.loc[ts_code].industry_code
+                name = df_l1.loc[ts_code].industry_name
+                l1_prefix = code[:2]
+                if ex_l3 is True:
+                    rslt_list = df_l3[df_l3.industry_code.str.startswith(l1_prefix)].index.tolist()
+                    name = name + '_L3'
+                else:
+                    rslt_list = df_l2[df_l2.industry_code.str.startswith(l1_prefix)].index.tolist()
+            elif stype2 == 'L2':
+                df_l1, df_l2, df_l3 = Index.load_sw_index_classify()
+                code = df_l2.loc[ts_code].industry_code
+                name = df_l2.loc[ts_code].industry_name
+                l2_prefix = code[:4]
+                rslt_list = df_l3[df_l3.industry_code.str.startswith(l2_prefix)].index.tolist()
+            else:
+                log_args = [ts_code]
+                add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" is not index_sw L1 or L2', log_args)
+                return
+            if len(rslt_list) > 0:
+                file_name = 'sw_' + stype2.lower() + '_' + ts_code + '_' + name
+                All_Assets_List.create_al_file(rslt_list, file_name=file_name)
+            else:
+                log_args = [ts_code]
+                add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" empty output', log_args)
+                return None
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" is not index_sw L1 or L2', log_args)
 
 
 class Hsgt:
@@ -4110,7 +4187,7 @@ if __name__ == "__main__":
     # ---stg循环-----------
     # stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    stg.update_cycles(start_date='20170101', cycles=200)
+    stg.update_cycles(start_date='20170101', cycles=20)
     # ---报告-----------
     p20.csv_in_out()
     p30.csv_in_out()

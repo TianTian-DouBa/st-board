@@ -19,7 +19,7 @@ def set_boarder(row0, col0, rowx, colx):
 
 def rpt_d_basic(al_file):
     """
-    报告：每日基本情况
+    报告：每日资产概览
     al_file: <str> al_<al_file>.csv
     """
     from st_board import Strategy
