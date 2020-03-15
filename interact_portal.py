@@ -3,6 +3,7 @@
 """
 from st_common import sub_notes, sub_path
 from XF_LOG_MANAGE import add_log
+from st_board import Index, Stock
 import xml.etree.ElementTree as ET
 
 
@@ -69,7 +70,7 @@ def update_xml(ts_code, new=None, **kwargs):
     tree.write(file_path, encoding='utf-8')
 
 
-def cmt(ts_code=None):
+def cmt(ts_code):
     """
     查看并更新指定资产的备注
     ts_code: None 手动输入ts_code
@@ -132,6 +133,28 @@ def cmt(ts_code=None):
     tree.write(file_path, encoding='utf-8')
 
 
+def member(ts_code):
+    """
+    提取指标的成分股到al
+    当下只支持申万指数，其它指数的ts_pro.index_weight接口还未实施
+    """
+    Index.update_sw_member_al(ts_code)
+
+
+def subsw(ts_code, ex_l3=None):
+    """
+    提取申万指数L1, L2的下级指数到al
+    """
+    Index.update_subsw_al(ts_code, ex_l3)
+
+
+def pledge(ts_code):
+    """
+    获取质押信息
+    """
+    Stock.get_pledge(ts_code)
+
+    
 if __name__ == '__main__':
     # update_xml('000001.SH', new=True, comment1='abc<123', comment2='注释\n2')
     pass

@@ -4,7 +4,7 @@ import os
 import time
 import weakref
 from st_common import raw_data  # 不能去掉
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
+from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis, sub_pledge
 from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
 from XF_LOG_MANAGE import add_log, logable, log_print
@@ -1317,6 +1317,21 @@ class Stock(Asset):
             log_args = [file_name]
             add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" updated".', log_args)
 
+    @staticmethod
+    def get_pledge(ts_code):
+        """
+        获取个股的质押信息
+        """
+        ts_code = ts_code.upper()
+        file_name = 'pledge_' + ts_code + '.csv'
+        detail_name = 'pl_dtl_' + ts_code + '.csv'
+        file_path = sub_path + sub_pledge + '\\' + file_name
+        detail_path = sub_path + sub_pledge + '\\' + detail_name
+        df_pledge = ts_pro.pledge_stat(ts_code=ts_code)
+        df_detail = ts_pro.pledge_detail(ts_code=ts_code)
+        df_pledge.to_csv(file_path, encoding='utf-8')
+        df_detail.to_csv(detail_path, encoding='utf-8')
+
 
 class Index(Asset):
     """
@@ -1547,6 +1562,32 @@ class Index(Asset):
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" is not index_sw L1 or L2', log_args)
+
+    @staticmethod
+    def update_sw_member_al(ts_code):
+        """
+        获取申万指数的成分股到al_sw_mbr_<ts_code>_<name>.csv中
+        return: <list> 成分股的ts_code
+                None if failed
+        """
+        df_all = raw_data.all_assets_list
+        ts_code = ts_code.upper()
+        try:
+            name = df_all.loc[ts_code]['name']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.update_sw_member_al() ts_code:"{0[0]}" is not in all_assets_list', log_args)
+            return
+        file_name = 'sw_mbr_' + ts_code + '_' + name
+        rslt_df = ts_pro.index_member(index_code=ts_code)
+        if isinstance(rslt_df, pd.DataFrame):
+            if len(rslt_df) > 0:
+                rslt_list = rslt_df.con_code.tolist()
+                All_Assets_List.create_al_file(rslt_list, file_name=file_name)
+                return rslt_list
+        log_args = [ts_code, type(rslt_df)]
+        add_log(20, '[fn]Index.update_sw_member_al() ts_code:"{0[0]}" return type:{0[1]} invalid or empty', log_args)
+        return
 
 
 class Hsgt:

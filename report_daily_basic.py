@@ -5,7 +5,7 @@ import xlsxwriter as xlw
 from xlsxwriter.utility import xl_range
 from XF_LOG_MANAGE import add_log, logable
 import xml.etree.ElementTree as ET
-from comments_update import load_xml
+from interact_portal import load_xml
 
 al_file_name = Select_Collect.al_file_name
 

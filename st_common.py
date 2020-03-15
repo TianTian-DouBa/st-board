@@ -15,6 +15,7 @@ sub_path_result = r".\plot_result"  # 分析模板运行结果
 sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
 sub_analysis = r"\analysis"  # 分析数据
 sub_notes = r"\assets_notes"  # 资产备注及附加信息
+sub_pledge = r"\pledge"  # 资产质押信息
 
 SUBTYPE = {'D': 'day',
            'W': 'week',
