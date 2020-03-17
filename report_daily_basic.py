@@ -10,13 +10,6 @@ from interact_portal import load_xml
 al_file_name = Select_Collect.al_file_name
 
 
-def set_boarder(row0, col0, rowx, colx):
-    """
-    给指定范围的cells设置边框
-    """
-
-
-
 def rpt_d_basic(al_file):
     """
     报告：每日资产概览

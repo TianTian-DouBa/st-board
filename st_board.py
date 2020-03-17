@@ -3571,6 +3571,75 @@ class Filter:
         self.in_seek_direction = in_seek_direction
 
 
+class Concept:
+    """
+    存放概念相关的内容
+    """
+    @staticmethod
+    def get_concept():
+        """
+        从tushare获取概念分类表
+        retrun: <int> number of concepts
+                None if failed
+        """
+        file_name = 'concept.csv'
+        file_path = sub_path + '\\' + file_name
+        df = ts_pro.concept()
+        if isinstance(df, pd.DataFrame):
+            if len(df) > 0:
+                df.to_csv(file_path, encoding='utf-8')
+                return len(df)
+        add_log(20, '[fn]Concept.get_concept(). failed')
+
+    @staticmethod
+    def load_concept():
+        """
+        从concept.csv读入df
+        return: <df> is success
+                None if failed
+        """
+        file_name = 'concept.csv'
+        file_path = sub_path + '\\' + file_name
+        df = pd.read_csv(file_path, usecols=['code', 'name', 'src'], index_col='code')
+        if isinstance(df, pd.DataFrame):
+            if len(df) > 0:
+                return df
+
+    @staticmethod
+    def get_member(code):
+        """
+        获取概念的成分股到 al_cncpt_<code>_<name>.csv
+        code: <str> e.g. 'TS2'
+        return: <int> of member
+                None
+        """
+        code = code.upper()
+        if code[:2] != 'TS':
+            log_args = [code]
+            add_log(20, '[fn]Concept.get_member(). code:{0[0]} invalid, shall like e.g. "TS2", aborted', log_args)
+            return
+
+        df = Concept.load_concept()
+
+        if df is not None:
+            try:
+                name = df.loc[code]['name']
+            except NameError:
+                log_args = [code]
+                add_log(20, '[fn]Concept.get_member(). failed to get name of {0[0]}, aborted', log_args)
+                return
+            al_name = 'cncpt_' + code + '_' + name
+            df_detail = ts_pro.concept_detail(id=code)
+            if isinstance(df_detail, pd.DataFrame):
+                if len(df_detail) > 0:
+                    sr_al = df_detail['ts_code']
+                    list_al = sr_al.tolist()
+                    All_Assets_List.create_al_file(list_al, al_name)
+                    log_args = [list_al]
+                    add_log(40, '[fn]Concept.get_member(). al_{0[0]}.csv exported', log_args)
+                    return len(list_al)
+
+
 class Register_Buffer:
     """
     公共临时数据缓存区，只保存最新赋予的值，供看板、transition等调用。

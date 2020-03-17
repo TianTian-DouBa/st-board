@@ -3,7 +3,7 @@
 """
 from st_common import sub_notes, sub_path
 from XF_LOG_MANAGE import add_log
-from st_board import Index, Stock
+from st_board import Index, Stock, Concept
 import xml.etree.ElementTree as ET
 
 
@@ -154,7 +154,14 @@ def pledge(ts_code):
     """
     Stock.get_pledge(ts_code)
 
-    
+
+def concept(concept_id):
+    """
+    获取概念的成分股
+    """
+    Concept.get_member(concept_id)
+
+
 if __name__ == '__main__':
     # update_xml('000001.SH', new=True, comment1='abc<123', comment2='注释\n2')
     pass
