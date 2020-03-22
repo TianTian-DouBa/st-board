@@ -209,6 +209,7 @@ def report(al_file):
     fmt_pct = workbook.add_format(d_pct)  # 0%
     fmt_pct1d = workbook.add_format(d_pct1d)  # 1.1%
     fmt_pct2d = workbook.add_format(d_pct2d)  # 2.22%
+    fmt_pct1d_g = workbook.add_format(d_pct1d_g)  # 1.1% 灰底
 
     # =================报告数据=================
     # ----标题栏
@@ -241,22 +242,22 @@ def report(al_file):
     # ----chg%列
     column_width = 8.38
     data = df.m1d_pct.tolist()
-    ws1.write_column(4, 2, data, fmt_pct1d)  # 1 Day
+    ws1.write_column(4, 2, data, fmt_pct1d_g)  # 1 Day
     ws1.set_column(2, 2, width=column_width)
     data = df.m2d_pct.tolist()
-    ws1.write_column(4, 6, data, fmt_pct1d)  # 2 Days
+    ws1.write_column(4, 6, data, fmt_pct1d_g)  # 2 Days
     ws1.set_column(6, 6, width=column_width)
     data = df.m5d_pct.tolist()
-    ws1.write_column(4, 10, data, fmt_pct1d)  # 5 Days
+    ws1.write_column(4, 10, data, fmt_pct1d_g)  # 5 Days
     ws1.set_column(10, 10, width=column_width)
     data = df.m10d_pct.tolist()
-    ws1.write_column(4, 14, data, fmt_pct1d)  # 10 Days
+    ws1.write_column(4, 14, data, fmt_pct1d_g)  # 10 Days
     ws1.set_column(14, 14, width=column_width)
     data = df.m20d_pct.tolist()
-    ws1.write_column(4, 18, data, fmt_pct1d)  # 20 Days
+    ws1.write_column(4, 18, data, fmt_pct1d_g)  # 20 Days
     ws1.set_column(18, 18, width=column_width)
     data = df.m60d_pct.tolist()
-    ws1.write_column(4, 22, data, fmt_pct1d)  # 60 Days
+    ws1.write_column(4, 22, data, fmt_pct1d_g)  # 60 Days
     ws1.set_column(22, 22, width=column_width)
     # ----close及ma列
     column_width = 8.38

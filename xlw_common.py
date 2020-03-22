@@ -20,6 +20,7 @@ dval_center = {'valign': 'vcenter'}  # 纵向排列
 dbd = {'border': 1}  # 单元格边框
 # ----背景颜色
 dbgc_light_green = {'bg_color': '#92D050'}  # 浅绿背景色
+dbgc_light_gray = {'bg_color': '#D9D9D9'}  # 浅灰背景色
 
 
 d_std = {**dbd}
@@ -34,4 +35,5 @@ d_f2d = {**dbd, **dnum_2, **dval_center}  # 2位小数
 d_f3d = {**dbd, **dnum_3, **dval_center}  # 3位小数
 d_pct = {**dbd, **dpct_0, **dval_center}  # 0%
 d_pct1d = {**dbd, **dpct_1, **dval_center}  # 1.1%
+d_pct1d_g = {**dbd, **dpct_1, **dval_center, **dbgc_light_gray}  # 1.1% 灰底
 d_pct2d = {**dbd, **dpct_2, **dval_center}  # 2.22%
