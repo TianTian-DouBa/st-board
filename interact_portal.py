@@ -100,6 +100,10 @@ def cmt(ts_code):
     root = tree.getroot()
     print('[Note] Input "k" to keep the original comment.')
 
+    # ts_code
+    ts = root.find('ts_code')
+    ts.text = ts_code
+
     # comment1
     cmt1 = root.find('comment1').find('content')
     print("Old comment1:\n{}\n".format(cmt1.text))

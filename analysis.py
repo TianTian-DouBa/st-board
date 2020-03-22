@@ -40,7 +40,6 @@ def in_out_agg(io_df, trade_cost=0.005, yearly=True):
         add_log(20, '[fns]Analysis.in_out_agg(). failed to convert in/out_date to int, error type:{}', log_args)
         return
 
-
     def _calc(df):
         """
         计算以下关键参数

@@ -1,11 +1,11 @@
 from st_common import Raw_Data
-from st_common import sub_path_rpt, sub_notes, sub_path
+from st_common import sub_path_rpt
 from st_board import Select_Collect
 import xlsxwriter as xlw
-from xlsxwriter.utility import xl_range
-from XF_LOG_MANAGE import add_log, logable
+from XF_LOG_MANAGE import add_log
 import xml.etree.ElementTree as ET
 from interact_portal import load_xml
+from xlw_common import *
 
 al_file_name = Select_Collect.al_file_name
 
@@ -151,7 +151,7 @@ def rpt_d_basic(al_file):
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xz_rate explicit type:{0[1]} to catch', log_args)
             xz_rate = 9999.9
 
-        # ----吸资10QS
+        # ----吸资10QS`   `````
         try:
             xz_current, xz_previous = asset.jdxz_10.df_idt.head(2)['JDXZ'].values
             xzqs = (xz_current / xz_previous - 1) * 100
@@ -174,33 +174,17 @@ def rpt_d_basic(al_file):
     workbook = xlw.Workbook(file_path)
     ws1 = workbook.add_worksheet('日报')  # worksheet #1
 
-    dfc_purple = {'font_color': 'purple'}  # 字体颜色
-    dfs_14 = {'font_size': 14}  # 字体大小
-    dtw = {'text_wrap': True}  # text_wrap
-    dnum_0 = {'num_format': '0'}  # 数字0位小数
-    dnum_1 = {'num_format': '0.0'}  # 数字1位小数
-    dnum_2 = {'num_format': '0.00'}  # 数字2位小数
-    dnum_3 = {'num_format': '0.000'}  # 数字2位小数
-    dpct_0 = {'num_format': '0%'}  # % 0位小数
-    dpct_1 = {'num_format': '0.0%'}  # % 1位小数
-    dpct_2 = {'num_format': '0.00%'}  # % 2位小数
-    dpct_3 = {'num_format': '0.000%'}  # % 3位小数
-    dal_left = {'align': 'left'}  # 横向排列
-    dal_center = {'align': 'center'}  # 横向排列
-    dval_center = {'valign': 'vcenter'}  # 纵向排列
-    dbd = {'border': 1}  # 单元格边框
-
-    fmt_std = workbook.add_format({**dbd})
-    fmt_wrap = workbook.add_format({**dbd, **dtw})
-    fmt_rpt_title = workbook.add_format({**dfc_purple, **dfs_14, **dval_center, **dal_left})
-    fmt_center = workbook.add_format({**dbd, **dal_center, **dval_center})  # 居中
-    fmt_int = workbook.add_format({**dbd, **dnum_0, **dval_center})  # 整数
-    fmt_f1d = workbook.add_format({**dbd, **dnum_1, **dval_center})  # 1位小数
-    fmt_f2d = workbook.add_format({**dbd, **dnum_2, **dval_center})  # 2位小数
-    fmt_f3d = workbook.add_format({**dbd, **dnum_3, **dval_center})  # 3位小数
-    fmt_pct = workbook.add_format({**dbd, **dpct_0, **dval_center})  # 0%
-    fmt_pct1d = workbook.add_format({**dbd, **dpct_1, **dval_center})  # 1.1%
-    fmt_pct2d = workbook.add_format({**dbd, **dpct_2, **dval_center})  # 2.22%
+    fmt_std = workbook.add_format(d_std)
+    fmt_wrap = workbook.add_format(d_wrap)
+    fmt_rpt_title = workbook.add_format(d_rpt_title)
+    fmt_center = workbook.add_format(d_center)  # 居中
+    fmt_int = workbook.add_format(d_int)  # 整数
+    fmt_f1d = workbook.add_format(d_f1d)  # 1位小数
+    fmt_f2d = workbook.add_format(d_f2d)  # 2位小数
+    fmt_f3d = workbook.add_format(d_f3d)  # 3位小数
+    fmt_pct = workbook.add_format(d_pct)  # 0%
+    fmt_pct1d = workbook.add_format(d_pct1d)  # 1.1%
+    fmt_pct2d = workbook.add_format(d_pct2d)  # 2.22%
 
     # 与data对应的显示格式
     #           ts_code       名称      备注        备注    20日归    maqs20   maqs60
@@ -247,9 +231,8 @@ def rpt_d_basic(al_file):
     ws1.center_horizontally()  # 居中
     ws1.set_margins(0.3, 0.3, 0.3, 1)
     ws1.set_footer('&C&P of &N')  # 设置页脚
-    # Adjust the page top margin to allow space for the header image.
-    ws1.repeat_rows(3)  # 重复打印行
-    ws1.repeat_columns(2)  # 重复打印列
+    ws1.repeat_rows(0, 3)  # 重复打印行
+    ws1.repeat_columns(0, 1)  # 重复打印列
     ws1.freeze_panes(3, 2)  # freeze行列
     workbook.close()
     pass

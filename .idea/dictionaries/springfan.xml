@@ -4,6 +4,7 @@
       <w>calcer</w>
       <w>cncpt</w>
       <w>cnds</w>
+      <w>dbgc</w>
       <w>disp</w>
       <w>dktp</w>
       <w>dnum</w>
@@ -40,6 +41,7 @@
       <w>vcenter</w>
       <w>weakref</w>
       <w>xlsx</w>
+      <w>xlsxwrite</w>
       <w>xticks</w>
       <w>xvalues</w>
       <w>xxxx</w>
