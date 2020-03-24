@@ -33,7 +33,7 @@ def report(al_file):
     # =================报告文件=================
     today_s = today_str()
     trade_day_str = raw_data.last_trade_day(today_s)
-    file_name = 'rpt_racing_' + al_file + '_' + trade_day_str + '.xlsx'
+    file_name = 'rpt_racing_' + al_file + '_' + trade_day_str + '.xlsm'
     file_path = '.\\' + sub_path_rpt + '\\' + file_name
 
     # =================初始化Strategy=================
@@ -211,6 +211,11 @@ def report(al_file):
     fmt_pct2d = workbook.add_format(d_pct2d)  # 2.22%
     fmt_pct1d_g = workbook.add_format(d_pct1d_g)  # 1.1% 灰底
 
+    # =================添加VBA=================
+    file_bin = "rpt_racing.bin"
+    path_bin = '.\\' + sub_path_rpt + '\\bin\\' + file_bin
+    workbook.add_vba_project(path_bin)
+
     # =================报告数据=================
     # ----标题栏
     ws1.write_string('A1', trade_day_str + '    ' + 'Report Assets Racing', fmt_rpt_title)
@@ -319,6 +324,50 @@ def report(al_file):
     data = df.chg_60d.tolist()
     ws1.write_column(4, 25, data, fmt_int)  # 60 Days
     ws1.set_column(25, 25, width=column_width)
+
+    # =================添加按钮=================
+    ws1.insert_button("C3", {'macro': 'sort_1D',
+                             'caption': '1D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
+    ws1.insert_button("G3", {'macro': 'sort_2D',
+                             'caption': '2D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
+    ws1.insert_button("K3", {'macro': 'sort_5D',
+                             'caption': '5D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
+    ws1.insert_button("O3", {'macro': 'sort_10D',
+                             'caption': '10D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
+    ws1.insert_button("S3", {'macro': 'sort_20D',
+                             'caption': '20D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
+    ws1.insert_button("W3", {'macro': 'sort_60D',
+                             'caption': '60D',
+                             'width': 40,
+                             'height': 15,
+                             'x_offset': 2,
+                             'y_offset': 2
+                             })
 
     # =================收尾格式=================
     ws1.set_column(0, 0, 9)  # 代码
