@@ -3,8 +3,10 @@
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/report_daily_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/report_daily_basic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/report_race.py" beforeDir="false" afterPath="$PROJECT_DIR$/report_race.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/日报模板.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board_bulk_download.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board_bulk_download.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -354,7 +356,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>2946</line>
+          <line>2952</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -364,12 +366,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>4312</line>
+          <line>4318</line>
           <option name="timeStamp" value="17" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>1315</line>
+          <line>1321</line>
           <option name="timeStamp" value="18" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

@@ -379,7 +379,7 @@ def report(al_file):
     ws1.set_footer('&C&P of &N')  # 设置页脚
     ws1.repeat_rows(0, 3)  # 重复打印行
     ws1.repeat_columns(0, 1)  # 重复打印列
-    ws1.freeze_panes(4, 2)  # freeze行列
+    ws1.freeze_panes(4, 2)  # freeze 4行2列
     ws1.fit_to_pages(1, 0)  # 宽度放在1页中，长度不限
     workbook.close()
 

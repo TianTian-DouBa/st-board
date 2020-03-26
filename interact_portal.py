@@ -115,7 +115,9 @@ def cmt(ts_code):
         else:
             break
     new_cmt1 = '\n'.join(lines)
-    if new_cmt1.strip().lower() != 'k':
+    if new_cmt1 is None:
+        cmt1.text = ""
+    elif new_cmt1.strip().lower() != 'k':
         cmt1.text = new_cmt1
 
     # comment2
@@ -129,10 +131,11 @@ def cmt(ts_code):
         else:
             break
     new_cmt2 = '\n'.join(lines)
-    if new_cmt2.strip().lower() != 'k':
+    if new_cmt2 is None:
+        cmt2.text = ""
+    elif new_cmt2.strip().lower() != 'k':
         cmt2.text = new_cmt2
-    if new_cmt2.lower() != 'k':
-        cmt2.text = new_cmt2
+
 
     tree.write(file_path, encoding='utf-8')
 

@@ -231,9 +231,9 @@ def rpt_d_basic(al_file):
     ws1.center_horizontally()  # 居中
     ws1.set_margins(0.3, 0.3, 0.3, 1)
     ws1.set_footer('&C&P of &N')  # 设置页脚
-    ws1.repeat_rows(0, 3)  # 重复打印行
+    ws1.repeat_rows(0, 2)  # 重复打印行
     ws1.repeat_columns(0, 1)  # 重复打印列
-    ws1.freeze_panes(3, 2)  # freeze行列
+    ws1.freeze_panes(3, 2)  # freeze 3行2列
     workbook.close()
     pass
 

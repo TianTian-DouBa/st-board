@@ -700,7 +700,6 @@ class All_Assets_List:
 
         mode = "w" if overwrite is True else "x"
 
-        print("[L705] except for file overwrite not ready")
         with open(file_path, mode) as f:
             f.write("ts_code,selected\n")
             for ts_code in input_list:
@@ -754,6 +753,13 @@ class All_Assets_List:
         return: n_l1, n_l2, n_l3
         """
         df = raw_data.all_assets_list
+
+        # SW L1+L2+L3
+        s_swl = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW')].index
+        ls = s_swl.tolist()
+        n_l = len(ls)
+        if n_l > 0:
+            All_Assets_List.create_al_file(ls, 'SW_Index')
 
         # SW L1
         s_swl1 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (df.stype2 == 'L1')].index
