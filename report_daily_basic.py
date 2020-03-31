@@ -207,7 +207,7 @@ def rpt_d_basic(al_file):
     ws1.write_comment('G3', 'maqs_60 * 1000')
     ws1.write_comment('H3', 'maqs_vol_10 * 1000')
     ws1.write_comment('I3', 'maqs_vol_20 * 1000')
-    ws1.write_comment('J3', '在20个交易日内，majh<' + str(X) + '%天数的占比')
+    ws1.write_comment('J3', '在20个交易日内，majh<' + str(X) + '%天数的占比 周期5, 10, 20')
     ws1.write_comment('K3', '10日吸资比 / 250日吸资比 -1')
     ws1.write_comment('L3', '10日吸资比变化率 * 100')
     ws1.write_comment('M3', '价多空头排列天数')

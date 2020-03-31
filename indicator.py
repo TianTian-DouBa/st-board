@@ -1191,6 +1191,103 @@ class Jdxz(Indicator):
         return df_idt_append
 
 
+class Jdxzqs(Indicator):
+    """
+    Jdxzqs: JDXZ的变化率
+    """
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, period, source='amount', reload=False, update_csv=True, subtype='D'):
+        """
+        source:<str> e.g. 'close' #SOURCE
+        return:<ins Jdxzqs> if valid; None if invalid
+        """
+        try:
+            SUBTYPE[subtype]
+        except KeyError:
+            log_args = [ts_code, subtype]
+            add_log(10, '[fn]Jdxzqs.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
+            return
+        obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
+        return obj
+
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, period, source='amount', reload=False, update_csv=True, subtype='D'):
+        """
+        period: <int> Jdxz的周期
+        """
+        Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
+        self.idt_type = 'jdxzqs'
+        self.period = period
+        self.source = source
+        self.idt_name = idt_name
+        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
+        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.subtype = subtype
+
+    def _calc_res(self):
+        """
+        计算idt_df要补完的数据
+        """
+        df_source = self.load_sources()
+        df_idt = self.load_idt()
+        period = self.period
+        parent = self.par_asset()
+        df_pre = None  # 前置idt
+
+        def _pre_idt_hdl(n=None):
+            """
+            前置指标处理
+            n:<int> keep first n records; None = keep all
+            result: update df_pre
+            """
+            nonlocal df_pre
+            # 前置指标名idt_name计算
+            _kwargs = {
+                        'idt_type': 'jdxz',
+                        'period': period,
+                        'source': self.source,
+                        'update_csv': True}  # 考虑此指标是否会是常用指标，平衡速度与硬盘
+            kwargs_qz = idt_name(_kwargs)
+            idt_pre_name = kwargs_qz['idt_name']
+
+            # ------valid pre-idts uptodate------
+            if hasattr(parent, idt_pre_name):
+                idt_pre = getattr(parent, idt_pre_name)
+                if idt_pre.valid_utd() is not True:
+                    idt_pre.calc_idt()
+            else:
+                parent.add_indicator(**kwargs_qz)
+                idt_pre = getattr(parent, idt_pre_name)
+            if n is None:
+                df_pre = idt_pre.df_idt
+            else:
+                df_pre = idt_pre.df_idt.head(n)
+
+        # ---------主要部分开始------------
+        if isinstance(df_idt, pd.DataFrame):
+            # ------df_idt有效-----
+            idt_head_index_str, = df_idt.head(1).index.values
+            try:
+                idt_head_in_source = df_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+            except KeyError:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                return
+            if idt_head_in_source == 0:
+                log_args = [self.ts_code]
+                add_log(40, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                return
+            elif idt_head_in_source > 0:
+                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+        else:
+            # ----------重头生成df_idt----------
+            _pre_idt_hdl()
+        pre_col_name = 'JDXZ'  # 前置指标csv的字段名
+        sr_append = df_pre[pre_col_name].pct_change(periods=-1)  # <Series> pre_qs序列
+        sr_append = sr_append[:-1]  # 去掉最后一条
+        idt_column_name = 'JDXZQS'
+        df_idt_append = sr_append.to_frame(name=idt_column_name)
+        return df_idt_append
+
+
 class Dktp(Indicator):
     """
     多空头排列周期数，多头排列为正数，空头排列为负数
@@ -1381,6 +1478,7 @@ IDT_CLASS = {'ma': Ma,
              'macd': Macd,
              'majh': Majh,
              'jdxz': Jdxz,  # 吸引资金绝对占比、成交额占两市比例
+             'jdxcqs': Jdxzqs,  # jdxz的趋势变化率
              'dktp': Dktp,  # 多空头排列周期数
              }
 
