@@ -3585,6 +3585,7 @@ class Para:
                 self.field = 'default'
             self.idt_init_dict = idt_name(pre_args)
             self.idt_name = self.idt_init_dict['idt_name']
+            self.idt_type = pre_args['idt_type']
         if 'shift_periods' in pre_args:
             self.shift_periods = pre_args['shift_periods']
             del pre_args['shift_periods']

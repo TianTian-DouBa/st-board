@@ -50,11 +50,11 @@ def rpt_d_basic(al_file):
 
     # ------condition_2
     pre_args1 = {'idt_type': 'macd',  # 日线macd
-                 'long_n3': 26,
+                 'long_n1': 26,
                  'short_n2': 12,
                  'dea_n3': 9}
     pre_args2 = {'idt_type': 'macd',  # 周线macd
-                 'long_n3': 130,
+                 'long_n1': 130,
                  'short_n2': 60,
                  'dea_n3': 45}
     p10.add_condition(pre_args1, pre_args2, '>')
