@@ -2387,6 +2387,7 @@ class Pool:
         self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, load_daily=assets_daily_data, price_seek_direction=price_seek_direction)
         self.al_file = None  # <str> or None al file name
         self.conditions = []
+        self.calcs = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
@@ -2580,11 +2581,12 @@ class Pool:
     def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
         add the condition to the pool
+        使用说明详见.xmind/给pool增加conditions
         pre_argsN: <dict> refer indicator.idt_name() pre_args 创建para的必要输入参数
         e.g.
         {'idt_type': 'macd', 'const', 'stay_days',
                      'earn_pct', 'max_by_pct', 'min_by_pct', 'earn_return'
-         'long_n1': 26,  # depends on idt type
+         'long_n3': 26,  # depends on idt type
          'short_n2': 12,
          'dea_n3': 9,
          'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
@@ -2610,13 +2612,24 @@ class Pool:
         for i in range(len(self.conditions)):
             print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
 
+    def add_calc(self, method, pre_args, desc='', **kwargs):
+        """
+        add the <ins> of Calc to pool.calcs <list>
+        method: <str> 数据中间处理的方式
+                      'coverage': 在一定周期period中符合条件的比例,e.g.聚2%天比
+        pre_args: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
+        desc: <str> description
+        kwargs: 根据method不同，会有不同的参数，注意与pre_args中的区别开
+        """
+        self.calcs.append(Calc(method=method, pre_args=pre_args, desc=desc, **kwargs))
+
     def add_filter(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_seek_direction=None, in_seek_direction=None, out_shift_days=0, in_shift_days=0):
         """
         add the filter to the pool
         cnd_indexes: <set> {0, 1, 2}
         down_pools: <set> {0, 1}
-        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
-        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        in_price_mode, out_price_mode: <str> 过滤完后，确定out_price及in_price的模式refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> 过滤完后，确定out_price及in_price的模式refer Asset.get_price() attr: shift_days
         in_seek_direction, out_seek_direction: <str> or None refer Asset.get_price() attr: seek_direction
         """
         if cnd_indexes is None:
@@ -2633,12 +2646,16 @@ class Pool:
         from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for asset in self.assets.values():
             for cond in self.conditions:
-                if cond.para1.idt_name not in CND_SPC_TYPES:
+                if cond.para1.idt_type not in CND_SPC_TYPES:
                     post_args1 = cond.para1.idt_init_dict
                     asset.add_indicator(**post_args1)
-                if cond.para2.idt_name not in CND_SPC_TYPES:
+                if cond.para2.idt_type not in CND_SPC_TYPES:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
+            for calc in self.calcs:
+                if calc.idt_type not in CND_SPC_TYPES:
+                    post_args = calc.idt_init_dict
+                    asset.add_indicator(**post_args)
 
     def op_cnds_matrix(self, mode='i', ts_code=None, al=None, **kwargs):
         """
@@ -2729,8 +2746,8 @@ class Pool:
     def filter_cnd(self, cnd_index, datetime_, csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
-        本函数不会发起基础数据的下载和或指标的重新计算
-        cnd_index: <int>, self.conditions 的序号
+            本函数
+                    ``--`````ions 的序号
         datetime_: <str> '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              'default' = <pool_desc>_output.csv
@@ -2778,6 +2795,7 @@ class Pool:
                 shift1 = 0  # 前后移动周期数
             else:
                 shift1 = cnd.para1.shift_periods
+            # --------用于一般indicator类型
             val_fetcher1 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift1][column_name]
             date_fetcher1 = lambda _: datetime_
             # -----para2
@@ -2785,6 +2803,7 @@ class Pool:
                 shift2 = 0  # 前后移动周期数
             else:
                 shift2 = cnd.para2.shift_periods
+            # --------用于一般indicator类型
             val_fetcher2 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift2][column_name]
             date_fetcher2 = lambda _: datetime_
         else:
@@ -2822,7 +2841,7 @@ class Pool:
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
-                # -------------para1---------------------
+                # -------------para1,特定cond_type在此改写---------------------
                 idt_name1 = cnd.para1.idt_name
                 if idt_name1 == 'const':
                     idt_value1 = cnd.para1.const_value  # para1 value
@@ -2874,7 +2893,27 @@ class Pool:
                         add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
                         idt_value1 = dymc_lmt_set[4][1]  # 使用保守值
                         idt_date1 = asset.by_date
-                else:  # 普通Indicator类condition
+
+                # Calc类condition
+                elif idt_name1[0:5] == 'calc_':  # Calc类condition以'calc_'开头
+                    if cnd.para1.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
+                    # try:  # 指标在资产中是否存在
+                    #     idt1 = getattr(_asset, idt_name1)
+                    # except Exception as e:  # 待细化
+                    #     log_args = [_asset.ts_code, e.__class__.__name__, e]
+                    #     add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+                    #     continue
+                    index = int(idt_name1[5:])
+                    _rslt = self.calcs[index].get(asset=asset, trade_date=datetime_)
+                    if _rslt is None:
+                        continue
+                    idt_value1, idt_date1 = _rslt
+
+                # 普通Indicator类condition
+                else:
                     if cnd.para1.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
                     else:
@@ -2901,7 +2940,7 @@ class Pool:
                 # print("[L1405] idt_date1: {}".format(idt_date1))
                 # print('[L1406] idt_value1: {}'.format(idt_value1))
 
-                # -------------para2---------------------
+                # -------------para2,特定cond_type在此改写---------------------
                 idt_name2 = cnd.para2.idt_name
                 if idt_name2 == 'const':
                     idt_value2 = cnd.para2.const_value
@@ -2952,6 +2991,26 @@ class Pool:
                         add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
                         idt_value2 = dymc_lmt_set[4][1]  # 使用保守值
                         idt_date2 = asset.by_date
+
+                # Calc类condition
+                elif idt_name2[0:5] == 'calc_':  # Calc类condition以'calc_'开头
+                    if cnd.para2.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy().ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
+                    # try:  # 指标在资产中是否存在
+                    #     idt2 = getattr(_asset, idt_name2)
+                    # except Exception as e:  # 待细化
+                    #     log_args = [_asset.ts_code, e.__class__.__name__, e]
+                    #     add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+                    #     continue
+                    index = int(idt_name2[5:])
+                    _rslt = self.calcs[index].get(asset=asset, trade_date=datetime_)
+                    if _rslt is None:
+                        continue
+                    idt_value2, idt_date2 = _rslt
+
+                # 普通Indicator类condition
                 else:  # 普通Indicator类condition
                     if cnd.para2.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
@@ -3382,8 +3441,6 @@ class Condition:
         self.para1 = Para(pre_args1)
         self.para2 = Para(pre_args2)
         self.calcer = None  # <fn> calculator
-        # self.result = None  # 要用? True of False, condition result of result_time
-        # self.result_time = None  # 要用? <str> e.g. '20191209'
         self.desc = None  # <str> description 由后面程序修改
         self.required_period = required_period  # <int> 条件需要持续成立的周期
         self.true_lasted = {}  # <dict> {'000001.SZ': 2,...} 资产持续成立的周期
@@ -3391,12 +3448,14 @@ class Condition:
         '''
         pX_name的形式
         <str> idt_name:对应已定义的Indicator
+        其它特殊的可用定义见st_common.py CND_SPC_TYPES
         "const": 常量
         "stayed_days": asset在pool中停留的天数，如果不可用，则value=0, date="None"
         '''
         p1_name = self.para1.idt_name
         p2_name = self.para2.idt_name
 
+        # self.calcer(): 用于计算单次条件成立的函数
         if ops == '>':
             self.calcer = lambda p1, p2: p1 > p2
             self.desc = p1_name + ' > ' + p2_name
@@ -3509,6 +3568,14 @@ class Para:
             self.idt_name = 'dymc_return_lmt'
             self.idt_type = 'dymc_return_lmt'
             self.dymc_lmt_set = None  # None则使用默认值
+        elif idt_type == 'calc':
+            if 'calc_idx' in pre_args:
+                self.calc_idx = pre_args['calc_idx']
+                self.idt_name = 'calc_' + str(pre_args['calc_idx'])  # e.g. 'calc_0'
+                self.idt_type = 'calc'
+            else:
+                add_log(20, '[fn]Para.__init__() calc_idx is not available, while idt_type is calc. Aborted')
+                return
         else:
             self.field = None  # <str> string of the indicator result csv column name
             if 'field' in pre_args:
@@ -3575,6 +3642,225 @@ class Filter:
         self.out_shift_days = out_shift_days
         self.out_seek_direction = out_seek_direction
         self.in_seek_direction = in_seek_direction
+
+
+class Calc:
+    """
+    中间数据计算器，仅做临时计算，不保存历史结果
+    原理：用于对源<df>数据临时处理后，给出1个结果数据；供Pool.filter_cnd()调用使用
+    使用方法：
+    [1] 由Pool.add_calc()增加实例到pool中
+    [2] 由Pool.add_condition() 定义给<Condition>的<Para>
+    """
+
+    def __new__(cls, method, pre_args, desc='', **kwargs):
+
+        METHODS = {'coverage',  # 覆盖率
+                   'qs'  # 趋势，变化率，未完成
+                   }
+        if method in METHODS:
+            obj = super().__new__(cls)
+            return obj
+        else:
+            log_args = [method]
+            add_log(10, '[fn]Calc.__new__() method:{0[0]} invalid, aborted', log_args)
+
+    def __init__(self, method, pre_args, desc='', **kwargs):
+        """
+        method: <str> 数据中间处理的方式
+                      'coverage': 在一定周期period中符合条件的比例,e.g.聚2%天比
+        pre_args: <dict> 元指标参数，传给idt_name()用于生成idt_name和<ins Indicator>
+        desc: <str> description
+        """
+        from indicator import idt_name
+
+        self.method = method
+        self.desc = desc
+        self.field = None  # <str> string of the indicator result csv column name
+
+        # ---- 处理可能在pre_args中的参数
+        if 'field' in pre_args:
+            self.field = pre_args['field']
+            del pre_args['field']
+        else:
+            self.field = 'default'
+        self.idt_init_dict = idt_name(pre_args)
+        self.idt_name = self.idt_init_dict['idt_name']
+        self.idt_type = pre_args['idt_type']
+
+        if 'shift_periods' in pre_args.keys():
+            self.shift_periods = pre_args['shift_periods']
+            del pre_args['shift_periods']
+        else:
+            self.shift_periods = 0
+
+        # ---- 处理可能在kwargs中的参数
+        if 'seek_direction' in kwargs.keys():
+            self.seek_direction = kwargs['seek_direction']
+        else:
+            self.seek_direction = None
+
+        # ----method == 'coverage'
+        if method == 'coverage':
+            # ---- 处理在kwargs中的必要参数
+            try:
+                self.cover = kwargs['cover']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "cover" unavailable, aborted', log_args)
+                return
+
+            try:
+                self.threshold = kwargs['threshold']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "threshold" unavailable, aborted', log_args)
+                return
+
+            try:
+                self.ops = kwargs['ops']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "ops" unavailable, aborted', log_args)
+                return
+
+    def get(self, asset, trade_date):
+        """
+        获取计算结果
+        trade_date的有效性在此验证
+        asset: <ins Asset>
+        ts_code: <str> 执行中不起实际作用，目的是日志更好跟踪
+        trade_date: <str> 计算基准日 e.g. '20200331'
+        """
+        global raw_data
+        rslt = None
+
+        # ----检查asset有效性
+        if not isinstance(asset, Asset):
+            log_args = [type(asset)]
+            add_log(20, '[fn]Calc.get() asset type:{} incorrect', log_args)
+            return
+        ts_code = asset.ts_code
+
+        # ----检查trade_date是否开市
+        is_open = raw_data.valid_trade_date(trade_date)
+        if is_open is not True:
+            log_args = [ts_code, trade_date]
+            add_log(20, '[fn]Calc.get() ts_code:{0[0]}, {0[1]} is not an open day, aborted', log_args)
+            return
+
+        # ----处理shift_days
+        if self.shift_periods >= 1:
+            trade_date = raw_data.next_trade_day(trade_date, int(self.shift_periods))
+        elif self.shift_periods <= -1:
+            trade_date = raw_data.previous_trade_day(trade_date, - int(self.shift_periods))
+
+        # ----获取待处理的<sr>
+        try:  # 指标在资产中是否存在
+            idt = getattr(asset, self.idt_name)
+        except Exception as e:  # 待细化
+            log_args = [ts_code, e.__class__.__name__, e]
+            add_log(20, '[fn]Calc.get(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+            return
+        idt_df = idt.df_idt
+        column_name = self.field.upper() if self.field != 'default' else self.idt_init_dict['idt_type'].upper()  # 指标的field，多结果的指标指定不同于指标名的结果列
+        # print('[L3745] column_name: {}'.format(column_name))
+        sr = idt_df[column_name]
+
+        # ========================'coverage'========================
+        if self.method == 'coverage':
+            rslt = self._hdl_coverage(sr=sr, ts_code=ts_code, trade_date=trade_date, cover=self.cover, threshold=self.threshold, ops=self.ops)
+
+        # ========================'其它待续'========================
+        elif self.method == 'xxx':
+            pass
+        return rslt  # (value, trade_date) or None
+
+    def _locate_idx(self, sr, ts_code, trade_date):
+        """
+        根据seek_direction定位调seek后的trade_date 及 idx
+        """
+        SEEK_DAYS = 50  # 前后查找的最大交易日天数，如果超过次数值就是个股长期停牌的情况
+
+        # ----根据seek_direction定位调seek后的trade_date 及 idx
+        try:
+            idx = sr.index.get_loc(int(trade_date))  # 定位index
+            return idx, trade_date
+        except KeyError:
+            if self.seek_direction is None:
+                log_args = [ts_code, trade_date]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]}', log_args)
+                return
+            elif self.seek_direction == 'forwards':
+                _trade_date = raw_data.next_trade_day(trade_date)
+                for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    if int(_trade_date) in sr.index:
+                        idx = sr.index.get_loc(int(_trade_date))  # 定位index
+                        return idx, _trade_date
+                    else:
+                        _trade_date = raw_data.next_trade_day(_trade_date)
+                        continue
+                log_args = [ts_code, trade_date, SEEK_DAYS]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]} and next {0[2]} days',
+                        log_args)
+                return
+            elif self.seek_direction == 'backwards':
+                _trade_date = raw_data.previous_trade_day(trade_date)
+                for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    if int(_trade_date) in sr.index:
+                        idx = sr.index.get_loc(int(_trade_date))  # 定位index
+                        return idx, _trade_date
+                    else:
+                        _trade_date = raw_data.previous_trade_day(_trade_date)
+                        continue
+                log_args = [ts_code, trade_date, SEEK_DAYS]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]} and previous {0[2]} days', log_args)
+                return
+
+    def _hdl_coverage(self, sr, ts_code, trade_date, cover, threshold, ops):
+        """
+        计算在一定周期period中符合条件的比例,e.g.聚2%天比
+        trade_date: <str> 计算基准日 e.g. '20200331'
+        cover: <int> 覆盖的周期数，必须 >= 1
+        threshold: <float> 数据的阈值
+        ops: <str> 比较符 <, <=, =, >=, >
+        seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+            None: 返回None,不搜索
+            'forwards': 向时间增加的方向搜索
+            'backwards': 向时间倒退的方向搜索
+        shift_days: <int> 数据偏移的日期，-n往早移  +n往晚移
+
+        return: None failed
+        """
+        o_date = trade_date  # original date
+        _rslt = self._locate_idx(sr=sr, ts_code=ts_code, trade_date=trade_date)
+        if _rslt is None:
+            return
+        else:
+            idx, trade_date = _rslt
+
+        sr = sr.iloc[idx: idx + cover]
+        tot_n = len(sr)
+        # print('[L3741] tot_n:{}'.format(tot_n))
+        if tot_n == 0:
+            log_args = [ts_code, o_date]
+            add_log(20, '[fn]Calc._hdl_coverage() ts_code:{0[0]}, trade_date:{0[1]} cover 0 item, aborted', log_args)
+            return
+
+        if ops == '>':
+            sr = sr[sr > threshold]
+        elif ops == '<':
+            sr = sr[sr < threshold]
+        elif ops == '>=':
+            sr = sr[sr >= threshold]
+        elif ops == '<=':
+            sr = sr[sr <= threshold]
+        elif ops == '=':
+            sr = sr[sr == threshold]
+
+        n = len(sr)
+        rslt = n / tot_n
+        return rslt, trade_date
 
 
 class Concept:
@@ -3900,7 +4186,7 @@ if __name__ == "__main__":
     # print('------MACD--------')
     # stock1 = Stock(ts_code='000002.SZ')
     # _kwargs = {'idt_type': 'macd',
-    #            'long_n1': 26,
+    #            'long_n3': 26,
     #            'short_n2': 12,
     #            'dea_n3': 9}
     # kwargs = idt_name(_kwargs)
@@ -3929,7 +4215,7 @@ if __name__ == "__main__":
     # pre_args1 = {'idt_type': 'ma',
     #              'period': 20}
     # pre_args2 = {'idt_type': 'macd',
-    #              'long_n1': 26,
+    #              'long_n3': 26,
     #              'short_n2': 12,
     #              'dea_n3': 9,
     #              'field': 'MACD'}
@@ -3984,9 +4270,9 @@ if __name__ == "__main__":
     # print('------Add Conditions, scripts required for each strategy--------')
     # # ------condition_0
     # pre_args1 = {'idt_type': 'majh',
-    #              'long_n1': 60,
-    #              'middle_n2': 20,
-    #              'short_n3': 5}
+    #              'long_n3': 60,
+    #              'medium_n2': 20,
+    #              'short_n1': 5}
     # pre_args2 = {'idt_type': 'const',
     #              'const_value': 2.0}
     # pool10.add_condition(pre_args1, pre_args2, '<')
@@ -4312,7 +4598,6 @@ if __name__ == "__main__":
     p60.csv_in_out()
     p70.csv_in_out()
 
-    print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))

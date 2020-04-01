@@ -1,6 +1,8 @@
 """
 价格三线开花
 """
+import os
+os.chdir('../')  # 将工作目录定位到上一层
 import pandas as pd
 import numpy as np
 import os
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     stg.add_pool(desc='p20三线开花触发', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
 
-    stg.add_pool(desc='p30同周期附加筛选', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    stg.add_pool(desc='p30同周期，附加筛选出', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p30 = stg.pools[30]
 
     stg.add_pool(desc='p40持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
@@ -43,12 +45,23 @@ if __name__ == "__main__":
 
     stg.pools_brief()  # 打印pool列表
 
-    # ---pool10 conditions-----------
+    # ++++++++pool10 calcs++++++++
+    # ------calc_0
+    pre_args = {'idt_type': 'majh',
+                'short_n1': 5,
+                'medium_n2': 20,
+                'long_n3': 60}
+    kwargs = {'cover': 20,
+              'threshold': 2,
+              'ops': '<='}
+    p10.add_calc(method='coverage', pre_args=pre_args, **kwargs)
+
+    # ========pool10 conditions========
     # ------condition_0
     pre_args1 = {'idt_type': 'dktp',
                  'short_n1': 5,
-                 'medium_n2': 20,
-                 'long_n3': 60,
+                 'medium_n2': 10,
+                 'long_n3': 20,
                  'shift_periods': -1}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0}
@@ -61,10 +74,11 @@ if __name__ == "__main__":
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0}
     p10.add_condition(pre_args1, pre_args2, '>')
+
     # ------filter
     p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
 
-    # ---pool20 conditions-----------
+    # ========pool20 conditions========
     # ------condition_0
     pre_args1 = {'idt_type': 'jdxzqs',
                  'period': 20}
@@ -80,8 +94,27 @@ if __name__ == "__main__":
     p20.add_condition(pre_args1, pre_args2, '>=')
 
     # ------condition_2 20周期内价聚合天数比例
-    pre_args1 = {'idt_type': 'maqs',
-                 'period': 60}
+    pre_args1 = {'idt_type': 'calc',
+                 'calc_idx': 0}
     pre_args2 = {'idt_type': 'const',
                  'const_value': 0}
     p20.add_condition(pre_args1, pre_args2, '>=')
+
+    # ------filter
+    p20.add_filter(cnd_indexes={0, 1, 2}, down_pools={30})
+
+    # ========初始化各pool.cnds_matrix, strategy.ref_assets========
+    stg.init_pools_cnds_matrix()
+    stg.init_ref_assets()
+
+    # ---stg循环-----------
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050201', end_date='20200101')
+    stg.update_cycles(start_date='20170101', cycles=20)
+    # ---报告-----------
+    p40.csv_in_out()
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print('duration={}'.format(duration))
+    pass

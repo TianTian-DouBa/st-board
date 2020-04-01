@@ -14,11 +14,11 @@ import weakref
 
 def idt_name(pre_args):
     """
-    指标周期类的参数（period, long_n1, middle_n2...，即使有默认值，初始化时也不建议省略，省略的话idt_name会不同
+    指标周期类的参数（period, long_n3, medium_n2...，即使有默认值，初始化时也不建议省略，省略的话idt_name会不同
     pre_args: <dict> 创建para的必要输入参数
         e.g.
         {'idt_type': 'macd',
-         'long_n1': 26,
+         'long_n3': 26,
          'short_n2': 12,
          'dea_n3': 9,
          'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填
@@ -507,7 +507,7 @@ class Macd(Indicator):
             log_args = [ts_code, subtype]
             add_log(10, '[fn]Macd.__new__() ts_code:{0[0]}; subtype:{0[1]} invalid; instance not created', log_args)
             return
-        # long_n1 = int(long_n1)
+        # long_n3 = int(long_n3)
         # short_n2 = int(short_n2)
         # dea_n3 = int(dea_n3)
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
@@ -638,7 +638,7 @@ class Macd(Indicator):
     #         idt_name = idt_name + '_' + self.source
     #     if self.subtype.lower() != 'd':
     #         idt_name = idt_name + '_' + self.subtype.lower()
-    #     idt_name = idt_name + '_' + str(self.long_n1) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
+    #     idt_name = idt_name + '_' + str(self.long_n3) + '_' + str(self.short_n2) + '_' + str(self.dea_n3)
     #     return idt_name
 
 
@@ -646,7 +646,7 @@ class Majh(Indicator):
     """
     移动平均线ma的纠结程度
     """
-    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close', reload=False, update_csv=True, subtype='D'):
+    def __new__(cls, ts_code, par_asset, idt_type, idt_name, long_n3=30, medium_n2=10, short_n1=5, source='close', reload=False, update_csv=True, subtype='D'):
         """
         source:<str> e.g. 'close' #SOURCE
         return:<ins majh> if valid; None if invalid
@@ -660,15 +660,15 @@ class Majh(Indicator):
         obj = super().__new__(cls, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type)
         return obj
 
-    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n1=30, middle_n2=10, short_n3=5, source='close', reload=False, update_csv=True, subtype='D'):
+    def __init__(self, ts_code, par_asset, idt_type, idt_name, long_n3=30, medium_n2=10, short_n1=5, source='close', reload=False, update_csv=True, subtype='D'):
         """
         subtype:<str> 'D'-Day; 'W'-Week; 'M'-Month #only 'D' yet
         """
         Indicator.__init__(self, ts_code=ts_code, par_asset=par_asset, idt_type=idt_type, reload=reload, update_csv=update_csv)
         self.idt_type = 'majh'
-        self.long_n1 = long_n1
-        self.middle_n2 = middle_n2
-        self.short_n3 = short_n3
+        self.long_n3 = long_n3
+        self.medium_n2 = medium_n2
+        self.short_n1 = short_n1
         self.source = source
         self.idt_name = idt_name
         self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
@@ -682,9 +682,9 @@ class Majh(Indicator):
 
         df_source = self.load_sources()
         df_idt = self.load_idt()
-        long_n1 = self.long_n1
-        middle_n2 = self.middle_n2
-        short_n3 = self.short_n3
+        long_n3 = self.long_n3
+        medium_n2 = self.medium_n2
+        short_n1 = self.short_n1
         parent = self.par_asset()
         df_ma_long = None  # 前置idt
         df_ma_middle = None  # 前置idt
@@ -700,21 +700,21 @@ class Majh(Indicator):
             # 前置指标名idt_name计算
             _kwargs = {
                         'idt_type': 'ma',
-                        'period': long_n1,
+                        'period': long_n3,
                         'source': self.source,
                         'update_csv': False}
             kwargs_long = idt_name(_kwargs)
             idt_ma_long_name = kwargs_long['idt_name']
             _kwargs = {
                         'idt_type': 'ma',
-                        'period': middle_n2,
+                        'period': medium_n2,
                         'source': self.source,
                         'update_csv': False}
             kwargs_middle = idt_name(_kwargs)
             idt_ma_middle_name = kwargs_middle['idt_name']
             _kwargs = {
                         'idt_type': 'ma',
-                        'period': short_n3,
+                        'period': short_n1,
                         'source': self.source,
                         'update_csv': False}
             kwargs_short = idt_name(_kwargs)

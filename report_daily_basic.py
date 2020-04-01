@@ -41,20 +41,20 @@ def rpt_d_basic(al_file):
 
     # ------condition_1
     pre_args1 = {'idt_type': 'majh',
-                 'long_n1': 60,
-                 'middle_n2': 20,
-                 'short_n3': 5}
+                 'long_n3': 60,
+                 'medium_n2': 20,
+                 'short_n1': 5}
     pre_args2 = {'idt_type': 'maqs',
                  'period': 60}
     p10.add_condition(pre_args1, pre_args2, '>')
 
     # ------condition_2
     pre_args1 = {'idt_type': 'macd',  # 日线macd
-                 'long_n1': 26,
+                 'long_n3': 26,
                  'short_n2': 12,
                  'dea_n3': 9}
     pre_args2 = {'idt_type': 'macd',  # 周线macd
-                 'long_n1': 130,
+                 'long_n3': 130,
                  'short_n2': 60,
                  'dea_n3': 45}
     p10.add_condition(pre_args1, pre_args2, '>')

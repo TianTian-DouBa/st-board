@@ -2584,7 +2584,7 @@ class Pool:
         e.g.
         {'idt_type': 'macd', 'const', 'stay_days',
                      'earn_pct', 'max_by_pct', 'min_by_pct', 'earn_return'
-         'long_n1': 26,  # depends on idt type
+         'long_n3': 26,  # depends on idt type
          'short_n2': 12,
          'dea_n3': 9,
          'field': 'DEA'  # 在idt结果为多列，选取非默认列时需要填

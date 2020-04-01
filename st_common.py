@@ -76,12 +76,13 @@ FORMAT_FIELDS = {"ts_code": "{:<12}",
 
 # Condition Special idt_type
 CND_SPC_TYPES = {'const',  # 常量
-                 'stay_days',  # 在pool中交易日数
+                 'stay_days',  # 在pool中交易日数;如果不可用，则value=0, date="None"
                  'earn_pct',  # 盈利%
                  'max_by_pct',  # pool中历史最高by_price对应的earn pct
                  'min_by_pct',  # pool中历史最低by_price对应的loss pct
                  'earn_return',  # 从max_by回落一定比例触发
                  'dymc_return_lmt',  # 动态dynamic earn return limit, 根据max_by_pct计算，用于earn_return的动态设定
+                 'calc',  # 中间计算功能块
                  }
 
 # 特殊的ts_code
@@ -595,5 +596,5 @@ class Stock_Basic:
             return result
 
 
-global raw_data
+# global raw_data
 raw_data = Raw_Data(pull=False)
