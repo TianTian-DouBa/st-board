@@ -1478,7 +1478,7 @@ IDT_CLASS = {'ma': Ma,
              'macd': Macd,
              'majh': Majh,
              'jdxz': Jdxz,  # 吸引资金绝对占比、成交额占两市比例
-             'jdxcqs': Jdxzqs,  # jdxz的趋势变化率
+             'jdxzqs': Jdxzqs,  # jdxz的趋势变化率
              'dktp': Dktp,  # 多空头排列周期数
              }
 

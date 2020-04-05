@@ -1959,7 +1959,10 @@ class Strategy:
             """
             遍历所有pools,执行1次筛选循环
             """
-            for pl_i, pool in self.pools.items():
+            pool_indexes = list(self.pools.keys())
+            pool_indexes.sort()
+            for pl_i in pool_indexes:
+                pool = self.pools[pl_i]
                 tsf_list = pool.cycle(self.by_date)
                 if tsf_list is not None:
                     self.trans_assets(out_pool_index=pl_i, transfer_list=tsf_list, trade_date=self.by_date)
@@ -2024,7 +2027,9 @@ class Strategy:
                             log_args = [self.by_date]
                             add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}  [L1524], aborted', log_args)
                             return
+
                         next_trade_day = raw_data.next_trade_day(self.by_date)
+
                         if next_trade_day is None:
                             log_args = [self.by_date]
                             add_log(30, '[fn]Strategy.update_cycles._check_end_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
@@ -2211,7 +2216,8 @@ class Strategy:
         out_pool_index: <int> 源头pool的index
                         'al' 从al文件导入，此[fn]不适用
         in_pool_index: <int> 目的pool的index
-                       'discard' 无下游pool，只从out_pool中移除asset
+                       'sell' 卖出，无下游pool，只从out_pool中移除asset
+                       'discard' 丢弃，无下游pool，只从out_pool中移除asset
         out_price_mode: <str> 详见Asset.get_price()
                         None 根据in的情况在设out_price和out_date
         in_price_mode: <str> 详见Asset.get_price()
@@ -2226,7 +2232,8 @@ class Strategy:
         from st_common import CND_SPC_TYPES
         # get in_pool
         in_pool = None
-        if in_pool_index != 'discard':
+        SPC_POOL_INDEX = {'discard', 'sell'}  # 特殊pool_index
+        if in_pool_index not in SPC_POOL_INDEX:
             try:
                 in_pool = self.pools[in_pool_index]
             except KeyError:
@@ -2274,11 +2281,15 @@ class Strategy:
             if asset == 'duplicated':
                 return 'duplicated'
             elif asset is not None:
+                for calc in in_pool.calcs:
+                    if calc.idt_type not in CND_SPC_TYPES:
+                        post_args = calc.idt_init_dict
+                        asset.add_indicator(**post_args)
                 for cond in in_pool.conditions:
-                    if cond.para1.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
+                    if cond.para1.idt_type not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args1 = cond.para1.idt_init_dict
                         asset.add_indicator(**post_args1)
-                    if cond.para2.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
+                    if cond.para2.idt_type not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args2 = cond.para2.idt_init_dict
                         asset.add_indicator(**post_args2)
                 in_pool.op_cnds_matrix(mode='a', ts_code=ts_code)  # 为cnds_matrix增加条目
@@ -2301,9 +2312,11 @@ class Strategy:
         遍历调用pool.op_cnds_matrix()初始化各pool的条件矩阵
         在所有的cnds都加载完后调用
         """
+        from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for pool in self.pools.values():
             pool.iter_al()
             pool.op_cnds_matrix(mode='i')
+            # 注意：在Strategy.trans_asset_down()中，当asset被转到下游时也有类似加载指标，和op_cnds_matrix的操作
 
     def init_ref_assets(self):
         """
@@ -2505,12 +2518,16 @@ class Pool:
         """
         self.in_out = pd.DataFrame(columns=['ts_code', 'earn_pct', 'earn', 'in_date', 'out_date', 'stay_days', 'in_price', 'out_price', 'in_pool_index'])
 
-    def in_out_agg(self):
+    def in_out_agg(self, include_discard=None):
         """
         显示pool.in_out的统计信息
+        include_discard: True or None, 是否包含in_pool_index为'discard'的记录
         """
-        io_df = self.in_out
-        print('pool:{} in_out aggregate'.format(self.desc))
+        if include_discard is not True:
+            io_df = self.in_out[self.in_out.in_pool_index != 'discard']  # 将丢弃的记录从in_out分析中去除
+        else:
+            io_df = self.in_out
+        print('[msg] pool:{} in_out aggregate'.format(self.desc))
         Analysis.in_out_agg(io_df)
 
     def append_in_out(self, asset, in_pool_index='None'):
@@ -2523,9 +2540,11 @@ class Pool:
                 None  failed
         """
         if isinstance(asset, Asset):
+            earn = asset.out_price - asset.in_price
+            earn_pct = 0 if asset.in_price == 0 else earn / asset.in_price
             record = {'ts_code': asset.ts_code,
-                      'earn_pct': asset.earn_pct,
-                      'earn': asset.earn,
+                      'earn_pct': earn_pct,
+                      'earn': earn,
                       'in_date': asset.in_date,
                       'out_date': asset.out_date,
                       'stay_days': asset.stay_days,
@@ -2544,13 +2563,15 @@ class Pool:
             add_log(20, '[fn]Pool.append_in_out(). asset type: {0[0]} is not Asset', log_args)
             return
 
-    def csv_in_out(self, csv=None):
+    def csv_in_out(self, csv=None, include_discard=None):
         """
         导出pool.in_out记录到csv
         csv: None  默认文件名 io_<date_of_generate>_<pool_desc>.csv
              <str> io_<str>.csv
+        include_discard: True or None, 是否包含in_pool_index为'discard'的记录
         """
         from analysis import in_out_agg
+
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
         else:
@@ -2559,18 +2580,23 @@ class Pool:
         txt_name = 'io_' + name + '.txt'
         file_path = sub_path + sub_analysis + '\\' + file_name
         txt_path = sub_path + sub_analysis + '\\' + txt_name
+
         if isinstance(self.in_out, pd.DataFrame):
-            self.in_out.to_csv(file_path, encoding="utf-8")
+            if include_discard is not True:
+                df_in_out = self.in_out[self.in_out.in_pool_index != 'discard']  # 将丢弃的记录从in_out分析中去除
+            else:
+                df_in_out = self.in_out
+            df_in_out.to_csv(file_path, encoding="utf-8")
             log_args = [file_path]
             add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
-            msg2 = in_out_agg(self.in_out)
+            msg2 = in_out_agg(df_in_out)
             if msg2 is None:
                 msg2 = 'in_out_agg not available\n'
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
             return
-        msg = self.in_out_stg_brief(file_name)
+        msg = self.in_out_stg_brief(file_name)  # 配置的策略信息
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
                 f.write(msg + msg2)
@@ -2833,7 +2859,7 @@ class Pool:
                     log_args = [datetime_, asset.ts_code]
                     add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}}, skip', log_args)
                     continue
-                elif int(datetime_) <= int(asset.in_date):  # asset跳后加入，处理的日子早于等于asset.in_date
+                elif int(datetime_) < int(asset.in_date):  # asset跳后加入，处理的日子早于asset.in_date
                     log_args = [datetime_, asset.ts_code, asset.in_date]
                     add_log(40, '[fn]Pool.filter_cnd(). datetime_:{0[0]} earlier than {0[1]} in_date:{0[2]}, skip', log_args)
                     continue
@@ -3125,8 +3151,8 @@ class Pool:
                 csv_file_name = csv
             All_Assets_List.create_al_file(out_al, csv_file_name)
 
-        log_args = [len(out_al)]
-        add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
+        log_args = [filter_index, len(out_al)]
+        add_log(30, '[fn]Pool.filter_filter() filter_{0[0]} output {0[1]} assets', log_args)
         return out_al
 
     def cycle(self, date_str):
@@ -3144,6 +3170,9 @@ class Pool:
                 None 没有资产需要transfer
         """
         global raw_data
+        log_args = [self.desc, date_str]
+        add_log(40, '[fn]Pool.cycle() {0[0]} working on {0[1]}', log_args)
+
         # 更新pool.by_date
         if valid_date_str_fmt(date_str) is not True:
             log_args = [self.desc, date_str]
@@ -3176,11 +3205,11 @@ class Pool:
                     log_args = [asset.ts_code, asset.by_date, self.by_date]
                     add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
                     continue  # skip this asset
-                if int(self.by_date) > int(asset.in_date):
+                if int(self.by_date) >= int(asset.in_date):  # 加入同周期就计算
                     asset.by_date = self.by_date
                     asset.by_price = _price
                     asset.earn = asset.by_price - asset.in_price
-                    asset.earn_pct = (asset.earn / asset.in_price)
+                    asset.earn_pct = asset.earn / asset.in_price
                     if asset.max_by is None:
                         asset.max_by = _price
                     elif _price > asset.max_by:
@@ -3190,9 +3219,9 @@ class Pool:
                     elif _price < asset.min_by:
                         asset.min_by = _price
 
-            # 更新stay_days, earn_pct_20d
+            # 更新stay_days
             if asset.in_date is not None:
-                if int(self.by_date) > int(asset.in_date):
+                if int(self.by_date) >= int(asset.in_date):  # 加入同周期就计算
                     asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
                     # asset.earn_pct_20d = asset.earn_pct / asset.stay_days * 20
 
@@ -3393,7 +3422,8 @@ class Trans_Log:
     out_price: <float> 进入下游pool的价格
     out_date: <str> 进入下游pool的日期 e.g. ‘20191231’
     in_pool_index: <int> 目的pool的index
-                   'discard' 无下游pool，只从out_pool中移除asset
+                   ‘sell' 卖出，无下游pool，只从out_pool中移除asset
+                   'discard' 丢弃，无下游pool，只从out_pool中移除asset
     in_price: <float> 进入下游pool的价格
     in_date: <str> 进入下游pool的日期 e.g. ‘20191231’
     volume: <int> 成交股数

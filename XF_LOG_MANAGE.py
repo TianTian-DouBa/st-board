@@ -1,12 +1,12 @@
-Log_Category = {10:'[Error]', 20:'[Warning]', 30:'[Info]' , 40:'[Trace]'}  # used for add_log()
-Log_Thread_Hold = 20  # to add the log if log_category <= Log_Thread_Hold
+Log_Category = {10: '[Error]  ', 20: '[Warning]', 30: '[Info]   ', 40: '[Trace]  '}  # used for add_log()
+Log_Thread_Hold = 40  # to add the log if log_category <= Log_Thread_Hold
 
 
 def add_log(log_category, log_string, *args):
     """追加log信息
     e.g:
     log_args = [path]
-    add_log(10, 'fn:funchtion(). --"{0[0]}"', log_args)"""
+    add_log(10, 'fn:function(). --"{0[0]}"', log_args)"""
     global Log_Thread_Hold
     if log_category > Log_Thread_Hold:
         return
@@ -30,6 +30,7 @@ def logable(log_category):
         return True
     else:
         return
+
 
 def log_print(info):
     """同print()，便于将来重写"""
