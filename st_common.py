@@ -4,6 +4,7 @@ import numpy as np
 from XF_LOG_MANAGE import add_log, logable, log_print
 from datetime import datetime, timedelta
 
+ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
 
 sub_path = r".\data_csv"
@@ -89,7 +90,6 @@ CND_SPC_TYPES = {'const',  # 常量
 SPC_TS_CODE = {'hsgt_flow',  # 沪深港通数据起点
                }
 
-ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 
 
 class Raw_Data:

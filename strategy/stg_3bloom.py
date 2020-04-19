@@ -98,33 +98,33 @@ if __name__ == "__main__":
     p20.add_filter(cnd_indexes={3}, down_pools={'discard'})
 
     # ========pool30 conditions========
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'earn_return'}
-    # pre_args2 = {'idt_type': 'dymc_return_lmt'}
-    # p30.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # # ------condition_1
-    # pre_args1 = {'idt_type': 'max_by_pct'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 0.2}
-    # p30.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p30.add_filter(cnd_indexes={0, 1}, down_pools={'sell'})  # 动态止盈
-    #
-    # # ------condition_2
-    # pre_args1 = {'idt_type': 'earn_pct'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': -0.125}
-    # p30.add_condition(pre_args1, pre_args2, '<=')  # 止损
-    #
-    # p30.add_filter(cnd_indexes={2}, down_pools={'sell'})
-
     # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
-    pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
     p30.add_condition(pre_args1, pre_args2, '>=')
-    p30.add_filter(cnd_indexes={0}, down_pools={'sell'})  # 定时卖出
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.2}
+    p30.add_condition(pre_args1, pre_args2, '>=')
+
+    p30.add_filter(cnd_indexes={0, 1}, down_pools={'sell'})  # 动态止盈
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.125}
+    p30.add_condition(pre_args1, pre_args2, '<=')
+
+    p30.add_filter(cnd_indexes={2}, down_pools={'sell'})  # 止损
+
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'stay_days'}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 20}
+    # p30.add_condition(pre_args1, pre_args2, '>=')
+    # p30.add_filter(cnd_indexes={0}, down_pools={'sell'})  # 定时卖出
 
     # ========初始化各pool.cnds_matrix, strategy.ref_assets========
     stg.init_pools_cnds_matrix()
