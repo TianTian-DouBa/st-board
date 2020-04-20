@@ -1,22 +1,34 @@
 import tushare as ts
 import pandas as pd
-import numpy as np
-from XF_LOG_MANAGE import add_log, logable, log_print
-from datetime import datetime, timedelta
+from XF_LOG_MANAGE import add_log
+from datetime import datetime
+from pathlib import PurePath
 
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
 
-sub_path = r".\data_csv"
-sub_path_2nd_daily = r"\daily_data"  # 日线数据
-sub_path_config = r"\config"  # 配置文件
-sub_path_al = r"\assets_lists"  # 资产列表
-sub_path_rpt = r"\reports"  # 报告
-sub_path_result = r".\plot_result"  # 分析模板运行结果
-sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
-sub_analysis = r"\analysis"  # 分析数据
-sub_notes = r"\assets_notes"  # 资产备注及附加信息
-sub_pledge = r"\pledge"  # 资产质押信息
+# sub_path = r".\data_csv"
+# sub_path_2nd_daily = r"\daily_data"  # 日线数据
+# sub_path_config = r"\config"  # 配置文件
+# sub_path_al = r"\assets_lists"  # 资产列表
+# sub_path_rpt = r"\reports"  # 报告
+# sub_path_result = r".\plot_result"  # 分析模板运行结果
+# sub_idt = r"\idt_data"  # 存放指标的结果，下按idt_type不同再分目录
+# sub_analysis = r"\analysis"  # 分析数据
+# sub_notes = r"\assets_notes"  # 资产备注及附加信息
+# sub_pledge = r"\pledge"  # 资产质押信息
+
+# current_path = PurePath()
+sub_path = "./data_csv"
+sub_path_2nd_daily = PurePath("daily_data")  # 日线数据
+sub_path_config = PurePath("config")  # 配置文件
+sub_path_al = PurePath("assets_lists")  # 资产列表
+sub_path_rpt = PurePath("reports")  # 报告
+sub_path_result = PurePath("./plot_result")  # 分析模板运行结果
+sub_idt = PurePath("idt_data")  # 存放指标的结果，下按idt_type不同再分目录
+sub_analysis = PurePath("analysis")  # 分析数据
+sub_notes = PurePath("assets_notes")  # 资产备注及附加信息
+sub_pledge = PurePath("pledge")  # 资产质押信息
 
 SUBTYPE = {'D': 'day',
            'W': 'week',
@@ -91,7 +103,6 @@ SPC_TS_CODE = {'hsgt_flow',  # 沪深港通数据起点
                }
 
 
-
 class Raw_Data:
     """存放其它模块计算时所要用的公共数据的基础模块，需要实例化填充数据后使用"""
     def __init__(self, pull=False):
@@ -105,8 +116,6 @@ class Raw_Data:
         self.index = Index_Basic(pull)  # 指数相关数据
         self.stock = Stock_Basic(pull)  # 个股相关数据
 
-        # self.stock_list = None
-    
     def init_trade_calendar(self, pull=False):
         """
         初始化.trade_calendar
@@ -133,8 +142,8 @@ class Raw_Data:
         """
         load trade_calendar.csv文件，读入self.trade_calendar
         """
-        file_name = "trade_calendar.csv"
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath("trade_calendar.csv")
+        file_path = sub_path / file_name
         try:
             self.trade_calendar = pd.read_csv(file_path, dtype={'cal_date': str, 'pretrade_date': str}, index_col='cal_date')
         except FileNotFoundError:
@@ -147,8 +156,8 @@ class Raw_Data:
         获取TuShare的交易日历数据,保存到trade_calendar.csv文件；
         日历会更新到当年的年底
         """
-        file_name = "trade_calendar.csv"
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath("trade_calendar.csv")
+        file_path = sub_path / file_name
         self.trade_calendar = ts_pro.trade_cal(fields='cal_date,is_open,pretrade_date')
         self.trade_calendar.set_index('cal_date', inplace=True)
         self.trade_calendar.to_csv(file_path, encoding="utf-8")
@@ -282,6 +291,8 @@ class Raw_Data:
             self.trade_calendar.index.get_loc(int(date_str))
             return True
         except Exception as e:
+            log_args = [type(e)]
+            add_log(20, '[fn]Raw_Data.in_calendar() except type:{0[0]}', log_args)
             return
 
     def len_trade_days(self, start_day, end_day=None):
@@ -292,7 +303,7 @@ class Raw_Data:
         end_day: None = today_str() 今天的字符串
                  <str> e.g. '20191231'
         """
-        from st_board import today_str, valid_date_str_fmt
+        from st_board import today_str
         if end_day is None:
             end_day = today_str()
 
@@ -357,8 +368,8 @@ class Raw_Data:
         """
         从all_assets_list.csv中读取全代码列表
         """
-        file_name = "all_assets_list.csv"
-        file_path = sub_path + sub_path_config + '\\' + file_name
+        file_name = PurePath("all_assets_list.csv")
+        file_path = sub_path / sub_path_config / file_name
         try:
             df = pd.read_csv(file_path, index_col='ts_code')
         except FileNotFoundError:
@@ -409,22 +420,22 @@ class Index_Basic:
         return: 上交指数个数，深交指数个数， 申万指数个数
         """
         # 上交所指数
-        file_name = "index_basic_sse.csv"
+        file_name = PurePath("index_basic_sse.csv")
         self._sse = ts_pro.index_basic(market='SSE')
         self.valid['index_basic_sse'] = STATUS_WORD[1]  # 无用，考虑取消
-        self._sse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        self._sse.to_csv(sub_path / file_name, encoding="utf-8")
         n_sse = len(self._sse)
         # 深交所指数
-        file_name = "index_basic_szse.csv"
+        file_name = PurePath("index_basic_szse.csv")
         self._szse = ts_pro.index_basic(market='SZSE')
         self.valid['index_basic_szse'] = STATUS_WORD[1]  # 无用，考虑取消
-        self._szse.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        self._szse.to_csv(sub_path / file_name, encoding="utf-8")
         n_szse = len(self._szse)
         # 申万指数
-        file_name = "index_basic_sw.csv"
+        file_name = PurePath("index_basic_sw.csv")
         self._sw = ts_pro.index_basic(market='SW')
         self.valid['index_basic_sw'] = STATUS_WORD[1]  # 无用，考虑取消
-        self._sw.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        self._sw.to_csv(sub_path / file_name, encoding="utf-8")
         n_sw = len(self._sw)
         self._update_index_basic_df()
         return n_sse, n_szse, n_sw
@@ -434,27 +445,27 @@ class Index_Basic:
         load index_basic.csv文件，读入self.index_basic_df
         """
         # 上交所指数
-        file_name = "index_basic_sse.csv"
+        file_name = PurePath("index_basic_sse.csv")
         try:
-            self._sse = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self._sse = pd.read_csv(sub_path / file_name, dtype={'base_date': str, 'list_date': str})
             self.valid['index_basic_sse'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
             self._sse = None
         # 深交所指数
-        file_name = "index_basic_szse.csv"
+        file_name = PurePath("index_basic_szse.csv")
         try:
-            self._szse = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self._szse = pd.read_csv(sub_path / file_name, dtype={'base_date': str, 'list_date': str})
             self.valid['index_basic_szse'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
             add_log(20, '[fn]Index.load_index_basic(). file "{0[0]}" not found', log_args)
             self._szse = None
         # 申万指数
-        file_name = "index_basic_sw.csv"
+        file_name = PurePath("index_basic_sw.csv")
         try:
-            self._sw = pd.read_csv(sub_path + '\\' + file_name, dtype={'base_date': str, 'list_date': str})
+            self._sw = pd.read_csv(sub_path / file_name, dtype={'base_date': str, 'list_date': str})
             self.valid['index_basic_sw'] = STATUS_WORD[1]
         except FileNotFoundError:
             log_args = [file_name]
@@ -545,8 +556,8 @@ class Stock_Basic:
         从ts_pro.stock_basic获取个股的基本信息列表
         return:<df> is success, None if fail
         """
-        file_name = 'stock_basic.csv'
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath('stock_basic.csv')
+        file_path = sub_path / file_name
         self.basic = ts_pro.stock_basic(fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange,curr_type,list_status,list_date,delist_date,is_hs')
         if isinstance(self.basic, pd.DataFrame):
             if len(self.basic) > 10:
@@ -564,10 +575,10 @@ class Stock_Basic:
         从stock_basic.csv文件读入个股的基本信息列表
         return:<df> is success, None if fail
         """
-        file_name = "stock_basic.csv"
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath("stock_basic.csv")
+        file_path = sub_path / file_name
         try:
-            self.basic = pd.read_csv(file_path,dtype={'symbol':str,'list_date':str,'delist_date':str},index_col='ts_code')
+            self.basic = pd.read_csv(file_path, dtype={'symbol': str, 'list_date': str, 'delist_date': str}, index_col='ts_code')
             return self.basic
         except FileNotFoundError:
             log_args = [file_path]

@@ -5,6 +5,7 @@ from st_common import sub_notes, sub_path
 from XF_LOG_MANAGE import add_log
 from st_board import Index, Stock, Concept
 import xml.etree.ElementTree as ET
+from pathlib import PurePath
 
 
 def load_xml(ts_code):
@@ -14,8 +15,8 @@ def load_xml(ts_code):
     return: <et>
             None, failed
     """
-    file_name = 'an_' + ts_code + '.xml'
-    file_path = sub_path + sub_notes + '\\' + file_name
+    file_name = PurePath('an_' + ts_code + '.xml')
+    file_path = sub_path / sub_notes / file_name
     try:
         tree = ET.parse(file_path)
     except FileNotFoundError:
@@ -36,8 +37,8 @@ def update_xml(ts_code, new=None, **kwargs):
     return:
     """
     template_name = 'template'
-    file_name = 'an_' + ts_code + '.xml'
-    file_path = sub_path + sub_notes + '\\' + file_name
+    file_name = PurePath('an_' + ts_code + '.xml')
+    file_path = sub_path / sub_notes / file_name
     if new is True:
         tree = load_xml(template_name)
     else:
@@ -90,8 +91,8 @@ def cmt(ts_code):
         ts_code = _ts_code
 
     template_name = 'template'
-    file_name = 'an_' + ts_code + '.xml'
-    file_path = sub_path + sub_notes + '\\' + file_name
+    file_name = PurePath('an_' + ts_code + '.xml')
+    file_path = sub_path / sub_notes / file_name
 
     tree = load_xml(ts_code)
     if tree is None:
