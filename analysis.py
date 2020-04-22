@@ -1,6 +1,5 @@
 from XF_common.XF_LOG_MANAGE import add_log
 import pandas as pd
-import numpy as np
 
 
 def select_df_csv():

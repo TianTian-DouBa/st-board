@@ -6,6 +6,7 @@ from XF_LOG_MANAGE import add_log
 import xml.etree.ElementTree as ET
 from interact_portal import load_xml
 from xlw_common import *
+from pathlib import PurePath
 
 al_file_name = Select_Collect.al_file_name
 
@@ -22,8 +23,8 @@ def rpt_d_basic(al_file):
     # =================报告文件=================
     today_s = today_str()
     trade_day_str = raw_data.last_trade_day(today_s)
-    file_name = 'rpt_d_' + al_file + '_' + trade_day_str + '.xlsx'
-    file_path = '.\\' + sub_path_rpt + '\\' + file_name
+    file_name = PurePath('rpt_d_' + al_file + '_' + trade_day_str + '.xlsx')
+    file_path = sub_path_rpt / file_name
 
     # =================初始化Strategy=================
     stg = Strategy('report_daily_basic')

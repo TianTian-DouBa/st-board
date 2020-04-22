@@ -1,15 +1,11 @@
-import tushare as ts
 import pandas as pd
 import numpy as np
-from st_common import raw_data
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt
-from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
-# from st_common import Raw_Data, raw_data_init, SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR
-from datetime import datetime,timedelta
-from XF_LOG_MANAGE import add_log, logable, log_print
-# from st_board import load_source_df, Stock, Index
-# import st_board
+from st_common import sub_path, sub_idt
+from st_common import SUBTYPE, SOURCE_TO_COLUMN
+from datetime import datetime
+from XF_LOG_MANAGE import add_log
 import weakref
+from pathlib import PurePath
 
 
 def idt_name(pre_args):
@@ -271,11 +267,9 @@ class Ma(Indicator):
         self.period = period
         # print("[L97] 补period类型异常")
         self.source = source
-        # self.idt_name = self._idt_name()
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        # self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -387,9 +381,8 @@ class Ema(Indicator):
         self.period = period
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        # self.file_name = 'idt_' + ts_code + '_' + self.source + '_' + self.idt_type + '_' + subtype + str(period) + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -525,8 +518,8 @@ class Macd(Indicator):
         self.source = source
         # self.idt_name = self._idt_name()
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -671,8 +664,8 @@ class Majh(Indicator):
         self.short_n1 = short_n1
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -819,8 +812,8 @@ class Maqs(Indicator):
         self.period = period
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -917,8 +910,8 @@ class Emaqs(Indicator):
         self.period = period
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -1023,8 +1016,8 @@ class Madq(Indicator):
         self.dq_n1 = dq_n1
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -1122,8 +1115,8 @@ class Jdxz(Indicator):
         self.period = period
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -1218,8 +1211,8 @@ class Jdxzqs(Indicator):
         self.period = period
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):
@@ -1321,8 +1314,8 @@ class Dktp(Indicator):
         self.long_n3 = long_n3
         self.source = source
         self.idt_name = idt_name
-        self.file_name = 'idt_' + ts_code + '_' + self.idt_name + '.csv'
-        self.file_path = sub_path + sub_idt + '\\' + self.file_name
+        self.file_name = PurePath('idt_' + ts_code + '_' + self.idt_name + '.csv')
+        self.file_path = sub_path / sub_idt / self.file_name
         self.subtype = subtype
 
     def _calc_res(self):

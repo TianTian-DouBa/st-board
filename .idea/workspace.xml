@@ -2,10 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/interact_portal.py" beforeDir="false" afterPath="$PROJECT_DIR$/interact_portal.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/analysis.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/indicator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/report_daily_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/report_daily_basic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/report_race.py" beforeDir="false" afterPath="$PROJECT_DIR$/report_race.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board_bulk_download.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board_bulk_download.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board_simple_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board_simple_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board_sw_download.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board_sw_download.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sub_groups.py" beforeDir="false" afterPath="$PROJECT_DIR$/sub_groups.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +50,7 @@
       <recent name="C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\plot_result" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.stg_3bloom">
+  <component name="RunManager" selected="Python.st_board_bulk_download">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -57,27 +64,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="interact_portal" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="st_board" />
-      <option name="INTERPRETER_OPTIONS" value="-i" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/interact_portal.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -128,6 +114,48 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="st_board_bulk_download" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="st_board" />
+      <option name="INTERPRETER_OPTIONS" value="-i" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/st_board_bulk_download.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="st_board_sw_download" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="st_board" />
+      <option name="INTERPRETER_OPTIONS" value="-i" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/st_board_sw_download.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="stg_3bloom" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -149,34 +177,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="stg_temp" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="st_board" />
-      <option name="INTERPRETER_OPTIONS" value="-i" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/strategy" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/strategy/stg_temp.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.st_board_bulk_download" />
+        <item itemvalue="Python.st_board_sw_download" />
         <item itemvalue="Python.stg_3bloom" />
         <item itemvalue="Python.report_race" />
         <item itemvalue="Python.report_daily_basic" />
-        <item itemvalue="Python.stg_temp" />
-        <item itemvalue="Python.interact_portal" />
       </list>
     </recent_temporary>
   </component>
@@ -246,10 +253,6 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="394" y="183" key="#Inspections/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1584423569264" />
-    <state x="256" y="180" width="1092" height="701" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1578389449375">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="256" y="180" width="1092" height="701" key="#com.intellij.execution.impl.EditConfigurationsDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1578389449375" />
     <state x="613" y="414" key="#com.jetbrains.python.refactoring.move.PyMoveModuleMembersDialog" timestamp="1581669539329">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -262,46 +265,46 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="755" height="466" key="DebuggerActiveHint/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580095705002" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1586094913026">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1587479809552">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094913026" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1586094913026">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809552" />
+    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1587479809552">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094913026" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1586094913026">
+    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809552" />
+    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1587479809552">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094913026" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1586094913026">
+    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809552" />
+    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1587479809552">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094913026" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1586094905059">
+    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809552" />
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1587479809543">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094905059" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1586094905059">
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809543" />
+    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1587479809542">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094905059" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1586094905059">
+    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809542" />
+    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1587479809542">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094905059" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1586094905059">
+    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809542" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1587479809543">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1586094905059" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587479809543" />
     <state x="498" y="235" key="RollbackChangesDialog" timestamp="1579358481751">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -317,16 +320,10 @@
     <state x="537" y="312" key="com.intellij.execution.console.ConsoleHistoryController$MyBrowseAction$1" timestamp="1584087746511">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="1000" y="-590" key="com.intellij.execution.console.ConsoleHistoryController$MyBrowseAction$1/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1578404576483" />
     <state x="537" y="312" key="com.intellij.execution.console.ConsoleHistoryController$MyBrowseAction$1/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1584087746511" />
-    <state x="589" y="204" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1578303306797">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="589" y="204" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1578303306797" />
     <state x="733" y="522" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1580020047206">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="853" y="-528" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1578401606109" />
     <state x="733" y="522" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580020047206" />
     <state x="498" y="188" key="refactoring.ChangeSignatureDialog" timestamp="1579154912854">
       <screen x="0" y="0" width="1605" height="1050" />
@@ -342,27 +339,22 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board_simple_test.py</url>
-          <line>3454</line>
+          <line>4637</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/report_daily_basic.py</url>
-          <line>244</line>
+          <line>245</line>
           <option name="timeStamp" value="8" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>4634</line>
+          <line>4637</line>
           <option name="timeStamp" value="17" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>1321</line>
-          <option name="timeStamp" value="18" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/report_race.py</url>
-          <line>387</line>
+          <line>386</line>
           <option name="timeStamp" value="20" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -372,7 +364,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>1969</line>
+          <line>1972</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
       </breakpoints>

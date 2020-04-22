@@ -19,11 +19,11 @@ ts_pro = ts.pro_api()
 # sub_pledge = r"\pledge"  # 资产质押信息
 
 # current_path = PurePath()
-sub_path = "./data_csv"
+sub_path = PurePath("./data_csv")
 sub_path_2nd_daily = PurePath("daily_data")  # 日线数据
 sub_path_config = PurePath("config")  # 配置文件
 sub_path_al = PurePath("assets_lists")  # 资产列表
-sub_path_rpt = PurePath("reports")  # 报告
+sub_path_rpt = PurePath("./reports")  # 报告
 sub_path_result = PurePath("./plot_result")  # 分析模板运行结果
 sub_idt = PurePath("idt_data")  # 存放指标的结果，下按idt_type不同再分目录
 sub_analysis = PurePath("analysis")  # 分析数据

@@ -4,14 +4,15 @@ import os
 import time
 import weakref
 from st_common import raw_data  # 不能去掉
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis, sub_pledge
-from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
+from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_analysis, sub_pledge
+from st_common import FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
-from XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable
 import matplotlib.pyplot as plt
 from pylab import mpl
 import tushare as ts
 from pandas.plotting import register_matplotlib_converters
+from pathlib import PurePath
 
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
@@ -155,7 +156,7 @@ def download_data(ts_code, category, reload=False):
                 file_name = _category_to_file_name(ts_code, category)
                 if file_name is None:
                     return
-                df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                df.to_csv(sub_path / sub_path_2nd_daily / file_name)
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, file_name, number_of_items]
@@ -220,7 +221,7 @@ def download_data(ts_code, category, reload=False):
                     file_name = _category_to_file_name(ts_code, category)
                     if file_name is None:
                         return
-                    df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                    df.to_csv(sub_path / sub_path_2nd_daily / file_name)
                     if logable(40):
                         number_of_items = len(df)
                         log_args = [ts_code, category, file_name, number_of_items]
@@ -317,8 +318,8 @@ def bulk_download(al_file, reload=False):
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_download(). invalid al_file string: {0[0]}', log_args)
@@ -337,8 +338,8 @@ def bulk_download(al_file, reload=False):
             category = All_Assets_List.query_category_str(ts_code)
             if category is None:
                 continue
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if reload is True or (not os.path.exists(file_path)):
                 _reload = True
             else:
@@ -356,8 +357,8 @@ def bulk_dl_appendix(al_file, reload=False):
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_dl_appendix(). invalid al_file string: {0[0]}', log_args)
@@ -379,8 +380,8 @@ def bulk_dl_appendix(al_file, reload=False):
             elif category == 'stock':
                 # -------------每日指标--------------
                 category = 'stock_daily_basic'  # 股票每日指标
-                file_name = 'db_' + ts_code + '.csv'
-                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                file_name = PurePath('db_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_daily / file_name
                 if reload is True or (not os.path.exists(file_path)):
                     _reload = True
                 else:
@@ -388,8 +389,8 @@ def bulk_dl_appendix(al_file, reload=False):
                 download_data(ts_code, category, _reload)
                 # -------------复权因子--------------
                 category = 'adj_factor'  # 股票复权
-                file_name = 'fq_' + ts_code + '.csv'
-                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                file_name = PurePath('fq_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_daily / file_name
                 if reload is True or (not os.path.exists(file_path)):
                     _reload = True
                 else:
@@ -409,8 +410,8 @@ def bulk_calc_dfq(al_file, reload=False):
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_calc_dfq(). invalid al_file string: {0[0]}', log_args)
@@ -487,14 +488,14 @@ class All_Assets_List:
         que_from_ts: <bool> F：从文件读 T:从tushare 接口读
         """
         global raw_data
-        file_name = "all_assets_list.csv"  # 不同名避免误操作
-        file_path_al = sub_path + sub_path_config + '\\' + file_name
+        file_name = PurePath("all_assets_list.csv")  # 不同名避免误操作
+        file_path_al = sub_path / sub_path_config / file_name
         df_al = pd.DataFrame(columns=['ts_code', 'valid', 'selected', 'name', 'type', 'stype1', 'stype2'])
         df_al = df_al.set_index('ts_code')
         # --------------SW 指数---------------
-        file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
-        file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
-        file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
+        file_path_sw_l1 = sub_path / 'index_sw_L1_list.csv'
+        file_path_sw_l2 = sub_path / 'index_sw_L2_list.csv'
+        file_path_sw_l3 = sub_path / 'index_sw_L3_list.csv'
         if que_from_ts is True:
             df_l1, df_l2, df_l3 = Index.get_sw_index_classify()
             df_l1.to_csv(file_path_sw_l1, encoding="utf-8")
@@ -504,8 +505,8 @@ class All_Assets_List:
             df_l2 = df_l2[['index_code', 'industry_name']]
             df_l3 = df_l3[['index_code', 'industry_name']]
         else:
+            _file_path = file_path_sw_l1
             try:
-                _file_path = file_path_sw_l1
                 df_l1 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
                 _file_path = file_path_sw_l2
                 df_l2 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
@@ -542,7 +543,7 @@ class All_Assets_List:
         # --------------上交所指数---------------
         if que_from_ts is True:
             raw_data.index.get_index_basic()
-        _file_path = sub_path + '\\' + 'index_basic_sse.csv'
+        _file_path = sub_path / 'index_basic_sse.csv'
         try:
             df_sse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -555,7 +556,7 @@ class All_Assets_List:
         df_sse['stype1'] = 'SSE'
         df_sse['stype2'] = ''
         df_sse.set_index('ts_code', inplace=True)
-        _file_path = sub_path + '\\' + 'index_basic_szse.csv'
+        _file_path = sub_path / 'index_basic_szse.csv'
         try:
             df_szse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -573,8 +574,8 @@ class All_Assets_List:
         # --------------个股---------------
         if que_from_ts is True:
             raw_data.stock.get_stock_basic()
-        file_name = 'stock_basic.csv'
-        _file_path = sub_path + '\\' + file_name
+        file_name = PurePath('stock_basic.csv')
+        _file_path = sub_path / file_name
         try:
             df = pd.read_csv(_file_path, usecols=['ts_code', 'name'], index_col='ts_code')
         except FileNotFoundError:
@@ -657,14 +658,15 @@ class All_Assets_List:
         al_file:None = create empty <df>; <str> = path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
         """
         file_path = None
+        df_al = None
         if al_file is None:
             df_al = pd.DataFrame(columns=['ts_code', 'selected'])
             df_al.set_index('ts_code', inplace=True)
             add_log(40, '[fns]All_Assets_List.load_al_file() empty <df> created')
         elif isinstance(al_file, str):
             if len(al_file) > 0:
-                file_name = 'al_' + al_file + '.csv'
-                file_path = sub_path + sub_path_al + '\\' + file_name
+                file_name = PurePath('al_' + al_file + '.csv')
+                file_path = sub_path / sub_path_al / file_name
             if file_path is None:
                 log_args = [al_file]
                 add_log(10, '[fns]All_Assets_List.load_al_file(). invalid al_file string: {0[0]}', log_args)
@@ -696,7 +698,8 @@ class All_Assets_List:
             add_log(20, '[fn]All_Assets_List.create_al_file(). empty input_list')
             return
 
-        file_path = sub_path + sub_path_al + r'\al_' + file_name + '.csv'
+        _file = PurePath('al_' + file_name + '.csv')
+        file_path = sub_path / sub_path_al / _file
 
         mode = "w" if overwrite is True else "x"
 
@@ -1127,8 +1130,8 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'fq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('fq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
             return result
         else:
@@ -1147,8 +1150,8 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
                                      usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
@@ -1174,8 +1177,8 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'db_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('db_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             result = pd.read_csv(file_path, dtype={'trade_date': str},
                                  usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f', 'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share', 'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
                                  nrows=nrows)
@@ -1197,8 +1200,8 @@ class Stock(Asset):
         global raw_data
         # print('[L940] raw_data:{}'.format(raw_data))
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'dfq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             elif columns == 'basic':
@@ -1270,8 +1273,8 @@ class Stock(Asset):
                 add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" reloaded".', log_args)
 
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'dfq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
         else:
             log_args = [ts_code]
             add_log(10, '[fn]Stock.calc_dfq() ts_code:{0[0]} invalid', log_args)
@@ -1329,10 +1332,10 @@ class Stock(Asset):
         获取个股的质押信息
         """
         ts_code = ts_code.upper()
-        file_name = 'pledge_' + ts_code + '.csv'
-        detail_name = 'pl_dtl_' + ts_code + '.csv'
-        file_path = sub_path + sub_pledge + '\\' + file_name
-        detail_path = sub_path + sub_pledge + '\\' + detail_name
+        file_name = PurePath('pledge_' + ts_code + '.csv')
+        detail_name = PurePath('pl_dtl_' + ts_code + '.csv')
+        file_path = sub_path / sub_pledge / file_name
+        detail_path = sub_path / sub_pledge / detail_name
         df_pledge = ts_pro.pledge_stat(ts_code=ts_code)
         df_detail = ts_pro.pledge_detail(ts_code=ts_code)
         df_pledge.to_csv(file_path, encoding='utf-8')
@@ -1426,17 +1429,17 @@ class Index(Asset):
         从ts_pro获取申万行业指数的分类
         """
         # 一级行业列表
-        file_name = "index_sw_L1_list.csv"
+        file_name = PurePath("index_sw_L1_list.csv")
         df_l1 = ts_pro.index_classify(level='L1', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l1.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l1.to_csv(sub_path / file_name, encoding="utf-8")
         # 二级行业列表
-        file_name = "index_sw_L2_list.csv"
+        file_name = PurePath("index_sw_L2_list.csv")
         df_l2 = ts_pro.index_classify(level='L2', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l2.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l2.to_csv(sub_path / file_name, encoding="utf-8")
         # 三级行业列表
-        file_name = "index_sw_L3_list.csv"
+        file_name = PurePath("index_sw_L3_list.csv")
         df_l3 = ts_pro.index_classify(level='L3', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l3.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l3.to_csv(sub_path / file_name, encoding="utf-8")
         if return_df is not True:
             return None
         return df_l1, df_l2, df_l3
@@ -1446,12 +1449,12 @@ class Index(Asset):
         """
         从文件index_sw_Lx_list.csv读入df_l1, df_l2, df_l3
         """
-        l1_name = "index_sw_L1_list.csv"
-        l1_path = sub_path + '\\' + l1_name
-        l2_name = "index_sw_L2_list.csv"
-        l2_path = sub_path + '\\' + l2_name
-        l3_name = "index_sw_L3_list.csv"
-        l3_path = sub_path + '\\' + l3_name
+        l1_name = PurePath("index_sw_L1_list.csv")
+        l1_path = sub_path / l1_name
+        l2_name = PurePath("index_sw_L2_list.csv")
+        l2_path = sub_path / l2_name
+        l3_name = PurePath("index_sw_L3_list.csv")
+        l3_path = sub_path / l3_name
         df_l1 = pd.read_csv(l1_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
         # df_l1['industry_code'] = df_l1['industry_code'].astype(np.int64)
         df_l2 = pd.read_csv(l2_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
@@ -1471,8 +1474,8 @@ class Index(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)  # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
@@ -1498,10 +1501,10 @@ class Index(Asset):
         return: <df>
         """
         global raw_data
-        sub_path_2nd_daily = r"\daily_data"
+        sub_path_2nd_daily = PurePath("daily_data")
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 try:
                     result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'name', 'open', 'low', 'high', 'close', 'change', 'pct_change', 'vol', 'amount', 'pe', 'pb'], index_col='trade_date', nrows=nrows)
@@ -1609,8 +1612,8 @@ class Hsgt:
         """
         ts_code = 'hsgt_flow'
         category = 'hsgt_flow'
-        file_name = 'd_hsgt_flow.csv'
-        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        file_name = PurePath('d_hsgt_flow.csv')
+        file_path = sub_path / sub_path_2nd_daily / file_name
         reload = not os.path.exists(file_path)
 
         df = download_data(ts_code=ts_code, category=category, reload=reload)
@@ -1627,8 +1630,8 @@ class Hsgt:
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         return: <df>
         """
-        file_name = 'd_hsgt_flow.csv'
-        file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+        file_name = PurePath('d_hsgt_flow.csv')
+        file_path = sub_path / sub_path_2nd_daily / file_name
         result = pd.read_csv(file_path, dtype={'trade_date': str}, index_col='trade_date', nrows=nrows)
         return result
 
@@ -1770,8 +1773,8 @@ class Plot_Utility:
             return
         if isinstance(al_name, str):
             if len(al_name) > 0:
-                file_name = 'al_' + al_name + '.csv'
-                file_path = sub_path + sub_path_al + '\\' + file_name
+                file_name = PurePath('al_' + al_name + '.csv')
+                file_path = sub_path / sub_path_al / file_name
                 al.to_csv(file_path, encoding='utf-8', header=True)  # header=True是Series.to_csv的处理，否则Warning
                 log_args = [al_name]
                 add_log(40, '[fn]Plot_Utility.gen_al(). "al_{0[0]}.csv" generated', log_args)
@@ -2576,10 +2579,10 @@ class Pool:
             name = today_str() + '_' + self.desc + '_' + now_time_str()
         else:
             name = csv
-        file_name = 'io_' + name + '.csv'
-        txt_name = 'io_' + name + '.txt'
-        file_path = sub_path + sub_analysis + '\\' + file_name
-        txt_path = sub_path + sub_analysis + '\\' + txt_name
+        file_name = PurePath('io_' + name + '.csv')
+        txt_name = PurePath('io_' + name + '.txt')
+        file_path = sub_path / sub_analysis / file_name
+        txt_path = sub_path / sub_analysis / txt_name
 
         if isinstance(self.in_out, pd.DataFrame):
             if include_discard is not True:
@@ -3905,8 +3908,8 @@ class Concept:
         retrun: <int> number of concepts
                 None if failed
         """
-        file_name = 'concept.csv'
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath('concept.csv')
+        file_path = sub_path / file_name
         df = ts_pro.concept()
         if isinstance(df, pd.DataFrame):
             if len(df) > 0:
@@ -3921,8 +3924,8 @@ class Concept:
         return: <df> is success
                 None if failed
         """
-        file_name = 'concept.csv'
-        file_path = sub_path + '\\' + file_name
+        file_name = PurePath('concept.csv')
+        file_path = sub_path / file_name
         df = pd.read_csv(file_path, usecols=['code', 'name', 'src'], index_col='code')
         if isinstance(df, pd.DataFrame):
             if len(df) > 0:

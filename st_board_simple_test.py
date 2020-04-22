@@ -4,14 +4,15 @@ import os
 import time
 import weakref
 from st_common import raw_data  # 不能去掉
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_idt, sub_analysis
-from st_common import SUBTYPE, SOURCE, SOURCE_TO_COLUMN, STATUS_WORD, DOWNLOAD_WORD, DEFAULT_OPEN_DATE_STR, FORMAT_FIELDS, FORMAT_HEAD
+from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_analysis, sub_pledge
+from st_common import FORMAT_FIELDS, FORMAT_HEAD
 from datetime import datetime, timedelta
-from XF_LOG_MANAGE import add_log, logable, log_print
+from XF_LOG_MANAGE import add_log, logable
 import matplotlib.pyplot as plt
 from pylab import mpl
 import tushare as ts
 from pandas.plotting import register_matplotlib_converters
+from pathlib import PurePath
 
 ts_pro = ts.pro_api()
 register_matplotlib_converters()  # 否则Warning
@@ -36,6 +37,7 @@ def today_str():
     today_str_ = dt.strftime("%Y%m%d")
     return today_str_
 
+
 def now_time_str():
     """
     return: <str> e.g.'13-90-45'
@@ -43,6 +45,7 @@ def now_time_str():
     dt = datetime.now()
     now_str = dt.strftime("%H-%M-%S")
     return now_str
+
 
 def valid_file_path(file_path):
     r"""
@@ -104,6 +107,8 @@ def download_data(ts_code, category, reload=False):
             file_name = 'fq_' + ts_code + '.csv'
         elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
             file_name = 'd_' + ts_code + '.csv'
+        elif category == 'hsgt_flow':  # 沪深港通资金流向
+            file_name = 'd_hsgt_flow.csv'
         # ----------其它类型时修改------------
         else:
             log_args = [category]
@@ -130,6 +135,9 @@ def download_data(ts_code, category, reload=False):
         # -----------复权因子--------------
         elif category == 'adj_factor':
             start_date_str = str(raw_data.stock.que_list_date(ts_code))
+        # -------沪深港通资金流向-----------
+        elif category == 'hsgt_flow':
+            start_date_str = '20141117'  # 沪深港通数据起点
         # -----------其它类型(未完成)--------------
         else:
             log_args = [ts_code, category]
@@ -139,44 +147,16 @@ def download_data(ts_code, category, reload=False):
 
     if raw_data.valid_ts_code(ts_code):
         if reload is True:  # 重头开始下载
-            # #-----------index类别--------------
-            # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-            #     start_date_str = str(raw_data.index.que_base_date(ts_code))
-            # #-----------stock类别--------------
-            # elif category == 'stock':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------stock每日指标类别--------------
-            # elif category == 'stock_daily_basic':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------复权因子--------------
-            # elif category == 'adj_factor':
-            #     start_date_str = str(raw_data.stock.que_list_date(ts_code))
-            # #-----------其它类型(未完成)--------------
-            # else:
-            #     log_args = [ts_code,category]
-            #     add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid', log_args)
-            #     return
             start_date_str = _category_to_start_date_str(ts_code, category)
             if start_date_str is None:
                 return
             end_date_str = today_str()
             df = sgmt_download(ts_code, start_date_str, end_date_str, que_limit, category)
             if isinstance(df, pd.DataFrame):
-                # if category == 'stock_daily_basic':
-                #     file_name = 'db_' + ts_code + '.csv'
-                # elif category == 'adj_factor':
-                #     file_name = 'fq_' + ts_code + '.csv'
-                # elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
-                #     file_name = 'd_' + ts_code + '.csv'
-                # #----------其它类型时修改------------
-                # else:
-                #     log_args = [category]
-                #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
-                #     return
                 file_name = _category_to_file_name(ts_code, category)
                 if file_name is None:
                     return
-                df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                df.to_csv(sub_path / sub_path_2nd_daily / file_name)
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, file_name, number_of_items]
@@ -241,7 +221,7 @@ def download_data(ts_code, category, reload=False):
                     file_name = _category_to_file_name(ts_code, category)
                     if file_name is None:
                         return
-                    df.to_csv(sub_path + sub_path_2nd_daily + '\\' + file_name)
+                    df.to_csv(sub_path / sub_path_2nd_daily / file_name)
                     if logable(40):
                         number_of_items = len(df)
                         log_args = [ts_code, category, file_name, number_of_items]
@@ -338,8 +318,8 @@ def bulk_download(al_file, reload=False):
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_download(). invalid al_file string: {0[0]}', log_args)
@@ -358,8 +338,8 @@ def bulk_download(al_file, reload=False):
             category = All_Assets_List.query_category_str(ts_code)
             if category is None:
                 continue
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if reload is True or (not os.path.exists(file_path)):
                 _reload = True
             else:
@@ -373,12 +353,12 @@ def bulk_dl_appendix(al_file, reload=False):
     al_file:<str> path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
     reload:<bool> True重新下载完整文件
     """
-    print('[L697] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
+    print('[L376] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_dl_appendix(). invalid al_file string: {0[0]}', log_args)
@@ -400,8 +380,8 @@ def bulk_dl_appendix(al_file, reload=False):
             elif category == 'stock':
                 # -------------每日指标--------------
                 category = 'stock_daily_basic'  # 股票每日指标
-                file_name = 'db_' + ts_code + '.csv'
-                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                file_name = PurePath('db_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_daily / file_name
                 if reload is True or (not os.path.exists(file_path)):
                     _reload = True
                 else:
@@ -409,8 +389,8 @@ def bulk_dl_appendix(al_file, reload=False):
                 download_data(ts_code, category, _reload)
                 # -------------复权因子--------------
                 category = 'adj_factor'  # 股票复权
-                file_name = 'fq_' + ts_code + '.csv'
-                file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+                file_name = PurePath('fq_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_daily / file_name
                 if reload is True or (not os.path.exists(file_path)):
                     _reload = True
                 else:
@@ -430,8 +410,8 @@ def bulk_calc_dfq(al_file, reload=False):
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
-            file_name = 'al_' + al_file + '.csv'
-            file_path = sub_path + sub_path_al + '\\' + file_name
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
     if file_path is None:
         log_args = [al_file]
         add_log(10, '[fn]bulk_calc_dfq(). invalid al_file string: {0[0]}', log_args)
@@ -443,7 +423,7 @@ def bulk_calc_dfq(al_file, reload=False):
         add_log(10, '[fn]bulk_calc_dfq(). al_file "{0[0]}" not exist', log_args)
         return
     log_args = [len(df_al)]
-    add_log(40, '[fn]bulk_calc_dfq(). df_al loaded -sucess, items:"{0[0]}"', log_args)
+    add_log(40, '[fn]bulk_calc_dfq(). df_al loaded -success, items:"{0[0]}"', log_args)
     for index, row in df_al.iterrows():
         if row['selected'] == 'T' or row['selected'] == 't':
             ts_code = index
@@ -479,22 +459,23 @@ def load_source_df(ts_code, source, nrows=None):
     return:<df> trade_date(index); 数据只有一列 close; high...
     """
     print('[L481] load_source_df() 此函数可能不再需要')
-    try:
-        # SOURCE[source]
-        column_name = SOURCE_TO_COLUMN[source]
-    except KeyError:
-        log_args = [ts_code, source]
-        add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
-        return
-    # ---------------close_hfq 收盘后复权---------------
-    if source == 'close':
-        result = Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
-        return result
-    # ---------------无匹配，报错---------------
-    else:
-        log_args = [ts_code, source]
-        add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
-        return
+    pass
+    # try:
+    #     # SOURCE[source]
+    #     column_name = SOURCE_TO_COLUMN[source]
+    # except KeyError:
+    #     log_args = [ts_code, source]
+    #     add_log(20, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not valid', log_args)
+    #     return
+    # # ---------------close_hfq 收盘后复权---------------
+    # if source == 'close':
+    #     result = Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
+    #     return result
+    # # ---------------无匹配，报错---------------
+    # else:
+    #     log_args = [ts_code, source]
+    #     add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
+    #     return
 
 
 class All_Assets_List:
@@ -507,22 +488,25 @@ class All_Assets_List:
         que_from_ts: <bool> F：从文件读 T:从tushare 接口读
         """
         global raw_data
-        file_name = "all_assets_list_rebuild.csv"  # 不同名避免误操作
-        file_path_al = sub_path + sub_path_config + '\\' + file_name
+        file_name = PurePath("all_assets_list.csv")  # 不同名避免误操作
+        file_path_al = sub_path / sub_path_config / file_name
         df_al = pd.DataFrame(columns=['ts_code', 'valid', 'selected', 'name', 'type', 'stype1', 'stype2'])
         df_al = df_al.set_index('ts_code')
         # --------------SW 指数---------------
+        file_path_sw_l1 = sub_path / 'index_sw_L1_list.csv'
+        file_path_sw_l2 = sub_path / 'index_sw_L2_list.csv'
+        file_path_sw_l3 = sub_path / 'index_sw_L3_list.csv'
         if que_from_ts is True:
             df_l1, df_l2, df_l3 = Index.get_sw_index_classify()
+            df_l1.to_csv(file_path_sw_l1, encoding="utf-8")
+            df_l2.to_csv(file_path_sw_l2, encoding="utf-8")
+            df_l3.to_csv(file_path_sw_l3, encoding="utf-8")
             df_l1 = df_l1[['index_code', 'industry_name']]
             df_l2 = df_l2[['index_code', 'industry_name']]
             df_l3 = df_l3[['index_code', 'industry_name']]
         else:
-            file_path_sw_l1 = sub_path + '\\' + 'index_sw_L1_list.csv'
-            file_path_sw_l2 = sub_path + '\\' + 'index_sw_L2_list.csv'
-            file_path_sw_l3 = sub_path + '\\' + 'index_sw_L3_list.csv'
+            _file_path = file_path_sw_l1
             try:
-                _file_path = file_path_sw_l1
                 df_l1 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
                 _file_path = file_path_sw_l2
                 df_l2 = pd.read_csv(_file_path, usecols=['index_code', 'industry_name'])
@@ -559,7 +543,7 @@ class All_Assets_List:
         # --------------上交所指数---------------
         if que_from_ts is True:
             raw_data.index.get_index_basic()
-        _file_path = sub_path + '\\' + 'index_basic_sse.csv'
+        _file_path = sub_path / 'index_basic_sse.csv'
         try:
             df_sse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -572,7 +556,7 @@ class All_Assets_List:
         df_sse['stype1'] = 'SSE'
         df_sse['stype2'] = ''
         df_sse.set_index('ts_code', inplace=True)
-        _file_path = sub_path + '\\' + 'index_basic_szse.csv'
+        _file_path = sub_path / 'index_basic_szse.csv'
         try:
             df_szse = pd.read_csv(_file_path, usecols=['ts_code', 'name'])
         except FileNotFoundError:
@@ -590,8 +574,8 @@ class All_Assets_List:
         # --------------个股---------------
         if que_from_ts is True:
             raw_data.stock.get_stock_basic()
-        file_name = 'stock_basic.csv'
-        _file_path = sub_path + '\\' + file_name
+        file_name = PurePath('stock_basic.csv')
+        _file_path = sub_path / file_name
         try:
             df = pd.read_csv(_file_path, usecols=['ts_code', 'name'], index_col='ts_code')
         except FileNotFoundError:
@@ -619,7 +603,7 @@ class All_Assets_List:
         df_al = pd.concat(_frame, sort=False)
         # --------------结尾---------------
         df_al.to_csv(file_path_al, encoding="utf-8")
-        return
+        return len(df_al)
 
     @staticmethod
     def query_category_str(ts_code):
@@ -653,20 +637,36 @@ class All_Assets_List:
         return category
 
     @staticmethod
+    def query_stype2(ts_code):
+        """
+        从all_assets_list中返回stype2字段，具体储存sw index的'L1', 'L2', 'L3'
+        return: <str> e.g. 'L1'
+                None if failed
+        """
+        try:
+            stype2 = raw_data.all_assets_list.loc[ts_code].stype2
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]All_Assets_List.query_type2(). ts_code:{0[0]} invalid', log_args)
+            return
+        return stype2
+
+    @staticmethod
     def load_al_file(al_file=None):
         r"""
         load al_file into assets
         al_file:None = create empty <df>; <str> = path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
         """
         file_path = None
+        df_al = None
         if al_file is None:
             df_al = pd.DataFrame(columns=['ts_code', 'selected'])
             df_al.set_index('ts_code', inplace=True)
             add_log(40, '[fns]All_Assets_List.load_al_file() empty <df> created')
         elif isinstance(al_file, str):
             if len(al_file) > 0:
-                file_name = 'al_' + al_file + '.csv'
-                file_path = sub_path + sub_path_al + '\\' + file_name
+                file_name = PurePath('al_' + al_file + '.csv')
+                file_path = sub_path / sub_path_al / file_name
             if file_path is None:
                 log_args = [al_file]
                 add_log(10, '[fns]All_Assets_List.load_al_file(). invalid al_file string: {0[0]}', log_args)
@@ -698,11 +698,11 @@ class All_Assets_List:
             add_log(20, '[fn]All_Assets_List.create_al_file(). empty input_list')
             return
 
-        file_path = sub_path + sub_path_al + r'\al_' + file_name + '.csv'
+        _file = PurePath('al_' + file_name + '.csv')
+        file_path = sub_path / sub_path_al / _file
 
         mode = "w" if overwrite is True else "x"
 
-        print("[L697] except for file overwrite not ready")
         with open(file_path, mode) as f:
             f.write("ts_code,selected\n")
             for ts_code in input_list:
@@ -723,6 +723,109 @@ class All_Assets_List:
         s_ts_code = df[df.trade_date == trade_date]['con_code']
         al_list = s_ts_code.tolist()
         All_Assets_List.create_al_file(al_list, 'HS300成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_sz50_al():
+        """
+        更新 上证50 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000016.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '上证50成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_zz500_al():
+        """
+        更新 中证500 al 文件
+        """
+        df = ts_pro.index_weight(index_code='000905.SH')
+        trade_date = df.head(1)['trade_date'].values[0]
+        s_ts_code = df[df.trade_date == trade_date]['con_code']
+        al_list = s_ts_code.tolist()
+        All_Assets_List.create_al_file(al_list, '中证500成分股')
+        return len(al_list)
+
+    @staticmethod
+    def update_swl123_al():
+        """
+        更新申万 L123的指数列表al_SW_Index_Lx.csv
+        return: n_l1, n_l2, n_l3
+        """
+        df = raw_data.all_assets_list
+
+        # SW L1+L2+L3
+        s_swl = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW')].index
+        ls = s_swl.tolist()
+        n_l = len(ls)
+        if n_l > 0:
+            All_Assets_List.create_al_file(ls, 'SW_Index')
+
+        # SW L1
+        s_swl1 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (df.stype2 == 'L1')].index
+        l1 = s_swl1.tolist()
+        n_l1 = len(l1)
+        if n_l1 > 0:
+            All_Assets_List.create_al_file(l1, 'SW_Index_L1')
+
+        # SW L2
+        s_swl2 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (df.stype2 == 'L2')].index
+        l2 = s_swl2.tolist()
+        n_l2 = len(l2)
+        if n_l2 > 0:
+            All_Assets_List.create_al_file(l2, 'SW_Index_L2')
+
+        # SW L3
+        s_swl3 = df[(df.valid == 'T') & (df.selected == 'T') & (df.type == 'index') & (df.stype1 == 'SW') & (
+                    df.stype2 == 'L3')].index
+        l3 = s_swl3.tolist()
+        n_l3 = len(l3)
+        if n_l3 > 0:
+            All_Assets_List.create_al_file(l3, 'SW_Index_L3')
+
+        return n_l1, n_l2, n_l3
+
+    @staticmethod
+    def update_download_all():
+        """
+        更新al_download_all.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        n = len(df)
+        if n > 0:
+            s_al = df.index.tolist()
+            All_Assets_List.create_al_file(s_al, 'download_all')
+            return n
+
+    @staticmethod
+    def update_dl_stocks():
+        """
+        更新al_dl_stocks.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        al_list = df[df.type == 'stock'].index.tolist()
+        n = len(df)
+        if n > 0:
+            All_Assets_List.create_al_file(al_list, 'dl_stocks')
+            return n
+
+    @staticmethod
+    def update_dl_indexes():
+        """
+        更新al_dl_indexes.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        al_list = df[df.type == 'index'].index.tolist()
+        n = len(df)
+        if n > 0:
+            All_Assets_List.create_al_file(al_list, 'dl_indexes')
+            return n
 
 
 class Asset:
@@ -739,6 +842,7 @@ class Asset:
                   : None: self.daily_data = None
                   : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
         """
+        global raw_data
         INDEX = {'index_sw', 'index_sse', 'index_szse'}
         category = All_Assets_List.query_category_str(ts_code)
         if category == 'stock':
@@ -752,6 +856,7 @@ class Asset:
             add_log(20, '[fn]Asset.__new__(). ts_code:{0[0]} category invalid, asset not initialized', log_args)
             return
         obj.ts_code = ts_code
+        obj.name = raw_data.query_name(ts_code)
         obj.in_date = in_date  # <str> 如"20200126", 如果是'latest'则需要在各子类中计算
         obj.by_date = None  # <str> 当前计算的日期如"20191231"
         obj.stay_days = None  # <int> 在pool中的天数
@@ -761,6 +866,7 @@ class Asset:
         obj.out_date = None  # <str> 当前计算的日期如"20191231"
         obj.earn = None  # by_price - in_price
         obj.earn_pct = None  # earn / in_price
+        # obj.earn_pct_20d = None  # earn_pct / stay_days * 20 二十日等效收益率
         obj.daily_data = None  # <df>
         obj.high_in_pool = None  # <float> 在pool期间的最高价
         obj.high_pct = None  # <float> (high_in_pool - in_price) / in_price
@@ -809,7 +915,7 @@ class Asset:
             try:
                 rslt = self.daily_data.loc[int(trade_date)][head_name]
                 return rslt, trade_date
-            except KeyError:
+            except (KeyError, AttributeError):
                 if seek_direction is None:
                     log_args = [self.ts_code, trade_date]
                     add_log(20, '[fn]Asset.get_price() failed to get price of {0[0]} on {0[1]}', log_args)
@@ -939,7 +1045,7 @@ class Stock(Asset):
 
     def __init__(self, ts_code, in_price=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
         """
-        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][vol]基本字段到self.daily_data
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         in_price: <float> 进入价格
@@ -982,15 +1088,38 @@ class Stock(Asset):
     def load_daily_data(self, load_daily='basic'):
         """
         根据load_daily输入字段，从csv文件将数据读入self.daily_data
-        load_daily: 'basic': 读入[close][open][high][low]基本字段到self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][vol][amount]基本字段到self.daily_data
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
+        def _load_basic():
+            self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')  # self.daily_data在Asset.__new__()中已定义
+            sl_db = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate']  # 换手率
+            sl_amount = self.load_stock_daily(ts_code=self.ts_code)['amount']
+            try:
+                self.daily_data.loc[:, 'amount'] = sl_amount
+                self.daily_data.loc[:, 'turnover_rate'] = sl_db
+            except Exception as e:
+                log_args = [self.ts_code, type(e)]
+                add_log(20, '[fn]Stock.load_daily_data() ts_code:{0[0]}; failed to load turnover_rate; error_type:{0[1]}', log_args)  # 换手率未加载成功
+
         if load_daily == 'basic':
-            self.daily_data = self.load_stock_dfq(ts_code=self.ts_code, columns='basic')
-            return
-        elif isinstance(load_daily, set):
-            print('[L972] 扩展字段的情况待完成')
+            _load_basic()
+        elif isinstance(load_daily, set):  # <set>增加额外字段的情况
+            _load_basic()  # 加载基础数据
+            if len(load_daily) == 0:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Stock.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
+                return
+            for item in load_daily:
+                if item == 'turnover_rate_f':  # 流通换手率
+                    sl_trf = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate_f']  # 流通换手率
+                    self.daily_data.loc[:, 'turnover_rate_f'] = sl_trf
+                # --------后续修改--------
+                elif item == 'xxxx':
+                    pass
+                else:
+                    print('[L972] 扩展字段的情况待完成')
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
@@ -1001,10 +1130,9 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'fq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
-            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'],
-                                 index_col='trade_date', nrows=nrows)
+            file_name = PurePath('fq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
+            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
@@ -1022,17 +1150,18 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close',
-                                              'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)
+                # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             elif columns == 'basic':
                 result = pd.read_csv(file_path, dtype={'trade_date': str},
                                      usecols=['trade_date', 'close', 'open', 'high', 'low', 'amount'], index_col='trade_date', nrows=nrows)
-            # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            else:
+                result = None
             return result
         else:
             log_args = [ts_code]
@@ -1048,12 +1177,10 @@ class Stock(Asset):
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'db_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('db_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                 usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f',
-                                          'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share',
-                                          'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
+                                 usecols=['ts_code', 'trade_date', 'close', 'turnover_rate', 'turnover_rate_f', 'volume_ratio', 'pe', 'pe_ttm', 'pb', 'ps', 'ps_ttm', 'total_share', 'float_share', 'free_share', 'total_mv', 'circ_mv'], index_col='trade_date',
                                  nrows=nrows)
             return result
         else:
@@ -1067,21 +1194,18 @@ class Stock(Asset):
         从文件读入后复权的股票日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         columns: <str> 'all' = 所有可用的列
-                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'
         return: <df>
         """
         global raw_data
         # print('[L940] raw_data:{}'.format(raw_data))
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'dfq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
-                result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low'],
-                                     index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str},
-                                     usecols=['trade_date', 'close', 'open', 'high', 'low'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Stock.load_stock_dfq() attribute columns "{0[0]}" invalid', log_args)
@@ -1101,6 +1225,10 @@ class Stock(Asset):
         """
         global raw_data
         df_fq = Stock.load_adj_factor(ts_code)[['adj_factor']]
+        if len(df_fq) == 0:
+            log_args = [ts_code]
+            add_log(30, '[fn]calc_dfq() ts_code:{0[0]} empty df_fq, skipped', log_args)
+            return
         fq_head_index_str, = df_fq.head(1).index.values
         # print('[354] latest_date_str:{}'.format(fq_head_index_str))
         df_stock = Stock.load_stock_daily(ts_code)[['close', 'open', 'high', 'low', 'vol', 'amount']]
@@ -1116,8 +1244,7 @@ class Stock(Asset):
                     df_fq.index.get_loc(stock_head_index_str)
                 except KeyError:
                     log_args = [ts_code]
-                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem',
-                            log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args)  # df_stock和df_fq(复权）相互查询不到第一条index的定位
                     return
             # print('[357] fq_head_in_stock position:{}'.format(fq_head_in_stock))
             if fq_head_in_stock is not None:
@@ -1130,9 +1257,9 @@ class Stock(Asset):
                 df_stock.loc[:, 'dfq_open'] = df_stock['open'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_high'] = df_stock['high'] * df_stock['adj_factor']
                 df_stock.loc[:, 'dfq_low'] = df_stock['low'] * df_stock['adj_factor']
-            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low']]
-            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low'},
-                          inplace=True)
+                df_stock.loc[:, 'dfq_vol'] = df_stock['vol'] / df_stock['adj_factor']
+            df_dfq = df_stock[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol', 'amount']]
+            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low', 'dfq_vol': 'vol'}, inplace=True)
             return df_dfq
 
         def _generate_from_begin():
@@ -1146,8 +1273,8 @@ class Stock(Asset):
                 add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" reloaded".', log_args)
 
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'dfq_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
         else:
             log_args = [ts_code]
             add_log(10, '[fn]Stock.calc_dfq() ts_code:{0[0]} invalid', log_args)
@@ -1198,6 +1325,21 @@ class Stock(Asset):
             result.to_csv(file_path, encoding="utf-8")
             log_args = [file_name]
             add_log(40, '[fn]:Stock.calc_dfq() file: "{0[0]}" updated".', log_args)
+
+    @staticmethod
+    def get_pledge(ts_code):
+        """
+        获取个股的质押信息
+        """
+        ts_code = ts_code.upper()
+        file_name = PurePath('pledge_' + ts_code + '.csv')
+        detail_name = PurePath('pl_dtl_' + ts_code + '.csv')
+        file_path = sub_path / sub_pledge / file_name
+        detail_path = sub_path / sub_pledge / detail_name
+        df_pledge = ts_pro.pledge_stat(ts_code=ts_code)
+        df_detail = ts_pro.pledge_detail(ts_code=ts_code)
+        df_pledge.to_csv(file_path, encoding='utf-8')
+        df_detail.to_csv(detail_path, encoding='utf-8')
 
 
 class Index(Asset):
@@ -1255,18 +1397,31 @@ class Index(Asset):
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
         global raw_data
-
-        if load_daily == 'basic':
+        def _load_basic():
             if self.category == 'index_sw':
                 self.daily_data = self.load_sw_daily(ts_code=self.ts_code, columns='basic')
             elif self.category == 'index_sse' or self.category == 'index_szse':
-                self.daily_date = self.load_index_daily(ts_code=self.ts_code, columns='basic')
+                self.daily_data = self.load_index_daily(ts_code=self.ts_code, columns='basic')
             else:
                 log_args = [self.ts_code, self.category]
                 add_log(20, '[fn]Index.load_daily_data(). "{0[0]}" invalid category {0[0]}', log_args)
+
+        if load_daily == 'basic':
+            _load_basic()
+        elif isinstance(load_daily, set):  # <set>增加额外字段的情况
+            _load_basic()  # 加载基础数据
+            if len(load_daily) == 0:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Index.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
                 return
-        elif isinstance(load_daily, set):
-            print('[L1241] 扩展字段的情况待完成')
+            for item in load_daily:
+                if item == 'xxx':
+                    pass
+                # --------后续修改--------
+                elif item == 'yyy':
+                    pass
+                else:
+                    print('[L1241] 扩展字段的情况待完成')
 
     @staticmethod
     def get_sw_index_classify(return_df=True):
@@ -1274,19 +1429,38 @@ class Index(Asset):
         从ts_pro获取申万行业指数的分类
         """
         # 一级行业列表
-        file_name = "index_sw_L1_list.csv"
+        file_name = PurePath("index_sw_L1_list.csv")
         df_l1 = ts_pro.index_classify(level='L1', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l1.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l1.to_csv(sub_path / file_name, encoding="utf-8")
         # 二级行业列表
-        file_name = "index_sw_L2_list.csv"
+        file_name = PurePath("index_sw_L2_list.csv")
         df_l2 = ts_pro.index_classify(level='L2', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l2.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l2.to_csv(sub_path / file_name, encoding="utf-8")
         # 三级行业列表
-        file_name = "index_sw_L3_list.csv"
+        file_name = PurePath("index_sw_L3_list.csv")
         df_l3 = ts_pro.index_classify(level='L3', src='SW', fields='index_code,industry_name,level,industry_code,src')
-        df_l3.to_csv(sub_path + '\\' + file_name, encoding="utf-8")
+        df_l3.to_csv(sub_path / file_name, encoding="utf-8")
         if return_df is not True:
             return None
+        return df_l1, df_l2, df_l3
+
+    @staticmethod
+    def load_sw_index_classify():
+        """
+        从文件index_sw_Lx_list.csv读入df_l1, df_l2, df_l3
+        """
+        l1_name = PurePath("index_sw_L1_list.csv")
+        l1_path = sub_path / l1_name
+        l2_name = PurePath("index_sw_L2_list.csv")
+        l2_path = sub_path / l2_name
+        l3_name = PurePath("index_sw_L3_list.csv")
+        l3_path = sub_path / l3_name
+        df_l1 = pd.read_csv(l1_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l1['industry_code'] = df_l1['industry_code'].astype(np.int64)
+        df_l2 = pd.read_csv(l2_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l2['industry_code'] = df_l2['industry_code'].astype(np.int64)
+        df_l3 = pd.read_csv(l3_path, dtype={'industry_code': str}, usecols=['index_code', 'industry_name', 'level', 'industry_code', 'src'], index_col='index_code')
+        # df_l3['industry_code'] = df_l3['industry_code'].astype(np.int64)
         return df_l1, df_l2, df_l3
 
     @staticmethod
@@ -1295,18 +1469,18 @@ class Index(Asset):
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
         columns: <str> 'all' = 所有可用的列
-                       'basic' = 'trade_date', 'close', 'open', 'high', 'low'
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'
         return: <df>
         """
         global raw_data
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 result['vol'] = result['vol'].astype(np.int64)  # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
             elif columns == 'basic':
-                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
             else:
                 log_args = [columns]
                 add_log(20, '[fn]Index.load_index_daily() attribute columns "{0[0]}" invalid', log_args)
@@ -1322,13 +1496,15 @@ class Index(Asset):
         """
         从文件读入指数日线数据
         nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: 'all' all the columns in csv
+                 'basic' 6 basic attrs
         return: <df>
         """
         global raw_data
-        sub_path_2nd_daily = r"\daily_data"
+        sub_path_2nd_daily = PurePath("daily_data")
         if raw_data.valid_ts_code(ts_code):
-            file_name = 'd_' + ts_code + '.csv'
-            file_path = sub_path + sub_path_2nd_daily + '\\' + file_name
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_daily / file_name
             if columns == 'all':
                 try:
                     result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'name', 'open', 'low', 'high', 'close', 'change', 'pct_change', 'vol', 'amount', 'pe', 'pb'], index_col='trade_date', nrows=nrows)
@@ -1339,7 +1515,7 @@ class Index(Asset):
                 result['vol'] = result['vol'].astype(np.int64)
             elif columns == 'basic':
                 try:
-                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol'], index_col='trade_date', nrows=nrows)
+                    result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
                 except FileNotFoundError:
                     log_args = [file_path]
                     add_log(20, '[fn]Index.load_sw_daily() "{0[0]}" not exist', log_args)
@@ -1353,6 +1529,122 @@ class Index(Asset):
             log_args = [ts_code]
             add_log(20, '[fn]Index.load_sw_daily() ts_code "{0[0]}" invalid', log_args)
             return
+
+    @staticmethod
+    def update_subsw_al(ts_code, ex_l3=None):
+        """
+        如果处理一般index层级关系，可能需要考虑将此函数融合
+        如果是申万L1或L2的指数，则将所含下一级指数更新到al_sw_lx_<ts_code>_<name>.csv中
+        ts_code: <str>
+        ex_l3: True 跳过L2直接返回L3的列表
+        """
+        category = All_Assets_List.query_category_str(ts_code)
+        if category == 'index_sw':
+            stype2 = All_Assets_List.query_stype2(ts_code)
+            if stype2 == 'L1':
+                df_l1, df_l2, df_l3 = Index.load_sw_index_classify()
+                code = df_l1.loc[ts_code].industry_code
+                name = df_l1.loc[ts_code].industry_name
+                l1_prefix = code[:2]
+                if ex_l3 is True:
+                    rslt_list = df_l3[df_l3.industry_code.str.startswith(l1_prefix)].index.tolist()
+                    name = name + '_L3'
+                else:
+                    rslt_list = df_l2[df_l2.industry_code.str.startswith(l1_prefix)].index.tolist()
+            elif stype2 == 'L2':
+                df_l1, df_l2, df_l3 = Index.load_sw_index_classify()
+                code = df_l2.loc[ts_code].industry_code
+                name = df_l2.loc[ts_code].industry_name
+                l2_prefix = code[:4]
+                rslt_list = df_l3[df_l3.industry_code.str.startswith(l2_prefix)].index.tolist()
+            else:
+                log_args = [ts_code]
+                add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" is not index_sw L1 or L2', log_args)
+                return
+            if len(rslt_list) > 0:
+                file_name = 'sw_' + stype2.lower() + '_' + ts_code + '_' + name
+                All_Assets_List.create_al_file(rslt_list, file_name=file_name)
+            else:
+                log_args = [ts_code]
+                add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" empty output', log_args)
+                return None
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.update_subsw_al() ts_code:"{0[0]}" is not index_sw L1 or L2', log_args)
+
+    @staticmethod
+    def update_sw_member_al(ts_code):
+        """
+        获取申万指数的成分股到al_sw_mbr_<ts_code>_<name>.csv中
+        return: <list> 成分股的ts_code
+                None if failed
+        """
+        df_all = raw_data.all_assets_list
+        ts_code = ts_code.upper()
+        try:
+            name = df_all.loc[ts_code]['name']
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]Index.update_sw_member_al() ts_code:"{0[0]}" is not in all_assets_list', log_args)
+            return
+        file_name = 'sw_mbr_' + ts_code + '_' + name
+        rslt_df = ts_pro.index_member(index_code=ts_code)
+        if isinstance(rslt_df, pd.DataFrame):
+            if len(rslt_df) > 0:
+                rslt_list = rslt_df.con_code.tolist()
+                All_Assets_List.create_al_file(rslt_list, file_name=file_name)
+                return rslt_list
+        log_args = [ts_code, type(rslt_df)]
+        add_log(20, '[fn]Index.update_sw_member_al() ts_code:"{0[0]}" return type:{0[1]} invalid or empty', log_args)
+        return
+
+
+class Hsgt:
+    """
+    沪港通相关
+    """
+    @staticmethod
+    def get_moneyflow():
+        """
+        下载沪港通资金流向数据
+        ts_code: <str> 'hsgt_flow' 只做形式
+        category: <str> 'hsgt_flow'
+        """
+        ts_code = 'hsgt_flow'
+        category = 'hsgt_flow'
+        file_name = PurePath('d_hsgt_flow.csv')
+        file_path = sub_path / sub_path_2nd_daily / file_name
+        reload = not os.path.exists(file_path)
+
+        df = download_data(ts_code=ts_code, category=category, reload=reload)
+        if isinstance(df, pd.DataFrame):
+            log_args = [len(df)]
+            add_log(40, '[fn]Hsgt.get_moneyflow() d_hsgt_flow.csv updated, items:{0[0]}', log_args)
+            return df
+
+    @staticmethod
+    def load_moneyflow(ts_code=None, nrows=None):
+        """
+        从文件读入资金流向
+        ts_code: 没有作用，仅为了保持相同签名
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        file_name = PurePath('d_hsgt_flow.csv')
+        file_path = sub_path / sub_path_2nd_daily / file_name
+        result = pd.read_csv(file_path, dtype={'trade_date': str}, index_col='trade_date', nrows=nrows)
+        return result
+
+    @staticmethod
+    def getter_flow(start_date, end_date, ts_code=None):
+        """
+        供sgmt_download()调用，获取ts_pro的数据
+        ts_code: 无作用，只为保持一致的签名
+        start_date: <str> e.g. '20141117'
+        end_date: <str> e.g. '20200227'
+        """
+        df = ts_pro.moneyflow_hsgt(start_date=start_date, end_date=end_date)
+        return df
 
 
 class Analysis:
@@ -1407,21 +1699,29 @@ LOADER = {'index_sse': Index.load_index_daily,
           'index_sw': Index.load_sw_daily,
           'stock': Stock.load_stock_daily,
           'stock_daily_basic': Stock.load_stock_daily_basic,
-          'adj_factor': Stock.load_adj_factor}
+          'adj_factor': Stock.load_adj_factor,
+          'hsgt_flow': Hsgt.load_moneyflow,
+          }
+
 # GETTER从Tushare下载数据的接口
 GETTER = {'index_sse': ts_pro.index_daily,
           'index_szse': ts_pro.index_daily,
           'index_sw': ts_pro.sw_daily,
           'stock': ts_pro.daily,
           'stock_daily_basic': ts_pro.daily_basic,
-          'adj_factor': ts_pro.adj_factor}
+          'adj_factor': ts_pro.adj_factor,
+          'hsgt_flow': Hsgt.getter_flow,
+          }
+
 # QUE_LIMIT,Tushare接口的单查询条目上限
 QUE_LIMIT = {'index_sse': 8000,
              'index_szse': 8000,
              'index_sw': 1000,
              'stock': 4000,
              'stock_daily_basic': 4000,  # changed on '20200105', 8000 before
-             'adj_factor': 8000}
+             'adj_factor': 8000,
+             'hsgt_flow': 300,
+             }
 
 
 class Plot_Utility:
@@ -1473,8 +1773,8 @@ class Plot_Utility:
             return
         if isinstance(al_name, str):
             if len(al_name) > 0:
-                file_name = 'al_' + al_name + '.csv'
-                file_path = sub_path + sub_path_al + '\\' + file_name
+                file_name = PurePath('al_' + al_name + '.csv')
+                file_path = sub_path / sub_path_al / file_name
                 al.to_csv(file_path, encoding='utf-8', header=True)  # header=True是Series.to_csv的处理，否则Warning
                 log_args = [al_name]
                 add_log(40, '[fn]Plot_Utility.gen_al(). "al_{0[0]}.csv" generated', log_args)
@@ -1488,26 +1788,21 @@ class Plot_Assets_Racing:
     """资产竞速图表：不同资产从同一基准起跑，一定时间内的价格表现
     """
 
-    def __init__(self, al_file, period=30):
+    def __init__(self, al_df, period=30):
         """
-        al_file: <str> 资产表的文件名e.g.'al_SW_Index_L1.csv'
+        al_df: <df> 资产表的<df>
         period: <int> 比较的周期
         """
         global raw_data
-        al_path = sub_path + sub_path_al + '\\' + al_file
-        try:
-            al_df = pd.read_csv(al_path)
-            # print("[debug L335] al_df:{}".format(al_df))
-        except FileNotFoundError:
-            log_args = [al_path]
-            add_log(10, '[fn]Plot_Assets_Racing.__init__(). file "{0[0]}" not found', log_args)
+        if not isinstance(al_df, pd.DataFrame):
+            log_args = [type(al_df)]
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). invalid type:{0[0]} of al_df', log_args)
             return
-        al_df.set_index('ts_code', inplace=True)
+        # al_df.set_index('ts_code', inplace=True)
         # print("[debug L341] al_df:{}".format(al_df))
         self.al = al_df[al_df == 'T'].index  # index of ts_code
         if len(self.al) == 0:
-            log_args = [al_path]
-            add_log(10, '[fn]Plot_Assets_Racing.__init__(). no item in "{0[0]}"', log_args)
+            add_log(10, '[fn]Plot_Assets_Racing.__init__(). no item in al_df')
             return
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -1558,8 +1853,9 @@ class Plot_Assets_Racing:
         # print("[L383] self.raw_data:{}".format(self.raw_data))
         self.raw_data.sort_values(by='last_chg', inplace=True, ascending=False)
         result = self.raw_data[['name', 'last_chg']]
+        print('资产竞速{}周期涨幅比较'.format(period))
         print(result)
-        file_name = str('资产竞速{}周期涨幅比较_{}'.format(period, al_file[3:-4])) + '_' + today_str() + '.csv'
+        file_name = str('资产竞速{}周期涨幅比较'.format(period)) + '_' + today_str() + '.csv'
         file_path = sub_path_result + r'\Plot_Assets_Racing' + '\\' + file_name
         result.to_csv(file_path, encoding="utf-8")
         log_args = [file_path]
@@ -1574,7 +1870,7 @@ class Plot_Assets_Racing:
         mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
         mpl.rcParams['axes.unicode_minus'] = False  # 解决保存图像是负号'-'显示为方块的问题
         plt.xticks(df.index, rotation='vertical')
-        plt.title('资产竞速{}周期涨幅比较 - {}'.format(period, al_file[3:-4]))
+        plt.title('资产竞速{}周期涨幅比较'.format(period))
         plt.ylabel('收盘%')
         plt.subplots_adjust(left=0.03, bottom=0.11, right=0.85, top=0.97, wspace=0, hspace=0)
         plt.legend(bbox_to_anchor=(1, 1), bbox_transform=plt.gcf().transFigure)
@@ -1666,7 +1962,10 @@ class Strategy:
             """
             遍历所有pools,执行1次筛选循环
             """
-            for pl_i, pool in self.pools.items():
+            pool_indexes = list(self.pools.keys())
+            pool_indexes.sort()
+            for pl_i in pool_indexes:
+                pool = self.pools[pl_i]
                 tsf_list = pool.cycle(self.by_date)
                 if tsf_list is not None:
                     self.trans_assets(out_pool_index=pl_i, transfer_list=tsf_list, trade_date=self.by_date)
@@ -1725,13 +2024,15 @@ class Strategy:
                 # pptx黄框中，end_date内的每cycles次循环后进行aggregate()处理
                 if cycles is None:  # 不管cycles，一次做到end_date结束
                     return_ok = None
-                    while int(self.by_date) < int(end_date):
+                    while int(self.by_date) <= int(end_date):
                         return_ok = _cycle()
                         if return_ok is not True:  # _cycle()出错跳出
                             log_args = [self.by_date]
                             add_log(20, '[fn]Strategy.update_cycles._check_end_cycles(). _cycle() return error on {0[0]}  [L1524], aborted', log_args)
                             return
+
                         next_trade_day = raw_data.next_trade_day(self.by_date)
+
                         if next_trade_day is None:
                             log_args = [self.by_date]
                             add_log(30, '[fn]Strategy.update_cycles._check_end_cycles() no more trade days after by_date:{0[0]}, stopped here', log_args)
@@ -1918,7 +2219,8 @@ class Strategy:
         out_pool_index: <int> 源头pool的index
                         'al' 从al文件导入，此[fn]不适用
         in_pool_index: <int> 目的pool的index
-                       'discard' 无下游pool，只从out_pool中移除asset
+                       'sell' 卖出，无下游pool，只从out_pool中移除asset
+                       'discard' 丢弃，无下游pool，只从out_pool中移除asset
         out_price_mode: <str> 详见Asset.get_price()
                         None 根据in的情况在设out_price和out_date
         in_price_mode: <str> 详见Asset.get_price()
@@ -1933,7 +2235,8 @@ class Strategy:
         from st_common import CND_SPC_TYPES
         # get in_pool
         in_pool = None
-        if in_pool_index != 'discard':
+        SPC_POOL_INDEX = {'discard', 'sell'}  # 特殊pool_index
+        if in_pool_index not in SPC_POOL_INDEX:
             try:
                 in_pool = self.pools[in_pool_index]
             except KeyError:
@@ -1981,11 +2284,15 @@ class Strategy:
             if asset == 'duplicated':
                 return 'duplicated'
             elif asset is not None:
+                for calc in in_pool.calcs:
+                    if calc.idt_type not in CND_SPC_TYPES:
+                        post_args = calc.idt_init_dict
+                        asset.add_indicator(**post_args)
                 for cond in in_pool.conditions:
-                    if cond.para1.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
+                    if cond.para1.idt_type not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args1 = cond.para1.idt_init_dict
                         asset.add_indicator(**post_args1)
-                    if cond.para2.idt_name not in CND_SPC_TYPES:  # 跳过condition的常量para
+                    if cond.para2.idt_type not in CND_SPC_TYPES:  # 跳过condition的常量para
                         post_args2 = cond.para2.idt_init_dict
                         asset.add_indicator(**post_args2)
                 in_pool.op_cnds_matrix(mode='a', ts_code=ts_code)  # 为cnds_matrix增加条目
@@ -2008,9 +2315,11 @@ class Strategy:
         遍历调用pool.op_cnds_matrix()初始化各pool的条件矩阵
         在所有的cnds都加载完后调用
         """
+        from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for pool in self.pools.values():
             pool.iter_al()
             pool.op_cnds_matrix(mode='i')
+            # 注意：在Strategy.trans_asset_down()中，当asset被转到下游时也有类似加载指标，和op_cnds_matrix的操作
 
     def init_ref_assets(self):
         """
@@ -2023,7 +2332,7 @@ class Strategy:
                 log_args = [ts_code]
                 add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} already in the ref_assets, skip', log_args)
             else:
-                self.ref_assets[ts_code] = Stock(ts_code=ts_code)
+                self.ref_assets[ts_code] = Asset(ts_code=ts_code)
                 log_args = [ts_code]
                 add_log(40, '[fn]Strategy.init_ref_assets(). ts_code:{0[0]} added', log_args)
 
@@ -2068,7 +2377,7 @@ class Pool:
     """
     股票池
     """
-    def __init__(self, par_strategy, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, del_trsfed=True, log_in_out=None):
+    def __init__(self, par_strategy, desc="", al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None, assets_daily_data='basic', del_trsfed=True, log_in_out=None):
         r"""
         par_strategy: <weak ref> parent strategy
         desc: <str> 描述
@@ -2078,6 +2387,8 @@ class Pool:
                  None: 不提供
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
+        assets_daily_data: asset.daily_data中加载哪些数据，
+                           详见Index/Stock.load_daily_data
         del_trsfed: 当资产通过filter转到下游in_pool后，是否删除源out_pool中的资产
                     True or None
         log_in_out: True or None, True把asset在pool中的对应进出记录到self.io_out中
@@ -2089,9 +2400,10 @@ class Pool:
         self.log_in_out = log_in_out  # 是否记录资产的对应进出供分析
         self.init_in_out()
         self.in_date = in_date  # 仅做诊断用
-        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+        self.init_assets(al_file=al_file, in_date=in_date, in_price_mode=in_price_mode, load_daily=assets_daily_data, price_seek_direction=price_seek_direction)
         self.al_file = None  # <str> or None al file name
         self.conditions = []
+        self.calcs = []
         self.filters = []
         self.db_buff = Register_Buffer()  # dashboard buffer area
         self.dashboard = Dashboard(self.db_buff)
@@ -2105,7 +2417,7 @@ class Pool:
         if al_file is not None:
             self.al_file = al_file
 
-    def init_assets(self, al_file=None, in_date=None, in_price_mode='close', price_seek_direction=None):
+    def init_assets(self, al_file=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
         r"""
         初始化self.assets，可选赋值in_date和in_price
         al_file: None = create empty dict;
@@ -2114,6 +2426,7 @@ class Pool:
                  None: 不提供
                  'latest': 根据asset基础数据里取有价格的最新那个时间
                  '20191231': 指定的日期
+        load_daily: 每日数据包含项，详见Index/Stock.load_daily_data()
         in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
         price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
                                None: 返回None,不搜索
@@ -2136,7 +2449,7 @@ class Pool:
                     add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     continue
                 else:
-                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, load_daily=load_daily, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
                     log_args = [ts_code]
                     add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
             else:
@@ -2208,12 +2521,16 @@ class Pool:
         """
         self.in_out = pd.DataFrame(columns=['ts_code', 'earn_pct', 'earn', 'in_date', 'out_date', 'stay_days', 'in_price', 'out_price', 'in_pool_index'])
 
-    def in_out_agg(self):
+    def in_out_agg(self, include_discard=None):
         """
         显示pool.in_out的统计信息
+        include_discard: True or None, 是否包含in_pool_index为'discard'的记录
         """
-        io_df = self.in_out
-        print('pool:{} in_out aggregate'.format(self.desc))
+        if include_discard is not True:
+            io_df = self.in_out[self.in_out.in_pool_index != 'discard']  # 将丢弃的记录从in_out分析中去除
+        else:
+            io_df = self.in_out
+        print('[msg] pool:{} in_out aggregate'.format(self.desc))
         Analysis.in_out_agg(io_df)
 
     def append_in_out(self, asset, in_pool_index='None'):
@@ -2226,9 +2543,11 @@ class Pool:
                 None  failed
         """
         if isinstance(asset, Asset):
+            earn = asset.out_price - asset.in_price
+            earn_pct = 0 if asset.in_price == 0 else earn / asset.in_price
             record = {'ts_code': asset.ts_code,
-                      'earn_pct': asset.earn_pct,
-                      'earn': asset.earn,
+                      'earn_pct': earn_pct,
+                      'earn': earn,
                       'in_date': asset.in_date,
                       'out_date': asset.out_date,
                       'stay_days': asset.stay_days,
@@ -2236,6 +2555,7 @@ class Pool:
                       'high_pct': asset.high_pct,
                       'low_in_pool': asset.low_in_pool,
                       'low_pct': asset.low_pct,
+                      # 'earn_pct_20d': asset.earn_pct_20d,
                       'in_price': asset.in_price,
                       'out_price': asset.out_price,
                       'in_pool_index': in_pool_index}
@@ -2246,31 +2566,40 @@ class Pool:
             add_log(20, '[fn]Pool.append_in_out(). asset type: {0[0]} is not Asset', log_args)
             return
 
-    def csv_in_out(self, csv=None):
+    def csv_in_out(self, csv=None, include_discard=None):
         """
         导出pool.in_out记录到csv
         csv: None  默认文件名 io_<date_of_generate>_<pool_desc>.csv
              <str> io_<str>.csv
+        include_discard: True or None, 是否包含in_pool_index为'discard'的记录
         """
         from analysis import in_out_agg
+
         if csv is None:  # 默认名
             name = today_str() + '_' + self.desc + '_' + now_time_str()
         else:
             name = csv
-        file_name = 'io_' + name + '.csv'
-        txt_name = 'io_' + name + '.txt'
-        file_path = sub_path + sub_analysis + '\\' + file_name
-        txt_path = sub_path + sub_analysis + '\\' + txt_name
+        file_name = PurePath('io_' + name + '.csv')
+        txt_name = PurePath('io_' + name + '.txt')
+        file_path = sub_path / sub_analysis / file_name
+        txt_path = sub_path / sub_analysis / txt_name
+
         if isinstance(self.in_out, pd.DataFrame):
-            self.in_out.to_csv(file_path, encoding="utf-8")
+            if include_discard is not True:
+                df_in_out = self.in_out[self.in_out.in_pool_index != 'discard']  # 将丢弃的记录从in_out分析中去除
+            else:
+                df_in_out = self.in_out
+            df_in_out.to_csv(file_path, encoding="utf-8")
             log_args = [file_path]
             add_log(40, '[fn]:Pool.csv_in_out() {0[0]} exported', log_args)
-            msg2 = in_out_agg(self.in_out)
+            msg2 = in_out_agg(df_in_out)
+            if msg2 is None:
+                msg2 = 'in_out_agg not available\n'
         else:
             log_args = [self.desc, type(self.in_out)]
             add_log(10, '[fn]:Pool.csv_in_out() pool:{0[0]} in_out type:{0[0]} is not <df>', log_args)
             return
-        msg = self.in_out_stg_brief(file_name)
+        msg = self.in_out_stg_brief(file_name)  # 配置的策略信息
         try:
             with open(txt_path, 'w', encoding='utf-8') as f:
                 f.write(msg + msg2)
@@ -2281,6 +2610,7 @@ class Pool:
     def add_condition(self, pre_args1, pre_args2, ops, required_period=0):
         """
         add the condition to the pool
+        使用说明详见.xmind/给pool增加conditions
         pre_argsN: <dict> refer indicator.idt_name() pre_args 创建para的必要输入参数
         e.g.
         {'idt_type': 'macd', 'const', 'stay_days',
@@ -2296,6 +2626,7 @@ class Pool:
          'bias': 0.05  # 偏置量
          'specific_asset': '000001.SZ'  # 特定资产的数据作为条件
          'earn_return': 0.5  # >50% of max_by to sale
+         ‘dymc_return_lmt': 0.5  # 动态dynamic回撤限, 根据max_by_pct计算，用于earn_return的动态设定
          }
         ops: <str> e.g. '>', '<=', '='...
         required_period: <int> 需要保持多少个周期来达成条件
@@ -2310,13 +2641,24 @@ class Pool:
         for i in range(len(self.conditions)):
             print('{:>3}    {:<32}'.format(i, self.conditions[i].desc))
 
+    def add_calc(self, method, pre_args, desc='', **kwargs):
+        """
+        add the <ins> of Calc to pool.calcs <list>
+        method: <str> 数据中间处理的方式
+                      'coverage': 在一定周期period中符合条件的比例,e.g.聚2%天比
+        pre_args: <dict> 传给idt_name()用于生成idt_name和<ins Indicator>
+        desc: <str> description
+        kwargs: 根据method不同，会有不同的参数，注意与pre_args中的区别开
+        """
+        self.calcs.append(Calc(method=method, pre_args=pre_args, desc=desc, **kwargs))
+
     def add_filter(self, cnd_indexes=None, down_pools=None, out_price_mode=None, in_price_mode='close', out_seek_direction=None, in_seek_direction=None, out_shift_days=0, in_shift_days=0):
         """
         add the filter to the pool
         cnd_indexes: <set> {0, 1, 2}
         down_pools: <set> {0, 1}
-        in_price_mode, out_price_mode: <str> refer Asset.get_price() attr: mode
-        in_shift_days, out_shift_days: <int> refer Asset.get_price() attr: shift_days
+        in_price_mode, out_price_mode: <str> 过滤完后，确定out_price及in_price的模式refer Asset.get_price() attr: mode
+        in_shift_days, out_shift_days: <int> 过滤完后，确定out_price及in_price的模式refer Asset.get_price() attr: shift_days
         in_seek_direction, out_seek_direction: <str> or None refer Asset.get_price() attr: seek_direction
         """
         if cnd_indexes is None:
@@ -2333,12 +2675,16 @@ class Pool:
         from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for asset in self.assets.values():
             for cond in self.conditions:
-                if cond.para1.idt_name not in CND_SPC_TYPES:
+                if cond.para1.idt_type not in CND_SPC_TYPES:
                     post_args1 = cond.para1.idt_init_dict
                     asset.add_indicator(**post_args1)
-                if cond.para2.idt_name not in CND_SPC_TYPES:
+                if cond.para2.idt_type not in CND_SPC_TYPES:
                     post_args2 = cond.para2.idt_init_dict
                     asset.add_indicator(**post_args2)
+            for calc in self.calcs:
+                if calc.idt_type not in CND_SPC_TYPES:
+                    post_args = calc.idt_init_dict
+                    asset.add_indicator(**post_args)
 
     def op_cnds_matrix(self, mode='i', ts_code=None, al=None, **kwargs):
         """
@@ -2429,8 +2775,8 @@ class Pool:
     def filter_cnd(self, cnd_index, datetime_, csv=None, al=None, update_matrix=None):
         """
         filter the self.assets or al with the condition
-        本函数不会发起基础数据的下载和或指标的重新计算
-        cnd_index: <int>, self.conditions 的序号
+            本函数
+                    ``--`````ions 的序号
         datetime_: <str> '20190723' YYYYMMDD
         csv: None or 'default' or <str> al_'file_name'
              'default' = <pool_desc>_output.csv
@@ -2438,7 +2784,12 @@ class Pool:
         update_matrix: 是否更新self.cnds_matrix, True=更新
         return: <list> 成立ts_code列表
         """
-        from st_common import CND_SPC_TYPES
+        # 用于dymc_return_lmt的设置表
+        dymc_lmt_set = ((0.1, 0.6),  # ((max_by_pct, earn_return_lmt), ...)
+                        (0.3, 0.5),  # 共5个条目，不能多不能少
+                        (0.5, 0.4),  # 如果Pool.add_condition()含dymc_lmt_set参数，则覆盖此参数
+                        (1.0, 0.3),
+                        (2.0, 0.2))
         try:
             cnd = self.conditions[cnd_index]  # <Condition>, 过滤的条件
         except IndexError:
@@ -2473,6 +2824,7 @@ class Pool:
                 shift1 = 0  # 前后移动周期数
             else:
                 shift1 = cnd.para1.shift_periods
+            # --------用于一般indicator类型
             val_fetcher1 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift1][column_name]
             date_fetcher1 = lambda _: datetime_
             # -----para2
@@ -2480,6 +2832,7 @@ class Pool:
                 shift2 = 0  # 前后移动周期数
             else:
                 shift2 = cnd.para2.shift_periods
+            # --------用于一般indicator类型
             val_fetcher2 = lambda df, column_name: df.iloc[df.index.get_loc(dt_int) - shift2][column_name]
             date_fetcher2 = lambda _: datetime_
         else:
@@ -2507,9 +2860,9 @@ class Pool:
                     continue
                 elif asset.by_price is None:  # 移入新pool后马上停牌，没有刷新到by_price和其它数值
                     log_args = [datetime_, asset.ts_code]
-                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}, skip', log_args)
+                    add_log(40, '[fn]Pool.filter_cnd(). {0[1]} by_price is None on {0[0]}}, skip', log_args)
                     continue
-                elif int(datetime_) <= int(asset.in_date):  # asset跳后加入，处理的日子早于等于asset.in_date
+                elif int(datetime_) < int(asset.in_date):  # asset跳后加入，处理的日子早于asset.in_date
                     log_args = [datetime_, asset.ts_code, asset.in_date]
                     add_log(40, '[fn]Pool.filter_cnd(). datetime_:{0[0]} earlier than {0[1]} in_date:{0[2]}, skip', log_args)
                     continue
@@ -2517,7 +2870,7 @@ class Pool:
                 # -------------刷新Pool.db_buff---------------------
                 self.db_buff.ts_code = asset.ts_code
 
-                # -------------para1---------------------
+                # -------------para1,特定cond_type在此改写---------------------
                 idt_name1 = cnd.para1.idt_name
                 if idt_name1 == 'const':
                     idt_value1 = cnd.para1.const_value  # para1 value
@@ -2539,9 +2892,57 @@ class Pool:
                     idt_value1 = (asset.min_by - asset.in_price) / asset.in_price
                     idt_date1 = asset.by_date
                 elif idt_name1 == 'earn_return':
-                    idt_value1 = (asset.max_by - asset.by_price) / asset.max_by
+                    dif = max(asset.max_by - asset.in_price, 0.001)
+                    idt_value1 = (asset.max_by - asset.by_price) / dif
                     idt_date1 = asset.by_date
-                else:  # 普通Indicator类condition
+                elif idt_name1 == 'dymc_return_lmt':
+                    if cnd.para1.dymc_lmt_set is not None:
+                        dymc_lmt_set = cnd.para1.dymc_lmt_set
+                    max_by_pct = (asset.max_by - asset.in_price) / asset.in_price
+                    if max_by_pct < dymc_lmt_set[0][0]:  # 设置第0行前
+                        idt_value1 = dymc_lmt_set[0][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[0][0] <= max_by_pct < dymc_lmt_set[1][0]:  # 设置第0，1行间
+                        idt_value1 = dymc_lmt_set[0][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[1][0] <= max_by_pct < dymc_lmt_set[2][0]:  # 设置第1，2行间
+                        idt_value1 = dymc_lmt_set[1][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[2][0] <= max_by_pct < dymc_lmt_set[3][0]:  # 设置第2，3行间
+                        idt_value1 = dymc_lmt_set[2][1]
+                        idt_date1 = asset.by_date
+                    elif dymc_lmt_set[3][0] <= max_by_pct < dymc_lmt_set[4][0]:  # 设置第3，4行间
+                        idt_value1 = dymc_lmt_set[3][1]
+                        idt_date1 = asset.by_date
+                    elif max_by_pct >= dymc_lmt_set[4][0]:  # 设置第4行后
+                        idt_value1 = dymc_lmt_set[4][1]
+                        idt_date1 = asset.by_date
+                    else:  # 未知意外情况
+                        log_args = [asset.ts_code, asset.by_date]
+                        add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
+                        idt_value1 = dymc_lmt_set[4][1]  # 使用保守值
+                        idt_date1 = asset.by_date
+
+                # Calc类condition
+                elif idt_name1[0:5] == 'calc_':  # Calc类condition以'calc_'开头
+                    if cnd.para1.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
+                    # try:  # 指标在资产中是否存在
+                    #     idt1 = getattr(_asset, idt_name1)
+                    # except Exception as e:  # 待细化
+                    #     log_args = [_asset.ts_code, e.__class__.__name__, e]
+                    #     add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+                    #     continue
+                    index = int(idt_name1[5:])
+                    _rslt = self.calcs[index].get(asset=asset, trade_date=datetime_)
+                    if _rslt is None:
+                        continue
+                    idt_value1, idt_date1 = _rslt
+
+                # 普通Indicator类condition
+                else:
                     if cnd.para1.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy().ref_assets[cnd.para1.specific_asset]  # 父strategy.ref_assets
                     else:
@@ -2568,7 +2969,7 @@ class Pool:
                 # print("[L1405] idt_date1: {}".format(idt_date1))
                 # print('[L1406] idt_value1: {}'.format(idt_value1))
 
-                # -------------para2---------------------
+                # -------------para2,特定cond_type在此改写---------------------
                 idt_name2 = cnd.para2.idt_name
                 if idt_name2 == 'const':
                     idt_value2 = cnd.para2.const_value
@@ -2590,8 +2991,55 @@ class Pool:
                     idt_value2 = (asset.min_by - asset.in_price) / asset.in_price
                     idt_date2 = asset.by_date
                 elif idt_name2 == 'earn_return':
-                    idt_value2 = (asset.max_by - asset.by_price) / asset.max_by
+                    idt_value2 = (asset.max_by - asset.by_price) / (asset.max_by - asset.in_price)
                     idt_date2 = asset.by_date
+                elif idt_name2 == 'dymc_return_lmt':
+                    if cnd.para2.dymc_lmt_set is not None:
+                        dymc_lmt_set = cnd.para2.dymc_lmt_set
+                    max_by_pct = (asset.max_by - asset.in_price) / asset.in_price
+                    if max_by_pct < dymc_lmt_set[0][0]:  # 设置第0行前
+                        idt_value2 = dymc_lmt_set[0][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[0][0] <= max_by_pct < dymc_lmt_set[1][0]:  # 设置第0，1行间
+                        idt_value2 = dymc_lmt_set[0][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[1][0] <= max_by_pct < dymc_lmt_set[2][0]:  # 设置第1，2行间
+                        idt_value2 = dymc_lmt_set[1][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[2][0] <= max_by_pct < dymc_lmt_set[3][0]:  # 设置第2，3行间
+                        idt_value2 = dymc_lmt_set[2][1]
+                        idt_date2 = asset.by_date
+                    elif dymc_lmt_set[3][0] <= max_by_pct < dymc_lmt_set[4][0]:  # 设置第3，4行间
+                        idt_value2 = dymc_lmt_set[3][1]
+                        idt_date2 = asset.by_date
+                    elif max_by_pct >= dymc_lmt_set[4][0]:  # 设置第4行后
+                        idt_value2 = dymc_lmt_set[4][1]
+                        idt_date2 = asset.by_date
+                    else:  # 未知意外情况
+                        log_args = [asset.ts_code, asset.by_date]
+                        add_log(10, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, by_date:{0[1]} dymc_return_lmt unknown problem, strategy effected', log_args)
+                        idt_value2 = dymc_lmt_set[4][1]  # 使用保守值
+                        idt_date2 = asset.by_date
+
+                # Calc类condition
+                elif idt_name2[0:5] == 'calc_':  # Calc类condition以'calc_'开头
+                    if cnd.para2.specific_asset is not None:  # specific asset指标
+                        _asset = self.par_strategy().ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
+                    else:
+                        _asset = asset
+                    # try:  # 指标在资产中是否存在
+                    #     idt2 = getattr(_asset, idt_name2)
+                    # except Exception as e:  # 待细化
+                    #     log_args = [_asset.ts_code, e.__class__.__name__, e]
+                    #     add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+                    #     continue
+                    index = int(idt_name2[5:])
+                    _rslt = self.calcs[index].get(asset=asset, trade_date=datetime_)
+                    if _rslt is None:
+                        continue
+                    idt_value2, idt_date2 = _rslt
+
+                # 普通Indicator类condition
                 else:  # 普通Indicator类condition
                     if cnd.para2.specific_asset is not None:  # specific asset指标
                         _asset = self.par_strategy.ref_assets[cnd.para2.specific_asset]  # 父strategy.ref_assets
@@ -2601,7 +3049,7 @@ class Pool:
                         idt2 = getattr(_asset, idt_name2)
                     except Exception as e:  # 待细化
                         log_args = [_asset.ts_code, e.__class__.__name__, e]
-                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0], except_type:{0[1]}; msg:{0[2]}', log_args)
+                        add_log(20, '[fn]Pool.filter_cnd(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
                         continue
                     idt_df2 = idt2.df_idt
                     idt_field2 = cnd.para2.field
@@ -2706,8 +3154,8 @@ class Pool:
                 csv_file_name = csv
             All_Assets_List.create_al_file(out_al, csv_file_name)
 
-        log_args = [len(out_al)]
-        add_log(30, '[fn]Pool.filter_filter() output {} assets', log_args)
+        log_args = [filter_index, len(out_al)]
+        add_log(30, '[fn]Pool.filter_filter() filter_{0[0]} output {0[1]} assets', log_args)
         return out_al
 
     def cycle(self, date_str):
@@ -2725,6 +3173,9 @@ class Pool:
                 None 没有资产需要transfer
         """
         global raw_data
+        log_args = [self.desc, date_str]
+        add_log(40, '[fn]Pool.cycle() {0[0]} working on {0[1]}', log_args)
+
         # 更新pool.by_date
         if valid_date_str_fmt(date_str) is not True:
             log_args = [self.desc, date_str]
@@ -2757,11 +3208,11 @@ class Pool:
                     log_args = [asset.ts_code, asset.by_date, self.by_date]
                     add_log(20, '[fn]Pool.cycle() {0[0]} by_date:{0[1]} after {0[2]}, skipped', log_args)
                     continue  # skip this asset
-                if int(self.by_date) > int(asset.in_date):
+                if int(self.by_date) >= int(asset.in_date):  # 加入同周期就计算
                     asset.by_date = self.by_date
                     asset.by_price = _price
                     asset.earn = asset.by_price - asset.in_price
-                    asset.earn_pct = (asset.earn / asset.in_price)
+                    asset.earn_pct = asset.earn / asset.in_price
                     if asset.max_by is None:
                         asset.max_by = _price
                     elif _price > asset.max_by:
@@ -2773,8 +3224,9 @@ class Pool:
 
             # 更新stay_days
             if asset.in_date is not None:
-                if int(self.by_date) > int(asset.in_date):
+                if int(self.by_date) >= int(asset.in_date):  # 加入同周期就计算
                     asset.stay_days = raw_data.len_trade_days(int(asset.in_date), int(self.by_date))
+                    # asset.earn_pct_20d = asset.earn_pct / asset.stay_days * 20
 
                     # 更新high_in_pool, low_in_pool
                     rslt = asset.get_price(self.by_date, mode='high')
@@ -2973,7 +3425,8 @@ class Trans_Log:
     out_price: <float> 进入下游pool的价格
     out_date: <str> 进入下游pool的日期 e.g. ‘20191231’
     in_pool_index: <int> 目的pool的index
-                   'discard' 无下游pool，只从out_pool中移除asset
+                   ‘sell' 卖出，无下游pool，只从out_pool中移除asset
+                   'discard' 丢弃，无下游pool，只从out_pool中移除asset
     in_price: <float> 进入下游pool的价格
     in_date: <str> 进入下游pool的日期 e.g. ‘20191231’
     volume: <int> 成交股数
@@ -3021,8 +3474,6 @@ class Condition:
         self.para1 = Para(pre_args1)
         self.para2 = Para(pre_args2)
         self.calcer = None  # <fn> calculator
-        # self.result = None  # 要用? True of False, condition result of result_time
-        # self.result_time = None  # 要用? <str> e.g. '20191209'
         self.desc = None  # <str> description 由后面程序修改
         self.required_period = required_period  # <int> 条件需要持续成立的周期
         self.true_lasted = {}  # <dict> {'000001.SZ': 2,...} 资产持续成立的周期
@@ -3030,12 +3481,14 @@ class Condition:
         '''
         pX_name的形式
         <str> idt_name:对应已定义的Indicator
+        其它特殊的可用定义见st_common.py CND_SPC_TYPES
         "const": 常量
         "stayed_days": asset在pool中停留的天数，如果不可用，则value=0, date="None"
         '''
         p1_name = self.para1.idt_name
         p2_name = self.para2.idt_name
 
+        # self.calcer(): 用于计算单次条件成立的函数
         if ops == '>':
             self.calcer = lambda p1, p2: p1 > p2
             self.desc = p1_name + ' > ' + p2_name
@@ -3114,6 +3567,7 @@ class Para:
                         'max_by_pct' pool中历史最高by_price对应earn pct
                         'min_by_pct' pool中历史最低by_price对应loss pct
                         'earn_return' 有盈利后，回撤对应盈利的比例
+                        'dymc_return_lmt' 可与earn_return配合使用
         field: <str> 指标结果列名
                      'default' 指标结果是单列的，使用此默认值
                      如'DEA' 指标结果是多列的，非与指标名同名的列，用大写指定
@@ -3143,6 +3597,18 @@ class Para:
         elif idt_type == 'earn_return':
             self.idt_name = 'earn_return'
             self.idt_type = 'earn_return'
+        elif idt_type == 'dymc_return_lmt':
+            self.idt_name = 'dymc_return_lmt'
+            self.idt_type = 'dymc_return_lmt'
+            self.dymc_lmt_set = None  # None则使用默认值
+        elif idt_type == 'calc':
+            if 'calc_idx' in pre_args:
+                self.calc_idx = pre_args['calc_idx']
+                self.idt_name = 'calc_' + str(pre_args['calc_idx'])  # e.g. 'calc_0'
+                self.idt_type = 'calc'
+            else:
+                add_log(20, '[fn]Para.__init__() calc_idx is not available, while idt_type is calc. Aborted')
+                return
         else:
             self.field = None  # <str> string of the indicator result csv column name
             if 'field' in pre_args:
@@ -3152,6 +3618,7 @@ class Para:
                 self.field = 'default'
             self.idt_init_dict = idt_name(pre_args)
             self.idt_name = self.idt_init_dict['idt_name']
+            self.idt_type = pre_args['idt_type']
         if 'shift_periods' in pre_args:
             self.shift_periods = pre_args['shift_periods']
             del pre_args['shift_periods']
@@ -3165,6 +3632,12 @@ class Para:
         if 'bias' in pre_args:
             self.bias = pre_args['bias']
             del pre_args['bias']
+        if 'dymc_lmt_set' in pre_args:
+            _dymc = pre_args['dymc_lmt_set']
+            if isinstance(_dymc, set):
+                if len(_dymc) == 5:
+                    self.dymc_lmt_set = _dymc
+            del pre_args['dymc_lmt_set']
         else:
             self.bias = 0
 
@@ -3203,6 +3676,294 @@ class Filter:
         self.out_shift_days = out_shift_days
         self.out_seek_direction = out_seek_direction
         self.in_seek_direction = in_seek_direction
+
+
+class Calc:
+    """
+    中间数据计算器，仅做临时计算，不保存历史结果
+    原理：用于对源<df>数据临时处理后，给出1个结果数据；供Pool.filter_cnd()调用使用
+    使用方法：
+    [1] 由Pool.add_calc()增加实例到pool中
+    [2] 由Pool.add_condition() 定义给<Condition>的<Para>
+    """
+
+    def __new__(cls, method, pre_args, desc='', **kwargs):
+
+        METHODS = {'coverage',  # 覆盖率
+                   'qs'  # 趋势，变化率，未完成
+                   }
+        if method in METHODS:
+            obj = super().__new__(cls)
+            return obj
+        else:
+            log_args = [method]
+            add_log(10, '[fn]Calc.__new__() method:{0[0]} invalid, aborted', log_args)
+
+    def __init__(self, method, pre_args, desc='', **kwargs):
+        """
+        method: <str> 数据中间处理的方式
+                      'coverage': 在一定周期period中符合条件的比例,e.g.聚2%天比
+        pre_args: <dict> 元指标参数，传给idt_name()用于生成idt_name和<ins Indicator>
+        desc: <str> description
+        """
+        from indicator import idt_name
+
+        self.method = method
+        self.desc = desc
+        self.field = None  # <str> string of the indicator result csv column name
+
+        # ---- 处理可能在pre_args中的参数
+        if 'field' in pre_args:
+            self.field = pre_args['field']
+            del pre_args['field']
+        else:
+            self.field = 'default'
+        self.idt_init_dict = idt_name(pre_args)
+        self.idt_name = self.idt_init_dict['idt_name']
+        self.idt_type = pre_args['idt_type']
+
+        if 'shift_periods' in pre_args.keys():
+            self.shift_periods = pre_args['shift_periods']
+            del pre_args['shift_periods']
+        else:
+            self.shift_periods = 0
+
+        # ---- 处理可能在kwargs中的参数
+        if 'seek_direction' in kwargs.keys():
+            self.seek_direction = kwargs['seek_direction']
+        else:
+            self.seek_direction = None
+
+        # ----method == 'coverage'
+        if method == 'coverage':
+            # ---- 处理在kwargs中的必要参数
+            try:
+                self.cover = kwargs['cover']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "cover" unavailable, aborted', log_args)
+                return
+
+            try:
+                self.threshold = kwargs['threshold']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "threshold" unavailable, aborted', log_args)
+                return
+
+            try:
+                self.ops = kwargs['ops']
+            except KeyError:
+                log_args = [method]
+                add_log(20, '[fn]Calc.__init__() method:{0[0]}, "ops" unavailable, aborted', log_args)
+                return
+
+    def get(self, asset, trade_date):
+        """
+        获取计算结果
+        trade_date的有效性在此验证
+        asset: <ins Asset>
+        ts_code: <str> 执行中不起实际作用，目的是日志更好跟踪
+        trade_date: <str> 计算基准日 e.g. '20200331'
+        """
+        global raw_data
+        rslt = None
+
+        # ----检查asset有效性
+        if not isinstance(asset, Asset):
+            log_args = [type(asset)]
+            add_log(20, '[fn]Calc.get() asset type:{} incorrect', log_args)
+            return
+        ts_code = asset.ts_code
+
+        # ----检查trade_date是否开市
+        is_open = raw_data.valid_trade_date(trade_date)
+        if is_open is not True:
+            log_args = [ts_code, trade_date]
+            add_log(20, '[fn]Calc.get() ts_code:{0[0]}, {0[1]} is not an open day, aborted', log_args)
+            return
+
+        # ----处理shift_days
+        if self.shift_periods >= 1:
+            trade_date = raw_data.next_trade_day(trade_date, int(self.shift_periods))
+        elif self.shift_periods <= -1:
+            trade_date = raw_data.previous_trade_day(trade_date, - int(self.shift_periods))
+
+        # ----获取待处理的<sr>
+        try:  # 指标在资产中是否存在
+            idt = getattr(asset, self.idt_name)
+        except Exception as e:  # 待细化
+            log_args = [ts_code, e.__class__.__name__, e]
+            add_log(20, '[fn]Calc.get(). ts_code:{0[0]}, except_type:{0[1]}; msg:{0[2]}', log_args)
+            return
+        idt_df = idt.df_idt
+        column_name = self.field.upper() if self.field != 'default' else self.idt_init_dict['idt_type'].upper()  # 指标的field，多结果的指标指定不同于指标名的结果列
+        # print('[L3745] column_name: {}'.format(column_name))
+        sr = idt_df[column_name]
+
+        # ========================'coverage'========================
+        if self.method == 'coverage':
+            rslt = self._hdl_coverage(sr=sr, ts_code=ts_code, trade_date=trade_date, cover=self.cover, threshold=self.threshold, ops=self.ops)
+
+        # ========================'其它待续'========================
+        elif self.method == 'xxx':
+            pass
+        return rslt  # (value, trade_date) or None
+
+    def _locate_idx(self, sr, ts_code, trade_date):
+        """
+        根据seek_direction定位调seek后的trade_date 及 idx
+        """
+        SEEK_DAYS = 50  # 前后查找的最大交易日天数，如果超过次数值就是个股长期停牌的情况
+
+        # ----根据seek_direction定位调seek后的trade_date 及 idx
+        try:
+            idx = sr.index.get_loc(int(trade_date))  # 定位index
+            return idx, trade_date
+        except KeyError:
+            if self.seek_direction is None:
+                log_args = [ts_code, trade_date]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]}', log_args)
+                return
+            elif self.seek_direction == 'forwards':
+                _trade_date = raw_data.next_trade_day(trade_date)
+                for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    if int(_trade_date) in sr.index:
+                        idx = sr.index.get_loc(int(_trade_date))  # 定位index
+                        return idx, _trade_date
+                    else:
+                        _trade_date = raw_data.next_trade_day(_trade_date)
+                        continue
+                log_args = [ts_code, trade_date, SEEK_DAYS]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]} and next {0[2]} days',
+                        log_args)
+                return
+            elif self.seek_direction == 'backwards':
+                _trade_date = raw_data.previous_trade_day(trade_date)
+                for _ in range(SEEK_DAYS):  # 检查SEEK_DAYS天内有没有数据
+                    if int(_trade_date) in sr.index:
+                        idx = sr.index.get_loc(int(_trade_date))  # 定位index
+                        return idx, _trade_date
+                    else:
+                        _trade_date = raw_data.previous_trade_day(_trade_date)
+                        continue
+                log_args = [ts_code, trade_date, SEEK_DAYS]
+                add_log(20, '[fn]Calc._hdl_coverage() failed to get value of {0[0]} on {0[1]} and previous {0[2]} days', log_args)
+                return
+
+    def _hdl_coverage(self, sr, ts_code, trade_date, cover, threshold, ops):
+        """
+        计算在一定周期period中符合条件的比例,e.g.聚2%天比
+        trade_date: <str> 计算基准日 e.g. '20200331'
+        cover: <int> 覆盖的周期数，必须 >= 1
+        threshold: <float> 数据的阈值
+        ops: <str> 比较符 <, <=, =, >=, >
+        seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+            None: 返回None,不搜索
+            'forwards': 向时间增加的方向搜索
+            'backwards': 向时间倒退的方向搜索
+        shift_days: <int> 数据偏移的日期，-n往早移  +n往晚移
+
+        return: None failed
+        """
+        o_date = trade_date  # original date
+        _rslt = self._locate_idx(sr=sr, ts_code=ts_code, trade_date=trade_date)
+        if _rslt is None:
+            return
+        else:
+            idx, trade_date = _rslt
+
+        sr = sr.iloc[idx: idx + cover]
+        tot_n = len(sr)
+        # print('[L3741] tot_n:{}'.format(tot_n))
+        if tot_n == 0:
+            log_args = [ts_code, o_date]
+            add_log(20, '[fn]Calc._hdl_coverage() ts_code:{0[0]}, trade_date:{0[1]} cover 0 item, aborted', log_args)
+            return
+
+        if ops == '>':
+            sr = sr[sr > threshold]
+        elif ops == '<':
+            sr = sr[sr < threshold]
+        elif ops == '>=':
+            sr = sr[sr >= threshold]
+        elif ops == '<=':
+            sr = sr[sr <= threshold]
+        elif ops == '=':
+            sr = sr[sr == threshold]
+
+        n = len(sr)
+        rslt = n / tot_n
+        return rslt, trade_date
+
+
+class Concept:
+    """
+    存放概念相关的内容
+    """
+    @staticmethod
+    def get_concept():
+        """
+        从tushare获取概念分类表
+        retrun: <int> number of concepts
+                None if failed
+        """
+        file_name = PurePath('concept.csv')
+        file_path = sub_path / file_name
+        df = ts_pro.concept()
+        if isinstance(df, pd.DataFrame):
+            if len(df) > 0:
+                df.to_csv(file_path, encoding='utf-8')
+                return len(df)
+        add_log(20, '[fn]Concept.get_concept(). failed')
+
+    @staticmethod
+    def load_concept():
+        """
+        从concept.csv读入df
+        return: <df> is success
+                None if failed
+        """
+        file_name = PurePath('concept.csv')
+        file_path = sub_path / file_name
+        df = pd.read_csv(file_path, usecols=['code', 'name', 'src'], index_col='code')
+        if isinstance(df, pd.DataFrame):
+            if len(df) > 0:
+                return df
+
+    @staticmethod
+    def get_member(code):
+        """
+        获取概念的成分股到 al_cncpt_<code>_<name>.csv
+        code: <str> e.g. 'TS2'
+        return: <int> of member
+                None
+        """
+        code = code.upper()
+        if code[:2] != 'TS':
+            log_args = [code]
+            add_log(20, '[fn]Concept.get_member(). code:{0[0]} invalid, shall like e.g. "TS2", aborted', log_args)
+            return
+
+        df = Concept.load_concept()
+
+        if df is not None:
+            try:
+                name = df.loc[code]['name']
+            except NameError:
+                log_args = [code]
+                add_log(20, '[fn]Concept.get_member(). failed to get name of {0[0]}, aborted', log_args)
+                return
+            al_name = 'cncpt_' + code + '_' + name
+            df_detail = ts_pro.concept_detail(id=code)
+            if isinstance(df_detail, pd.DataFrame):
+                if len(df_detail) > 0:
+                    sr_al = df_detail['ts_code']
+                    list_al = sr_al.tolist()
+                    All_Assets_List.create_al_file(list_al, al_name)
+                    log_args = [list_al]
+                    add_log(40, '[fn]Concept.get_member(). al_{0[0]}.csv exported', log_args)
+                    return len(list_al)
 
 
 class Register_Buffer:
@@ -3294,28 +4055,362 @@ class Dashboard:
         self.records = []
 
 
+class Select_Collect:
+    """
+    手动选择文件集合
+    """
+    @staticmethod
+    def al_file_name():
+        """
+        return: <str> of [name], al_[name].csv
+        """
+        import tkinter as tk
+        from tkinter import filedialog
+        import re
+
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主窗口
+        patten = re.compile(r'al_.*\.csv$')
+        file_path = filedialog.askopenfilename(filetypes=[("al files", "al_*.csv")])
+        match = patten.search(file_path)
+        if match:
+            return match.group()[3: -4]
+
+
 if __name__ == "__main__":
     from st_common import Raw_Data
     global raw_data
     start_time = datetime.now()
+    # df = get_stock_list()
+    # df = load_stock_list()
+    # df = get_daily_basic()
+    # cl = get_trade_calendar()
+    # last_trad_day_str()
     raw_data = Raw_Data(pull=False)
+    # c = raw_data.trade_calendar
+    # index = raw_data.index
+    # zs = que_index_daily(ts_code="000009.SH",start_date="20031231")
+    # ttt = index.get_index_daily('399003.SZ',reload=False)
+    # #------------------------批量下载数据-----------------------
+    # download_path = r"download_all"
+    # download_path = r"dl_stocks"
+    # download_path = r"try_001"
+    # download_path = r"user_001"
+    # bulk_download(download_path, reload=False)  # 批量下载数据
+    # download_path = r"dl_stocks"
+    # bulk_dl_appendix(download_path, reload=True)  # 批量下载股票每日指标数据，及股票复权因子
+    # ttt = ts_pro.index_daily(ts_code='801001.SI',start_date='20190601',end_date='20190731')
+    # ttt = ts_pro.sw_daily(ts_code='950085.SH',start_date='20190601',end_date='20190731')
+    # Plot.try_plot()
+    # #------------------------资产赛跑-----------------------
+    # num_samples=30
+    # df = Index.load_sw_daily('801003.SI',num_samples)
+    # df = df[['trade_date','close']]
+    # df['trade_date'] = pd.to_datetime(df['trade_date'])
+    # df.set_index('trade_date', inplace=True)
+    # base_close, = df.tail(1)['close'].values
+    # df['base_chg_pct']=(df['close']/base_close-1)*100
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # ax.plot(df.index,df['base_chg_pct'],label='801003.SI\n指数A')
 
-    stg = Strategy('简单模式')
-    #stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
-    stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
+    # df1 = Index.load_sw_daily('850341.SI',30)
+    # df1 = df1[['trade_date','close']]
+    # df1['trade_date'] = pd.to_datetime(df1['trade_date'])
+    # df1.set_index('trade_date', inplace=True)
+    # base_close, = df1.tail(1)['close'].values
+    # df1['base_chg_pct']=(df1['close']/base_close-1)*100
+    # ax.plot(df1.index,df1['base_chg_pct'],label='850341.SI\n指数B')
+    # plt.legend(handles=ax.lines)
+    # plt.grid(True)
+    # mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
+    # mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
+    # plt.xticks(df.index,rotation='vertical')
+    # plt.title('申万板块指标{}日涨幅比较'.format(num_samples))
+    # plt.ylabel('收盘%')
+    # plt.legend(bbox_to_anchor=(1, 1),bbox_transform=plt.gcf().transFigure)
+    # plt.show()
+    # #------------------------下载申万三级行业分类-----------------------
+    # df_l1,df_l2,df_l3 = Index.get_sw_index_classify()
+    # al = All_Assets_List.load_all_assets_list()
+    # All_Assets_List.rebuild_all_assets_list()
+    # #------------------------生成al文件-----------------------
+    # al_l1 = Plot_Utility.gen_al(al_name='SW_Index_L1',stype1='SW',stype2='L1')  # 申万一级行业指数
+    # al_l2 = Plot_Utility.gen_al(al_name='SW_Index_L2',stype1='SW',stype2='L2')  # 申万二级行业指数
+    # al_l3 = Plot_Utility.gen_al(al_name='SW_Index_L3',stype1='SW',stype2='L3')  # 申万二级行业指数
+    # al_dl_stocks = Plot_Utility.gen_al(al_name='dl_stocks',selected=None,type_='stock')#全部valid='T'的资产
+    # al_download = Plot_Utility.gen_al(al_name='download_all',selected=None)#全部valid='T'的资产
+    # #-------------------Plot_Assets_Racing资产竞速-----------------------
+    # plot_ar = Plot_Assets_Racing('al_SW_Index_L1.csv',period=5)
+    # plot_ar = Plot_Assets_Racing('al_user_001.csv',period=5)
+    # #-------------------Stock Class-----------------------
+    # stock = Stock(pull=True)
+    # stock = Stock()
+    # -------------------复权测试-----------------------
+    # ts_code = '000001.SZ'
+    # df_fq = Stock.load_adj_factor(ts_code)
+    # df_stock = Stock.load_stock_daily(ts_code)
+    # def fq_cls(x):
+    #     print('x={}'.format(x))
+    #     idx_date = x.index
+    #     factor = df_fq.loc[idx_date]['adj_factor']
+    #     result = x['close']*factor/109.169
+    #     return result
+    # df_stock.loc[:,'fq_cls']=df_stock['close']
+    # df_stock.loc[:,'factor']=df_fq['adj_factor']
+    # for index, row in df_stock.iterrows():
+    #     factor = row['factor']
+    #     close = row['close']
+    #     #print("factor={}, close={}".format(factor,close))
+    #     fq_cls_ = close*factor/109.169
+    #     df_stock.at[index,'fq_cls']=fq_cls_
+    # df1 = df_stock[(df_stock.index >= 20190624) & (df_stock.index <= 20190627)]
+    # print(df1[['close','fq_cls','factor']])
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='dfq', start_date='20190624', end_date='20190915')
+    # df2.set_index('trade_date',inplace=True)
+    # print(df2['close'])
+    # print("----------------第二组-----------------------")
+    # df1 = df_stock[(df_stock.index >= 19920501) & (df_stock.index <= 19920510)]
+    # print(df1[['close','fq_cls','factor']])
+    # df2 = ts.pro_bar(ts_code='000001.SZ', adj='qfq', start_date='19920501', end_date='20190915')
+    # df2.set_index('trade_date',inplace=True)
+    # print(df2['close'])
+    # Stock.calc_dfq('600419.SH',reload=False)
+    # al_file_str = r"dl_stocks"
+    # al_file_str = r"try_001"
+    # bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
+    # print("===================Indicator===================")
+    # from indicator import idt_name, Indicator, Ma, Ema, Macd
+    #
+    # print('------stock1.ma10_close_hfq--------')
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {'idt_type': 'ema',
+    #            'period': 10}
+    # kwargs = idt_name(_kwargs)
+    # stock5.add_indicator(**kwargs)
+    # stock5.ema_10.calc_idt()
+    # ema10 = stock5.ema_10.df_idt
+    # print(ema10)
+
+    # print('------stock1.ema26_close_hfq--------')
+    # stock5 = Stock(ts_code='000001.SZ')
+    # _kwargs = {
+    #           'idt_type': 'ema',
+    #           'period': 26}
+    # kwargs = idt_name(_kwargs)
+    # print('[L1424] kwargs:', kwargs)
+    # stock5.add_indicator(**kwargs)
+    # ema26 = stock5.ema_26.df_idt
+    # print(ema26)
+
+    # print('------stock1.ema12_close_hfq--------')
+    # kwargs = {'idt_name': 'ema12_close_hfq',
+    #           'idt_class': Ema,
+    #           'period': 12}
+    # stock1.add_indicator(**kwargs)
+    # stock1.ema12_close_hfq.calc_idt()
+    # ema12 = stock1.ema12_close_hfq.df_idt
+    # print(ema12)
+
+    # print('------valid Indicator up to source date--------')
+    # print('uptodate ma10:',stock1.valid_idt_utd('ma10_close_hfq'))
+    # print('uptodate ema12:',stock1.valid_idt_utd('ema12_close_hfq'))
+    # print('uptodate ema26:',stock1.valid_idt_utd('ema26_close_hfq'))
+
+    # print('------MACD--------')
+    # stock1 = Stock(ts_code='000002.SZ')
+    # _kwargs = {'idt_type': 'macd',
+    #            'long_n3': 26,
+    #            'short_n2': 12,
+    #            'dea_n3': 9}
+    # kwargs = idt_name(_kwargs)
+    # print('[L1446]---kwargs:',kwargs)
+    # stock1.add_indicator(**kwargs)
+    # macd = stock1.macd_26_12_9
+    # print('[L1448]---')
+    # if macd.valid_utd() != True:
+    #     macd.calc_idt()
+
+    # #ema12 = stock1.ema_12.df_idt
+    # #ema26 = stock1.ema_26.df_idt
+
+    # print("===================Strategy===================")
+    # print('------Strategy and Pool--------')
+    # stg = Strategy('test strategy')
+    # stg.add_pool(desc="pool#1", al_file='try_001')
+    # stg.add_pool(desc="pool#2")
+    # stg.add_pool(desc="pool#3")
+    # stg.pools_brief()
+    # pool_10 = stg.pools[10]
+    # st_002 = pool_10.assets['000002.SZ']
+    # print(stg.pools[10].assets.keys())
+    # print('------Add Conditions, scripts required for each strategy--------')
+    # # condition_1
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'macd',
+    #              'long_n3': 26,
+    #              'short_n2': 12,
+    #              'dea_n3': 9,
+    #              'field': 'MACD'}
+    # pool_10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # # condition_2
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 5}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 30}
+    # pool_10.add_condition(pre_args1, pre_args2, '<')
+    #
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 10}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 8}
+    # pool_10.add_condition(pre_args1, pre_args2, '>=')
+
+    # print('------iterate  --------')
+    # 手动为asset添加指标
+    # kwargs1 = pool_10.conditions[0].para1.idt_init_dict
+    # st_002.add_indicator(**kwargs1)
+    #
+    # kwargs2 = pool_10.conditions[0].para2.idt_init_dict
+    # st_002.add_indicator(**kwargs2)
+
+    # 自动iterate pool.assets 来添加
+    # pool_10.iter_al()
+    #
+    # print('------定时间点过滤目标股Pool.filter_al()--------')
+    # cond = pool_10.conditions[0]
+    # pool_10.filter_al(cond)
+    # print('-----')
+    # pool_10.filter_al(cond, '20191205')
+    #
+    # print('------Dashboard--------')
+    # pool_10.dashboard.disp_board()
+    #
+    # print('------临时便利--------')
+    # st01 = pool_10.assets['000001.SZ']
+
+    # print('===========Phase-1 单pool，条件筛选测试===========')
+    # # print('------Strategy and Pool--------')
+    # stg = Strategy('stg_p1_00')
+    # # stg.add_pool(desc="pool10", al_file='try_001')
+    # stg.add_pool(desc="pool10", al_file='pool_001', in_date='20180108', price_seek_direction=None)
+    # # stg.add_pool(desc="pool20")
+    # # stg.add_pool(desc="pool30")
+    # stg.pools_brief()
+    # pool10 = stg.pools[10]
+    # st002 = pool10.assets['000002.SZ']
+    # print('------Add Conditions, scripts required for each strategy--------')
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'majh',
+    #              'long_n3': 60,
+    #              'medium_n2': 20,
+    #              'short_n1': 5}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 2.0}
+    # pool10.add_condition(pre_args1, pre_args2, '<')
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 100}
+    # pool10.add_condition(pre_args1, pre_args2, '>')
+    # 自动iterate pool.assets 来添加
+    # pool10.iter_al()  # 给所有assets计算conditions涉及的指标
+    # cond0 = pool10.conditions[0]
+    # cond1 = pool10.conditions[1]
+    # print('++++ 001 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191226')
+    # pool10.dashboard.disp_board()
+    # print('++++ 002 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191227')
+    # pool10.dashboard.disp_board()
+    # print('++++ 003 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191230')
+    # pool10.dashboard.disp_board()
+    # print('++++ 004 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20191231')
+    # pool10.dashboard.disp_board()
+    # print('++++ 005 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20200102')
+    # pool10.dashboard.disp_board()
+    # print('++++ 006 ++++')
+    # pool10.dashboard.clear_board()
+    # pool10.filter_cnd(0, '20200103')
+    # pool10.dashboard.disp_board()
+
+    # print('===========Phase-2 Filter测试===========')
+    # # ------condition_2
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 5}
+    # pool10.add_condition(pre_args1, pre_args2, '=')
+    # # ------condition_3
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 5}
+    # pool10.add_condition(pre_args1, pre_args2, '<')
+    # pool10.iter_al()  # 在添加完条件后给所有assets计算conditions涉及的指标
+    # pool10.op_cnds_matrix()  # 初始化pool10.cnds_matrix
+    # stg.add_pool(desc='pool20')
+    # cnd_idx = {0, 1}
+    # dpools = {20}
+    # pool10.add_filter(cnd_indexes=cnd_idx, down_pools=dpools)
+    # rslt = pool10.filter_filter(filter_index=0)
+    # # print('[L2089] pool10.cnds_matrix:\n{}'.format(pool10.cnds_matrix))
+    # print('[L2090] rslt:\n{}'.format(rslt))
+
+    # print('------test multi-stages filter--------')
+    # stg.add_pool(desc="pool20", al_file='pool10_output')
+    # pool20 = stg.pools[20]
+    # stg.pools_brief()
+    # pre_args1 = {'idt_type': 'ma',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'ma',
+    #              'period': 60}
+    # pool20.add_condition(pre_args1, pre_args2, '>')
+    # pool20.iter_al()
+    # cond0 = pool20.conditions[0]
+    # pool20.filter_al(cond0)
+    # pool20.dashboard.disp_board()
+    # print('++++ xxx ++++')
+    # pool10.dashboard.clear_board()
+    # al = ['000001.SZ', '000002.SZ', '000010.SZ', '000011.SZ']
+    # pool10.filter_cnd(cnd=cond0, al=al)
+    # pool10.dashboard.disp_board()
+    print('================Strategy测试================')
+    stg = Strategy('测试')
+    stg.add_pool(desc='p10初始池', al_file='try_001', in_date=None, price_seek_direction=None, del_trsfed=None)
+
+    # stg.add_pool(desc='p10初始池', al_file='HS300成分股', in_date=None, price_seek_direction=None, del_trsfed=None)
     p10 = stg.pools[10]
+
     stg.add_pool(desc='p20持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     p20 = stg.pools[20]
-    # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p30 = stg.pools[30]
-    # stg.add_pool(desc='p40持仓15日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p40 = stg.pools[40]
-    # stg.add_pool(desc='p50持仓20日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p50 = stg.pools[50]
-    # stg.add_pool(desc='p60持仓25日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p60 = stg.pools[60]
-    # stg.add_pool(desc='p70持仓30日', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
-    # p70 = stg.pools[70]
+
+    stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p30 = stg.pools[30]
+
+    stg.add_pool(desc='p40持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p40 = stg.pools[40]
+
+    stg.add_pool(desc='p50持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p50 = stg.pools[50]
+
+    stg.add_pool(desc='p60持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p60 = stg.pools[60]
+
+    stg.add_pool(desc='p70持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
+    p70 = stg.pools[70]
+
     # stg.add_pool(desc='p30持仓', al_file=None, in_date=None, price_seek_direction=None, log_in_out=True)
     # p30 = stg.pools[30]
     # stg.add_pool(desc='p40已卖出', al_file=None, in_date=None, price_seek_direction=None)
@@ -3333,6 +4428,7 @@ if __name__ == "__main__":
                  'shift_periods': -1,
                  'update_csv': True}
     p10.add_condition(pre_args1, pre_args2, '<')
+
     # ------condition_1
     pre_args1 = {'idt_type': 'madq',
                  'period': 5,
@@ -3341,115 +4437,203 @@ if __name__ == "__main__":
                  'period': 20,
                  'dq_n1': 1}
     p10.add_condition(pre_args1, pre_args2, '>=')
-    # # ------condition_2
-    # pre_args1 = {'idt_type': 'maqs',
-    #              'period': 5,
-    #              'specific_asset': '000001.SH'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': -0.005}
-    # p10.add_condition(pre_args1, pre_args2, '>')
-    # ------condition_3
-    # pre_args1 = {'idt_type': 'maqs',
-    #              'period': 20}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 0.001}
-    # p10.add_condition(pre_args1, pre_args2, '>')
 
-    p10.add_filter(cnd_indexes={0, 1}, down_pools={20}, in_price_mode='open_sxd', in_shift_days=1)
-    # ---pool20 conditions-----------
-    # ------condition_0
-    pre_args1 = {'idt_type': 'stay_days'}
+    # ------condition_2
+    pre_args1 = {'idt_type': 'maqs',
+                 'period': 60}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 20}
+                 'const_value': 0}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
+    # ------condition_3
+    pre_args1 = {'idt_type': 'dktp',
+                 'short_n1': 5,
+                 'medium_n2': 10,
+                 'long_n3': 20}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0}
+    p10.add_condition(pre_args1, pre_args2, '>')
+
+    p10.add_filter(cnd_indexes={0, 1, 2}, down_pools={20, 30, 40, 50, 60, 70}, in_price_mode='open_sxd', in_shift_days=1)
+
+    # # ---pool20 conditions-----------
+    # # ------condition_0
+    # pre_args1 = {'idt_type': 'ema',
+    #              'period': 20}
+    # pre_args2 = {'idt_type': 'ema',
+    #              'period': 60}
+    # p20.add_condition(pre_args1, pre_args2, '>=')
+    # # ------condition_1
+    # pre_args1 = {'idt_type': 'maqs',
+    #              'period': 60}
+    # pre_args2 = {'idt_type': 'const',
+    #              'const_value': 0}
+    # p20.add_condition(pre_args1, pre_args2, '>=')
+    #
+    # p20.add_filter(cnd_indexes={0}, down_pools={30})
+
+    # ====pool20 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    # # ------condition_1
+    # p20.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
     pre_args1 = {'idt_type': 'max_by_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': 0.18}
+                 'const_value': 0.2}
     p20.add_condition(pre_args1, pre_args2, '>=')
 
-    p20.add_filter(cnd_indexes={1}, down_pools={'discard'})
-    # # ------condition_2
-    pre_args1 = {'idt_type': 'min_by_pct'}
+    p20.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
     pre_args2 = {'idt_type': 'const',
-                 'const_value': -0.1}
+                 'const_value': -0.125}
     p20.add_condition(pre_args1, pre_args2, '<=')
 
     p20.add_filter(cnd_indexes={2}, down_pools={'discard'})
 
-    # # ---pool30 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 20}
-    # p30.add_condition(pre_args1, pre_args2, '>=')
-    
-    # p30.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    
-    # # ------condition_1
-    # pre_args1 = {'idt_type': 'min_by_pct'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': -0.1}
-    # p30.add_condition(pre_args1, pre_args2, '<=')
+    # ====pool30 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p30.add_condition(pre_args1, pre_args2, '>=')
 
-    # p30.add_filter(cnd_indexes={1}, down_pools={'discard'})
-    
-    # # ---pool40 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 15}
-    # p40.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p40.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    #
-    # # ---pool50 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 20}
-    # p50.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p50.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    #
-    # # ---pool60 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 25}
-    # p60.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p60.add_filter(cnd_indexes={0}, down_pools={'discard'})
-    #
-    # # ---pool70 conditions-----------
-    # # ------condition_0
-    # pre_args1 = {'idt_type': 'stay_days'}
-    # pre_args2 = {'idt_type': 'const',
-    #              'const_value': 30}
-    # p70.add_condition(pre_args1, pre_args2, '>=')
-    #
-    # p70.add_filter(cnd_indexes={0}, down_pools={'discard'})
+    # p30.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.2}
+    p30.add_condition(pre_args1, pre_args2, '>=')
+
+    p30.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.1}
+    p30.add_condition(pre_args1, pre_args2, '<=')
+
+    p30.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
+    # ====pool40 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p40.add_condition(pre_args1, pre_args2, '>=')
+
+    # p40.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.2}
+    p40.add_condition(pre_args1, pre_args2, '>=')
+
+    p40.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.075}
+    p40.add_condition(pre_args1, pre_args2, '<=')
+
+    p40.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
+    # ====pool50 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p50.add_condition(pre_args1, pre_args2, '>=')
+
+    # p50.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.175}
+    p50.add_condition(pre_args1, pre_args2, '>=')
+
+    p50.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.1}
+    p50.add_condition(pre_args1, pre_args2, '<=')
+
+    p50.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
+    # ====pool60 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p60.add_condition(pre_args1, pre_args2, '>=')
+
+    # p60.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.2}
+    p60.add_condition(pre_args1, pre_args2, '>=')
+
+    p60.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.1}
+    p60.add_condition(pre_args1, pre_args2, '<=')
+
+    p60.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
+    # ====pool70 conditions=============
+    # ------condition_0
+    pre_args1 = {'idt_type': 'earn_return'}
+    pre_args2 = {'idt_type': 'dymc_return_lmt'}
+    p70.add_condition(pre_args1, pre_args2, '>=')
+
+    # p70.add_filter(cnd_indexes={0}, down_pools={'discard'}, in_seek_direction='forwards')
+
+    # ------condition_1
+    pre_args1 = {'idt_type': 'max_by_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': 0.225}
+    p70.add_condition(pre_args1, pre_args2, '>=')
+
+    p70.add_filter(cnd_indexes={0, 1}, down_pools={'discard'})
+
+    # ------condition_2
+    pre_args1 = {'idt_type': 'earn_pct'}
+    pre_args2 = {'idt_type': 'const',
+                 'const_value': -0.1}
+    p70.add_condition(pre_args1, pre_args2, '<=')
+
+    p70.add_filter(cnd_indexes={2}, down_pools={'discard'})
+
     # ---初始化各pool.cnds_matrix, strategy.ref_assets-----------
     stg.init_pools_cnds_matrix()
     stg.init_ref_assets()
 
     # ---stg循环-----------
-    stg.update_cycles(start_date='20050101', end_date='20200101')
+    # stg.update_cycles(start_date='20050101', end_date='20200101')
     # stg.update_cycles(start_date='20050201', end_date='20200101')
-    # stg.update_cycles(start_date='20190514', end_date='20200101')
-    # stg.update_cycles(start_date='20180101', cycles=50)
+    stg.update_cycles(start_date='20170101', cycles=20)
     # ---报告-----------
     p20.csv_in_out()
-    # p30.csv_in_out()
-    # p40.csv_in_out()
-    # p50.csv_in_out()
-    # p60.csv_in_out()
-    # p70.csv_in_out()
+    p30.csv_in_out()
+    p40.csv_in_out()
+    p50.csv_in_out()
+    p60.csv_in_out()
+    p70.csv_in_out()
 
-    print("后续测试：多周期重复; asset transmit")
     end_time = datetime.now()
     duration = end_time - start_time
     print('duration={}'.format(duration))
     pass
+
