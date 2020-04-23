@@ -1,4 +1,4 @@
-from st_common import Raw_Data
+from st_common import raw_data
 from st_common import sub_path_rpt
 from st_board import Select_Collect, Stock
 import xlsxwriter as xlw
@@ -17,7 +17,7 @@ def report(al_file):
     """
     from st_board import Strategy
     from st_board import today_str
-    global raw_data
+    # global raw_data
 
     def head_across(row, column, text):
         """
@@ -388,7 +388,6 @@ def report(al_file):
 
 
 if __name__ == '__main__':
-    raw_data = Raw_Data(pull=False)
     al_file = al_file_name()
     report(al_file)
     pass

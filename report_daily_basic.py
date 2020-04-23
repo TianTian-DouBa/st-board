@@ -1,4 +1,4 @@
-from st_common import Raw_Data
+from st_common import raw_data
 from st_common import sub_path_rpt
 from st_board import Select_Collect
 import xlsxwriter as xlw
@@ -18,7 +18,7 @@ def rpt_d_basic(al_file):
     """
     from st_board import Strategy
     from st_board import today_str
-    global raw_data
+    # global raw_data
 
     # =================报告文件=================
     today_s = today_str()
@@ -240,7 +240,7 @@ def rpt_d_basic(al_file):
 
 
 if __name__ == '__main__':
-    raw_data = Raw_Data(pull=False)
+    # raw_data = Raw_Data(pull=False)
     al_file = al_file_name()
     rpt_d_basic(al_file)
     pass

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from st_common import sub_path, sub_idt
 from st_common import SUBTYPE, SOURCE_TO_COLUMN
+from st_common import raw_data
 from datetime import datetime
 from XF_LOG_MANAGE import add_log
 import weakref
@@ -80,7 +81,7 @@ class Indicator:
         """
         检验ts_code的有效性
         """
-        global raw_data
+        # global raw_data
         if raw_data.valid_ts_code(ts_code):
             obj = super().__new__(cls)
             return obj
@@ -205,7 +206,7 @@ class Indicator:
                     log_args = [self.ts_code, self.file_path]
                     add_log(20, "[fn]Indicator.calc_idt() ts_code:{0[0]}, file_path:{0[1]}, invalid", log_args)
             self.df_idt = df_idt
-            log_args = [self.ts_code, self.file_name[:-4], len(df_idt)]
+            log_args = [self.ts_code, str(self.file_name)[:-4], len(df_idt)]
             add_log(40, "[fn]Indicator.calc_idt() ts_code:{0[0]}, {0[1]} updated; items:{0[2]}", log_args)
         elif df_append is None:
             pass  # keep self.df_idt as it is
@@ -1479,7 +1480,7 @@ if __name__ == '__main__':
     start_time = datetime.now()
     # raw_data_init()
     from st_board import Stock, Index
-    global raw_data
+    # global raw_data
     # ------------------test---------------------
 
     end_time = datetime.now()
