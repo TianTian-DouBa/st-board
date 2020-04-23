@@ -88,7 +88,7 @@ def cmt(ts_code):
             log_args = [_ts_code]
             add_log(10, '[fn]cmt(). input value {0[0]} invalid, aborted', log_args)
             return
-        ts_code = _ts_code
+        ts_code = _ts_code.upper()
 
     template_name = 'template'
     file_name = PurePath('an_' + ts_code + '.xml')
