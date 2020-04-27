@@ -4070,9 +4070,9 @@ class Select_Collect:
 
         root = tk.Tk()
         root.withdraw()  # 隐藏主窗口
-        patten = re.compile(r'al_.*\.csv$')
+        pattern = re.compile(r'al_.*\.csv$')
         file_path = filedialog.askopenfilename(filetypes=[("al files", "al_*.csv")])
-        match = patten.search(file_path)
+        match = pattern.search(file_path)
         if match:
             return match.group()[3: -4]
 

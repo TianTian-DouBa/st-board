@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/interact_portal.py" beforeDir="false" afterPath="$PROJECT_DIR$/interact_portal.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/spider/spdier_common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,7 +43,7 @@
       <recent name="C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\plot_result" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.pi_daily_reports">
+  <component name="RunManager" selected="Python.spdier_common">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -84,7 +86,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="report_race" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="spdier_common" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
       <option name="PARENT_ENVS" value="true" />
@@ -92,11 +94,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/spider" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/report_race.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/spider/spdier_common.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -170,11 +172,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.spdier_common" />
         <item itemvalue="Python.pi_daily_reports" />
         <item itemvalue="Python.st_board_bulk_download" />
         <item itemvalue="Python.st_board_sw_download" />
         <item itemvalue="Python.stg_3bloom" />
-        <item itemvalue="Python.report_race" />
       </list>
     </recent_temporary>
   </component>
@@ -256,46 +258,46 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="755" height="466" key="DebuggerActiveHint/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580095705002" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1587640273185">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1587995226939">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587640273185" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1587640273185">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587995226939" />
+    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1587995226939">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587640273185" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1587640273185">
+    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587995226939" />
+    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1587995226939">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587640273185" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1587640273185">
+    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587995226939" />
+    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1587995226939">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587640273185" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1587616142045">
+    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587995226939" />
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1587911929821">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587616142045" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1587616142045">
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
+    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1587911929821">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587616142045" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1587616142045">
+    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
+    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1587911929821">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587616142045" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1587616142045">
+    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1587911929821">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587616142045" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
     <state x="498" y="235" key="RollbackChangesDialog" timestamp="1579358481751">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -316,10 +318,6 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="733" y="522" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580020047206" />
-    <state x="498" y="188" key="refactoring.ChangeSignatureDialog" timestamp="1579154912854">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="498" y="188" key="refactoring.ChangeSignatureDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1579154912854" />
     <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1583825753705">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
