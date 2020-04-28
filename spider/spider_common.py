@@ -6,11 +6,21 @@ import re
 from XF_LOG_MANAGE import add_log
 from pathlib import PurePath, Path
 import pandas as pd
+import os
+
+# 改变当前目录导入raw_data
+original_dir = os.getcwd()
+assert original_dir[-6:] == 'spider'
+parent_dir = original_dir[:-7]
+# print(parent_dir)
+os.chdir(parent_dir)
+from st_common import raw_data
+os.chdir(original_dir)
 
 
 def get_518880_net():
     """
-    获取 518880 华安黄金易ETF 的最新每股净值（前一交易日）
+    通过华安基金官网获取 518880 华安黄金易ETF 的最新每股净值（前一交易日）
     return: (<str>trade_date, <float>net, <float>change)
     """
     url = 'http://www.huaan.com.cn/funds/518880/index.shtml'
@@ -139,7 +149,51 @@ def update_net_csv(ts_code, record):
     add_log(40, '[fn]:update_net_csv() {0[0]} exported', log_args)
 
 
+def get_sh_gold(ts_code='au9999.sh', trade_date=None):
+    """
+    通过nowapi获取上海交易所黄金历史数据
+    ts_code: <str> e.g. 'au9999.sh'
+    trade_date: None 返回含当日的最近交易日
+                <str> e.g. '20200428'
+    """
+    APPKEY = '50875'
+    SIGN = 'fe1bd5728b343d7003575fe1578a95d1'
+    GOLDID = {'au_td.sh': '1051',
+              'ag_td.sh': '1052',
+              'au9999.sh': '1053',
+              'au9995.sh': '1054',
+              'pt9995.sh': '1056',  # 1058:金条100g, 1059:黄金T+N1, 1060:黄金T+N2, 1080:iAu9999, 1081:mAuT+D 未配置
+              }
+    url = r'http://api.k780.com'
+    try:
+        goldid = GOLDID[ts_code]
+    except KeyError:
+        log_args = [ts_code]
+        add_log(20, '[fn]get_sh_gold() ts_code:{} not recognized', log_args)
+        return
+
+    # 获取最新的交易日
+    if trade_date is None:
+        trade_date = raw_data.last_trade_day()
+        if trade_date is None:
+            add_log(20, '[fn]get_sh_gold() failed to get the last_trade_day, aborted')
+            return
+
+    params = {
+        'app': 'finance.shgold_history',
+        'goldid': goldid,
+        'date': trade_date,
+        'appkey': APPKEY,
+        'sign': SIGN,
+        'format': 'json',
+    }
+
+    r = requests.get(url, params=params)
+    # r.encoding = 'utf-8'
+    print(r.json())
+
+
 if __name__ == '__main__':
     data = get_518880_net()
     update_net_csv('518880.etf', data)
-
+    get_sh_gold()

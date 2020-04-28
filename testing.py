@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 import tushare as ts
 
+ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
 register_matplotlib_converters()
 
@@ -74,8 +75,12 @@ if __name__ == '__main__':
     #
     # df1.loc[:, 'vol'] = df2['vol']
 
-    from st_board import Stock, bulk_calc_dfq
-    bulk_calc_dfq('dl_stocks', reload=True)
+    # from st_board import Stock, bulk_calc_dfq
+    # bulk_calc_dfq('dl_stocks', reload=True)
+    pro = ts.pro_api()
+    df = pro.fund_basic(market='E')  # 基金列表
+    df = pro.fund_nav(ts_code='165509.SZ')
+    pass
 
 
 

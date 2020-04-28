@@ -2,9 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/springfan.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/interact_portal.py" beforeDir="false" afterPath="$PROJECT_DIR$/interact_portal.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spider/spdier_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/spider/spider_common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/spider/spider_common.py" beforeDir="false" afterPath="$PROJECT_DIR$/spider/spider_common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/testing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +44,7 @@
       <recent name="C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\plot_result" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.spdier_common">
+  <component name="RunManager" selected="Python.spider_common">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -107,6 +108,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="spider_common" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="st_board" />
+      <option name="INTERPRETER_OPTIONS" value="-i" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/spider" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/spider/spider_common.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="st_board_bulk_download" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -128,7 +150,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="st_board_sw_download" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="testing" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
       <option name="PARENT_ENVS" value="true" />
@@ -140,28 +162,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/st_board_sw_download.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="stg_3bloom" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="st_board" />
-      <option name="INTERPRETER_OPTIONS" value="-i" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/strategy" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/strategy/stg_3bloom.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/testing.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -172,11 +173,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.spider_common" />
+        <item itemvalue="Python.testing" />
         <item itemvalue="Python.spdier_common" />
         <item itemvalue="Python.pi_daily_reports" />
         <item itemvalue="Python.st_board_bulk_download" />
-        <item itemvalue="Python.st_board_sw_download" />
-        <item itemvalue="Python.stg_3bloom" />
       </list>
     </recent_temporary>
   </component>
@@ -242,10 +243,10 @@
     <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="394" y="183" key="#Inspections" timestamp="1584423569264">
+    <state x="153" y="161" key="#Inspections" timestamp="1588064641517">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
-    <state x="394" y="183" key="#Inspections/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1584423569264" />
+    <state x="153" y="161" key="#Inspections/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064641517" />
     <state x="613" y="414" key="#com.jetbrains.python.refactoring.move.PyMoveModuleMembersDialog" timestamp="1581669539329">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -258,50 +259,46 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="755" height="466" key="DebuggerActiveHint/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1580095705002" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1588001269778">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom" timestamp="1588064667933">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588001269778" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1588001269777">
+    <state width="1584" height="393" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064667933" />
+    <state width="1584" height="393" key="GridCell.Tab.0.center" timestamp="1588064667933">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588001269777" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1588001269777">
+    <state width="1584" height="393" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064667933" />
+    <state width="1584" height="393" key="GridCell.Tab.0.left" timestamp="1588064667933">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588001269777" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1588001269777">
+    <state width="1584" height="393" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064667933" />
+    <state width="1584" height="393" key="GridCell.Tab.0.right" timestamp="1588064667933">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588001269777" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1587911929821">
+    <state width="1584" height="393" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064667933" />
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom" timestamp="1588058267677">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1587911929821">
+    <state width="1584" height="324" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588058267677" />
+    <state width="1584" height="324" key="GridCell.Tab.1.center" timestamp="1588058267677">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1587911929821">
+    <state width="1584" height="324" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588058267677" />
+    <state width="1584" height="324" key="GridCell.Tab.1.left" timestamp="1588058267677">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1587911929821">
+    <state width="1584" height="324" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588058267677" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right" timestamp="1588058267677">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state width="1584" height="489" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1581004601588" />
-    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1587911929821" />
-    <state x="498" y="235" key="RollbackChangesDialog" timestamp="1579358481751">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="498" y="235" key="RollbackChangesDialog/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1579358481751" />
+    <state width="1584" height="324" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588058267677" />
     <state x="303" y="167" key="SettingsEditor" timestamp="1585449824153">
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
@@ -355,6 +352,11 @@
           <url>file://$PROJECT_DIR$/st_board.py</url>
           <line>1972</line>
           <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/testing.py</url>
+          <line>82</line>
+          <option name="timeStamp" value="25" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
