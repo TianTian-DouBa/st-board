@@ -79,7 +79,7 @@ def cmt(ts_code):
     """
 
     if ts_code is None:
-        _ts_code = input("Please input ts_code:")
+        _ts_code = input("Please input ts_code:").upper()
         if not isinstance(_ts_code, str):
             log_args = [_ts_code]
             add_log(10, '[fn]cmt(). input value {0[0]} invalid, aborted', log_args)
@@ -88,7 +88,9 @@ def cmt(ts_code):
             log_args = [_ts_code]
             add_log(10, '[fn]cmt(). input value {0[0]} invalid, aborted', log_args)
             return
-        ts_code = _ts_code.upper()
+        ts_code = _ts_code
+    else:
+        ts_code = ts_code.upper()
 
     template_name = 'template'
     file_name = PurePath('an_' + ts_code + '.xml')
@@ -136,7 +138,6 @@ def cmt(ts_code):
         cmt2.text = ""
     elif new_cmt2.strip().lower() != 'k':
         cmt2.text = new_cmt2
-
 
     tree.write(file_path, encoding='utf-8')
 
