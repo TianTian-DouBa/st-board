@@ -585,8 +585,6 @@ class All_Assets_List:
         df['valid'] = 'T'
         df['selected'] = 'T'
         df['type'] = 'stock'
-        # df['stype1'] = ''
-        # df['stype2'] = ''
         df.loc[df.index.str.startswith('600'), 'stype1'] = 'SHZB'  # 上海主板
         df.loc[df.index.str.startswith('601'), 'stype1'] = 'SHZB'
         df.loc[df.index.str.startswith('602'), 'stype1'] = 'SHZB'
@@ -601,8 +599,30 @@ class All_Assets_List:
         df['stype2'] = ''
         _frame = [df_al, df]
         df_al = pd.concat(_frame, sort=False)
+        # --------------基金---------------
+        if que_from_ts is True:
+            raw_data.fund.get_fund_basic(marker='E')  # 更新场内
+            raw_data.fund.get_fund_basic(marker='O')  # 更新场外
+        df_e_ = raw_data.fund.basic_e[['name']]
+        df_o_ = raw_data.fund.basic_o[['name']]
+        df_e = df_e_.copy()
+        df_o = df_o_.copy()
+        df_e.loc[:, 'valid'] = 'T'
+        df_e.loc[:, 'selected'] = 'T'
+        df_e.loc[:, 'type'] = 'fund'
+        df_e.loc[:, 'stype1'] = 'inside'  # 场内
+        df_e.loc[:, 'stype2'] = ''
+        df_o.loc[:, 'valid'] = 'T'
+        df_o.loc[:, 'selected'] = 'T'
+        df_o.loc[:, 'type'] = 'fund'
+        df_o.loc[:, 'stype1'] = 'outside'  # 场外
+        df_o.loc[:, 'stype2'] = ''
+        _frame = [df_al, df_e, df_o]
+        df_al = pd.concat(_frame, sort=False)
         # --------------结尾---------------
         df_al.to_csv(file_path_al, encoding="utf-8")
+        log_args = [file_path_al, len(df_al)]
+        add_log(40, '[fn]:All_Assets_List.rebuild_all_assets_list() {0[0]} updated, items:{0[1]}', log_args)
         return len(df_al)
 
     @staticmethod

@@ -4,6 +4,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 import tushare as ts
+from st_common import raw_data
 
 ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
 ts_pro = ts.pro_api()
@@ -77,9 +78,14 @@ if __name__ == '__main__':
 
     # from st_board import Stock, bulk_calc_dfq
     # bulk_calc_dfq('dl_stocks', reload=True)
-    pro = ts.pro_api()
-    df = pro.fund_basic(market='E')  # 基金列表
-    df = pro.fund_nav(ts_code='165509.SZ')
+    # pro = ts.pro_api()
+    # df = pro.fund_basic(market='E')  # 基金列表
+    # df = pro.fund_nav(ts_code='165509.SZ')
+    # print(raw_data.fund.basic_e)
+    from st_board import All_Assets_List
+    All_Assets_List.rebuild_all_assets_list()
+    raw_data.load_all_assets_list()
+    print(raw_data.all_assets_list)
     pass
 
 

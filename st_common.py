@@ -115,6 +115,7 @@ class Raw_Data:
         self.load_all_assets_list()
         self.index = Index_Basic(pull)  # 指数相关数据
         self.stock = Stock_Basic(pull)  # 个股相关数据
+        self.fund = Fund_Basic(pull)  # 基金相关数据
 
     def init_trade_calendar(self, pull=False):
         """
@@ -564,10 +565,10 @@ class Stock_Basic:
                 self.basic.set_index('ts_code', inplace=True)
                 self.basic.to_csv(file_path, encoding='utf-8')
                 log_args = [file_path]
-                add_log(40, '[fn]:Stock.get_stock_basic() file "{0[0]}" saved', log_args)
+                add_log(40, '[fn]:Stock_Basic.get_stock_basic() file "{0[0]}" saved', log_args)
                 return self.basic
         log_args = [file_path]
-        add_log(20, '[fn]:Stock.get_stock_basic() failed to save file "{0[0]}"', log_args)
+        add_log(20, '[fn]:Stock_Basic.get_stock_basic() failed to save file "{0[0]}"', log_args)
         return
     
     def load_stock_basic(self):
@@ -582,7 +583,7 @@ class Stock_Basic:
             return self.basic
         except FileNotFoundError:
             log_args = [file_path]
-            add_log(20, '[fn]Stock.get_stock_basic()e. file "{0[0]}" not found', log_args)
+            add_log(20, '[fn]Stock_Basic.load_stock_basic()e. file "{0[0]}" not found', log_args)
             return
 
     def que_list_date(self, ts_code):
@@ -595,7 +596,7 @@ class Stock_Basic:
             result = self.basic.loc[ts_code]['list_date']
         except KeyError: 
             log_args = [ts_code]
-            add_log(20, '[fn]:Stock.que_list_date() ts_code: "{0[0]}" was not found in Stock.base. use DEFAULT_OPEN_DATE_STR instead', log_args)
+            add_log(20, '[fn]:Stock_Basic.que_list_date() ts_code: "{0[0]}" was not found in Stock.base. use DEFAULT_OPEN_DATE_STR instead', log_args)
             result = DEFAULT_OPEN_DATE_STR
             return result
         if valid_date_str_fmt(result):
@@ -603,9 +604,114 @@ class Stock_Basic:
         else:
             result = DEFAULT_OPEN_DATE_STR
             log_args = [ts_code, result]
-            add_log(40, '[fn]:Stock.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
+            add_log(40, '[fn]:Stock_Basic.que_list_date() ts_code: "{0[0]}" used "DEFAULT_OPEN_DATE_STR" {0[1]} instead "list_date".', log_args)
             return result
 
 
-# global raw_data
+class Fund_Basic:
+    """
+    基金类资产的基本信息，含etf
+    """
+
+    def __init__(self, pull=None):
+        self.basic_e = None  # 场内基金基本信息
+        self.basic_o = None  # 场外基金基本信息
+        if pull is True:
+            self.get_fund_basic(market='E')
+            self.get_fund_basic(market='O')
+        else:
+            self.load_fund_basic(market='E')
+            self.load_fund_basic(market='O')
+
+    def get_fund_basic(self, market='E'):
+        """
+        从ts_pro.fund_basic获取个股的基本信息列表
+        market: <str> 'E'场内  'O'场外
+        return: <df> is success, None if fail
+        """
+        if market == 'E':
+            file_name = PurePath('fund_e_basic.csv')  # 场内基金
+        elif market == 'O':
+            file_name = PurePath('fund_o_basic.csv')  # 场外基金
+        else:
+            log_args = [market]
+            add_log(20, '[fn]:Fund_Basic.get_fund_basic() unsupported market type:{0[0], aborted', log_args)
+            return
+        file_path = sub_path / file_name
+        if market == 'E':
+            self.basic_e = ts_pro.fund_basic(market=market)  # 场内基金
+            if isinstance(self.basic_e, pd.DataFrame):
+                if len(self.basic_e) > 10:
+                    self.basic_e.set_index('ts_code', inplace=True)
+                    self.basic_e.to_csv(file_path, encoding='utf-8')
+                    log_args = [file_path, len(self.basic_e)]
+                    add_log(40, '[fn]:Fund_Basic.get_fund_basic() file "{0[0]}" saved, items:{0[1]}', log_args)
+                    return self.basic_e
+            log_args = [file_path]
+            add_log(20, '[fn]:Fund_Basic.get_fund_basic() failed to save file "{0[0]}"', log_args)
+            return
+        elif market == 'O':
+            self.basic_o = ts_pro.fund_basic(market=market)  # 场外基金
+            if isinstance(self.basic_o, pd.DataFrame):
+                if len(self.basic_o) > 10:
+                    self.basic_o.set_index('ts_code', inplace=True)
+                    self.basic_o.to_csv(file_path, encoding='utf-8')
+                    log_args = [file_path, len(self.basic_o)]
+                    add_log(40, '[fn]:Fund.get_fund_basic() file "{0[0]}" saved, items:{0[1]}', log_args)
+                    return self.basic_o
+            log_args = [file_path]
+            add_log(20, '[fn]:Fund_Basic.get_fund_basic() failed to save file "{0[0]}"', log_args)
+            return
+
+    def load_fund_basic(self, market='E'):
+        """
+        从fund_e_basic.csv或fund_o_basic.csv文件读入个股的基本信息列表
+        return:<df> is success, None if fail
+        """
+        if market == 'E':
+            file_name = PurePath('fund_e_basic.csv')  # 场内基金
+        elif market == 'O':
+            file_name = PurePath('fund_o_basic.csv')  # 场外基金
+        else:
+            log_args = [market]
+            add_log(20, '[fn]:Fund_Basic.load_fund_basic() unsupported market type:{0[0], aborted', log_args)
+            return
+        file_path = sub_path / file_name
+        try:
+            if market == 'E':
+                self.basic_e = pd.read_csv(file_path, dtype={'found_date': str, 'due_date': str, 'list_date': str, 'delist_date': str, 'issue_date': str, 'purc_startdate': str, 'redm_startdate': str}, index_col='ts_code')
+                return self.basic_e
+            elif market == 'O':
+                self.basic_o = pd.read_csv(file_path, dtype={'found_date': str, 'due_date': str, 'list_date': str, 'delist_date': str, 'issue_date': str, 'purc_startdate': str, 'redm_startdate': str}, index_col='ts_code')
+                return self.basic_o
+        except FileNotFoundError:
+            log_args = [file_name]
+            add_log(20, '[fn]Fund_Basic.load_fund_basic()e. file "{0[0]}" not found', log_args)
+            return
+
+    def que_list_date(self, ts_code):
+        """
+        查询上市时间
+        ts_code:<str> e.g. "518880.SH"
+        return:<str> e.g. "19930512"
+        """
+        from st_board import valid_date_str_fmt
+        ts_code = ts_code.upper()
+        try:
+            result = self.basic_e.loc[ts_code]['list_date']
+        except KeyError:
+            try:
+                result = self.basic_o.loc[ts_code]['list_date']
+            except KeyError:
+                log_args = [ts_code]
+                add_log(20, '[fn]:Fund_Basic.que_list_date() ts_code:{0[0]} was not found in Fund.base_e/_o', log_args)
+                return
+        if valid_date_str_fmt(result):
+            return result
+        else:
+            log_args = [ts_code, result]
+            add_log(20, '[fn]:Fund_Basic.que_list_date() ts_code:{0[0]} result:{0[1]} invalid', log_args)
+            return
+
+
 raw_data = Raw_Data(pull=False)
