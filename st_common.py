@@ -21,6 +21,7 @@ ts_pro = ts.pro_api()
 # current_path = PurePath()
 sub_path = PurePath("./data_csv")
 sub_path_2nd_daily = PurePath("daily_data")  # 日线数据
+sub_path_2nd_fund_daily = PurePath("fund_daily_data")  # 基金日线数据
 sub_path_config = PurePath("config")  # 配置文件
 sub_path_al = PurePath("assets_lists")  # 资产列表
 sub_path_rpt = PurePath("./reports")  # 报告
@@ -44,6 +45,14 @@ SOURCE_TO_COLUMN = {'close': 'close',  # 修改的是，原来'close_hfq'
                     'vol': 'vol',
                     'amount': 'amount',
                     }
+
+# 参考st_board中的 LOADER, GETTER, QUE_LIMIT
+FUND = {'fund_in', 'fund_out'}  # fund可能的category类型
+INDEX = {'index_sw', 'index_sse', 'index_szse'}  # index可能的category类型
+DAILY_FLD = {'index_sse', 'index_szse', 'index_sw', 'stock', 'stock_daily_basic',
+             'adj_factor', 'hsgt_flow'}  # 哪些类放到 st_board/data_csv/daily_data中
+FUND_D_FLD = {'fund_in', 'fund_out', 'fund_daily_net',
+              'fund_adj_factor'}  # 哪些类放到 st_board/data_csv/fund_daily_data中
 
 STATUS_WORD = {0: '-bad-',
                1: '-good-',

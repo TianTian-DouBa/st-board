@@ -3,6 +3,7 @@ import numpy as np
 from st_common import sub_path, sub_idt
 from st_common import SUBTYPE, SOURCE_TO_COLUMN
 from st_common import raw_data
+from st_common import INDEX, FUND
 from datetime import datetime
 from XF_LOG_MANAGE import add_log
 import weakref
@@ -116,7 +117,7 @@ class Indicator:
                <df> 从csv中读取，很少情况
                None if failed
         """
-        from st_board import LOADER, Stock
+        from st_board import LOADER, Stock, Fund
         asset = self.par_asset()
         category = asset.category
         source = self.source
@@ -138,11 +139,13 @@ class Indicator:
             add_log(20, '[fn]Indicator.load_sources(). source:{0[0]} invalid', log_args)
             return
 
-        INDEX = {'index_sw', 'index_sse', 'index_szse'}
+        # INDEX = {'index_sw', 'index_sse', 'index_szse'}
         if category == 'stock':
             loader = lambda ts_code, nrows: Stock.load_stock_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
         elif category in INDEX:
             loader = lambda ts_code, nrows: LOADER[category](ts_code=ts_code, nrows=nrows)[[column_name]]
+        elif category in FUND:
+            loader = lambda ts_code, nrows: Fund.load_fund_dfq(ts_code=ts_code, nrows=nrows)[[column_name]]
         else:
             log_args = [source]
             add_log(20, '[fn]Indicator.load_sources(). source:{0[0]} invalid', log_args)

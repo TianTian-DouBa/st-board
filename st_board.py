@@ -4,8 +4,8 @@ import os
 import time
 import weakref
 from st_common import raw_data  # 不能去掉
-from st_common import sub_path, sub_path_2nd_daily, sub_path_config, sub_path_al, sub_path_result, sub_analysis, sub_pledge
-from st_common import FORMAT_FIELDS, FORMAT_HEAD
+from st_common import sub_path, sub_path_2nd_daily, sub_path_2nd_fund_daily, sub_path_config, sub_path_al, sub_path_result, sub_analysis, sub_pledge
+from st_common import FORMAT_FIELDS, FORMAT_HEAD, FUND, INDEX, DAILY_FLD, FUND_D_FLD
 from datetime import datetime, timedelta
 from XF_LOG_MANAGE import add_log, logable
 import matplotlib.pyplot as plt
@@ -109,6 +109,12 @@ def download_data(ts_code, category, reload=False):
             file_name = 'd_' + ts_code + '.csv'
         elif category == 'hsgt_flow':  # 沪深港通资金流向
             file_name = 'd_hsgt_flow.csv'
+        elif category in FUND:
+            file_name = 'd_' + ts_code + '.csv'
+        elif category == 'fund_adj_factor':
+            file_name = 'fq_' + ts_code + '.csv'
+        elif category == 'fund_daily_net':
+            file_name = 'net_' + ts_code + '.csv'
         # ----------其它类型时修改------------
         else:
             log_args = [category]
@@ -138,6 +144,9 @@ def download_data(ts_code, category, reload=False):
         # -------沪深港通资金流向-----------
         elif category == 'hsgt_flow':
             start_date_str = '20141117'  # 沪深港通数据起点
+        # -----------所有基金相关类别--------------
+        elif category in FUND_D_FLD:
+            start_date_str = str(raw_data.fund.que_list_date(ts_code))
         # -----------其它类型(未完成)--------------
         else:
             log_args = [ts_code, category]
@@ -156,12 +165,19 @@ def download_data(ts_code, category, reload=False):
                 file_name = _category_to_file_name(ts_code, category)
                 if file_name is None:
                     return
-                df.to_csv(sub_path / sub_path_2nd_daily / file_name)
+                if category in DAILY_FLD:
+                    file_path = sub_path / sub_path_2nd_daily / file_name
+                elif category in FUND_D_FLD:
+                    file_path = sub_path / sub_path_2nd_fund_daily / file_name
+                else:
+                    log_args = [ts_code, category]
+                    add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid, check st_common DAILY_FLD...', log_args)
+                    return
+                df.to_csv(file_path)
                 if logable(40):
                     number_of_items = len(df)
                     log_args = [ts_code, category, file_name, number_of_items]
-                    add_log(40, "[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}",
-                            log_args)
+                    add_log(40, "[fn]download_data() ts_code:{0[0]}, category:{0[1]}, file:{0[2]}, total items:{0[3]}", log_args)
                 return df
             else:
                 log_args = [ts_code, df]
@@ -172,27 +188,9 @@ def download_data(ts_code, category, reload=False):
             df = loader(ts_code)
             if isinstance(df, pd.DataFrame):
                 try:
-                    # last_date_str = df.iloc[0]['trade_date'] #注意是否所有类型都有'trade_date'字段
                     last_date_str = str(df.index.values[0])
                     # print('[L507] {}'.format(last_date_str))
                 except IndexError:
-                    # #-----------index类别--------------
-                    # if category == 'index_sw' or category == 'index_sse' or category == 'index_szse':
-                    #     last_date_str = str(raw_data.index.que_base_date(ts_code))
-                    # #-----------stock类别--------------
-                    # elif category == 'stock':
-                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    # #-----------stock每日指标类别--------------
-                    # elif category == 'stock_daily_basic':
-                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    # #-----------复权因子--------------
-                    # elif category == 'adj_factor':
-                    #     last_date_str = str(raw_data.stock.que_list_date(ts_code))
-                    # #-----------其它类型(未完成)--------------
-                    # else:
-                    #     log_args = [category]
-                    #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
-                    #     return
                     last_date_str = _category_to_start_date_str(ts_code, category)
                     if last_date_str is None:
                         return
@@ -205,23 +203,19 @@ def download_data(ts_code, category, reload=False):
                 if last_date < today:
                     _df = sgmt_download(ts_code, _start_str, _end_str, que_limit, category)
                     _frames = [_df, df]
-                    # df=pd.concat(_frames,ignore_index=True,sort=False)
                     df = pd.concat(_frames, sort=False)
-                    # if category == 'stock_daily_basic':
-                    #     file_name = 'db_' + ts_code + '.csv'
-                    # elif category == 'adj_factor':
-                    #     file_name = 'fq_' + ts_code + '.csv'
-                    # elif category == 'index_sw' or category == 'index_sse' or category == 'index_szse' or category == 'stock':
-                    #     file_name = 'd_' + ts_code + '.csv'
-                    # #----------其它类型时修改------------
-                    # else:
-                    #     log_args = [category]
-                    #     add_log(20, '[fn]download_data(). invalid category: {0[0]}', log_args)
-                    #     return
                     file_name = _category_to_file_name(ts_code, category)
                     if file_name is None:
                         return
-                    df.to_csv(sub_path / sub_path_2nd_daily / file_name)
+                    if category in DAILY_FLD:
+                        file_path = sub_path / sub_path_2nd_daily / file_name
+                    elif category in FUND_D_FLD:
+                        file_path = sub_path / sub_path_2nd_fund_daily /file_name
+                    else:
+                        log_args = [ts_code, category]
+                        add_log(20, '[fn]download_data() {0[0]} category:{0[1]} invalid, check st_common DAILY_FLD...', log_args)
+                        return
+                    df.to_csv(file_path)
                     if logable(40):
                         number_of_items = len(df)
                         log_args = [ts_code, category, file_name, number_of_items]
@@ -304,7 +298,11 @@ def sgmt_download(ts_code, start_date_str, end_date_str, size, category):
         else:
             _frames = [_df, df]
             df = pd.concat(_frames, ignore_index=True)
-    df.set_index('trade_date', inplace=True)
+    # !!!对于index不叫trade_date的，要注意修改
+    if category == 'fund_daily_net':
+        df.set_index('end_date', inplace=True)
+    else:
+        df.set_index('trade_date', inplace=True)
     return df
 
 
@@ -339,7 +337,14 @@ def bulk_download(al_file, reload=False):
             if category is None:
                 continue
             file_name = PurePath('d_' + ts_code + '.csv')
-            file_path = sub_path / sub_path_2nd_daily / file_name
+            if category in DAILY_FLD:
+                file_path = sub_path / sub_path_2nd_daily / file_name
+            elif category in FUND_D_FLD:
+                file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            else:
+                log_args = [ts_code, category]
+                add_log(20, '[fn]bulk_download() {0[0]} category:{0[1]} invalid, check st_common DAILY_FLD...', log_args)
+                continue
             if reload is True or (not os.path.exists(file_path)):
                 _reload = True
             else:
@@ -353,7 +358,6 @@ def bulk_dl_appendix(al_file, reload=False):
     al_file:<str> path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
     reload:<bool> True重新下载完整文件
     """
-    print('[L376] bulk_dl_appendix()只能处理个股，对其它类别如index会将')
     file_path = None
     if isinstance(al_file, str):
         if len(al_file) > 0:
@@ -377,6 +381,8 @@ def bulk_dl_appendix(al_file, reload=False):
             category = All_Assets_List.query_category_str(ts_code)
             if category is None:
                 continue
+
+            # 股票类资产
             elif category == 'stock':
                 # -------------每日指标--------------
                 category = 'stock_daily_basic'  # 股票每日指标
@@ -396,6 +402,29 @@ def bulk_dl_appendix(al_file, reload=False):
                 else:
                     _reload = False
                 download_data(ts_code, category, _reload)
+
+            # 基金类资产
+            elif category in FUND:
+                # -------------基金净值--------------
+                category = 'fund_daily_net'  # 股票每日指标
+                file_name = PurePath('net_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_fund_daily / file_name
+                if reload is True or (not os.path.exists(file_path)):
+                    _reload = True
+                else:
+                    _reload = False
+                download_data(ts_code, category, _reload)
+                # -------------复权因子--------------
+                category = 'fund_adj_factor'  # 股票复权
+                file_name = PurePath('fq_' + ts_code + '.csv')
+                file_path = sub_path / sub_path_2nd_fund_daily / file_name
+                if reload is True or (not os.path.exists(file_path)):
+                    _reload = True
+                else:
+                    _reload = False
+                download_data(ts_code, category, _reload)
+
+            # 不识别资产，报错
             else:
                 log_args = [ts_code, category]
                 add_log(40, '[fn]bulk_dl_appendix(). {0[0]} category:{0[1]} skip', log_args)
@@ -432,6 +461,8 @@ def bulk_calc_dfq(al_file, reload=False):
                 continue
             elif category == 'stock':
                 Stock.calc_dfq(ts_code, reload=reload)
+            elif category in FUND:
+                Fund.calc_dfq(ts_code, reload=reload)
             else:
                 log_args = [ts_code, category]
                 add_log(40, '[fn]bulk_calc_dfq(). {0[0]} category:{0[1]} skip', log_args)
@@ -601,8 +632,8 @@ class All_Assets_List:
         df_al = pd.concat(_frame, sort=False)
         # --------------基金---------------
         if que_from_ts is True:
-            raw_data.fund.get_fund_basic(marker='E')  # 更新场内
-            raw_data.fund.get_fund_basic(marker='O')  # 更新场外
+            raw_data.fund.get_fund_basic(market='E')  # 更新场内
+            raw_data.fund.get_fund_basic(market='O')  # 更新场外
         df_e_ = raw_data.fund.basic_e[['name']]
         df_o_ = raw_data.fund.basic_o[['name']]
         df_e = df_e_.copy()
@@ -649,6 +680,12 @@ class All_Assets_List:
         # 'stock_daily_basic'和'adj_factor'不在此处理
         elif _type == 'stock':
             category = 'stock'
+        # --------------基金---------------
+        elif _type == 'fund':
+            if stype1 == 'inside':
+                category = 'fund_in'
+            elif stype1 == 'outside':
+                category = 'fund_out'
         # --------------其它类型(未完成)----------
         else:
             log_args = [ts_code]
@@ -829,7 +866,7 @@ class All_Assets_List:
         """
         df = raw_data.all_assets_list
         al_list = df[df.type == 'stock'].index.tolist()
-        n = len(df)
+        n = len(al_list)
         if n > 0:
             All_Assets_List.create_al_file(al_list, 'dl_stocks')
             return n
@@ -842,9 +879,22 @@ class All_Assets_List:
         """
         df = raw_data.all_assets_list
         al_list = df[df.type == 'index'].index.tolist()
-        n = len(df)
+        n = len(al_list)
         if n > 0:
             All_Assets_List.create_al_file(al_list, 'dl_indexes')
+            return n
+
+    @staticmethod
+    def update_dl_sh_sz_indexes():
+        """
+        更新al_dl_indexes.csv
+        return: <int> 资产个数
+        """
+        df = raw_data.all_assets_list
+        al_list = df[(df.stype1 == 'SSE') | (df.stype1 == 'SZSE')].index.tolist()
+        n = len(al_list)
+        if n > 0:
+            All_Assets_List.create_al_file(al_list, 'dl_sh_sz_indexes')
             return n
 
 
@@ -863,11 +913,13 @@ class Asset:
                   : set('raw_close', 'raw_vol'...) 基本字段外的其他补充字段
         """
         global raw_data
-        INDEX = {'index_sw', 'index_sse', 'index_szse'}
         category = All_Assets_List.query_category_str(ts_code)
         if category == 'stock':
             obj = super().__new__(Stock)
             obj.category = 'stock'
+        elif category in FUND:
+            obj = super().__new__(Fund)
+            obj.category = category
         elif category in INDEX:
             obj = super().__new__(Index)
             obj.category = category
@@ -1619,6 +1671,298 @@ class Index(Asset):
         return
 
 
+class Fund(Asset):
+    """
+    基金资产类别，分场内和场外两大类别
+    """
+
+    def __init__(self, ts_code, in_price=None, in_date=None, load_daily='basic', in_price_mode='close', price_seek_direction=None):
+        """
+        load_daily: 'basic': 读入[close][open][high][low][vol]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        in_price: <float> 进入价格
+        in_price_mode: 'close', 'high', 'low'等，详见Asset.get_price()
+        price_seek_direction: <str> 当价格数据不在daily_data中，比如停牌是，向前或后搜索数据
+                               None: 返回None,不搜索
+                              'forwards': 向时间增加的方向搜索
+                              'backwards': 向时间倒退的方向搜索
+        """
+        global raw_data
+
+        # daily_data的其它字段还待完成
+        if load_daily is not None:
+            self.load_daily_data(load_daily=load_daily)
+
+        # 处理self.in_date
+        if isinstance(self.in_date, str):
+            if self.in_date == 'latest':
+                self.in_date = str(self.daily_data[0]['trade_date'])
+            elif raw_data.valid_trade_date(self.in_date) is not True:
+                log_args = [self.ts_code, self.in_date]
+                add_log(20, '[fn]Fund.__init__(). "{0[0]}" in_date "{0[1]}" is not a trade date', log_args)
+                self.in_date = None
+
+        # 处理self.in_price
+        if self.in_date is not None:
+            if in_price is None:
+                rslt = self.get_price(trade_date=self.in_date, mode=in_price_mode, seek_direction=price_seek_direction)
+                if rslt is not None:
+                    self.in_price, self.in_date = rslt
+                else:
+                    self.in_price = None
+                    self.in_date = None
+            else:
+                self.in_price = float(in_price)
+        else:
+            self.in_price = None
+
+    def load_daily_data(self, load_daily='basic'):
+        """
+        根据load_daily输入字段，从csv文件将数据读入self.daily_data
+        load_daily: 'basic': 读入[close][open][high][low][vol][amount]基本字段到self.daily_data
+                     None: self.daily_data = None
+                     set('raw_close', 'amount'...) 基本字段外的其他补充字段
+        """
+
+        # def _load_basic():
+        #     self.daily_data = self.load_fund_dfq(ts_code=self.ts_code,columns='basic')  # self.daily_data在Asset.__new__()中已定义
+            # sl_db = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate']  # 换手率
+            # sl_amount = self.load_fund_daily(ts_code=self.ts_code)['amount']
+            # try:
+            #     self.daily_data.loc[:, 'amount'] = sl_amount
+            #     # self.daily_data.loc[:, 'turnover_rate'] = sl_db
+            # except Exception as e:
+            #     log_args = [self.ts_code, type(e)]
+            #     add_log(20,
+            #             '[fn]Fund.load_daily_data() ts_code:{0[0]}; failed to load turnover_rate; error_type:{0[1]}',
+            #             log_args)  # 换手率未加载成功
+
+        if load_daily == 'basic':
+            print('[L1729] self={}'.format(self))
+            self.daily_data = self.load_fund_dfq(ts_code=self.ts_code, columns='basic')  # self.daily_data在Asset.__new__()中已定义
+        elif isinstance(load_daily, set):  # <set>增加额外字段的情况
+            print('[L1732] self={}'.format(self))
+            self.daily_data = self.load_fund_dfq(ts_code=self.ts_code,columns='basic')  # self.daily_data在Asset.__new__()中已定义
+            print('[L1730] 非basic类型的列还未就绪')
+            if len(load_daily) == 0:
+                log_args = [self.ts_code]
+                add_log(20, '[fn]Fund.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
+                return
+            # for item in load_daily:
+            #     if item == 'turnover_rate_f':  # 流通换手率
+            #         sl_trf = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate_f']  # 流通换手率
+            #         self.daily_data.loc[:, 'turnover_rate_f'] = sl_trf
+            #     # --------后续修改--------
+            #     elif item == 'xxxx':
+            #         pass
+            #     else:
+            #         print('[1715] 扩展字段的情况待完成')
+
+    @staticmethod
+    def load_fund_daily(ts_code, nrows=None, columns='all'):
+        """
+        从文件读入基金日线数据，columns的修改不必要20200126
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: <str> 'all' = 所有可用的列
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'amount'
+        return: <df> index = 'trade_date'
+        """
+        global raw_data
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('d_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            if columns == 'all':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['ts_code', 'trade_date', 'close', 'open', 'high', 'low', 'pre_close', 'change', 'pct_chg', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+                result['vol'] = result['vol'].astype(np.int64)
+                # 待优化，直接在read_csv用dtype指定‘vol’为np.int64
+            elif columns == 'basic':
+                result = pd.read_csv(file_path, dtype={'trade_date': str},
+                                     usecols=['trade_date', 'close', 'open', 'high', 'low', 'amount'], index_col='trade_date', nrows=nrows)
+            else:
+                result = None
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Fund.load_fund_daily() ts_code:{0[0]} invalid', log_args)
+            return
+
+    @staticmethod
+    def load_fund_dfq(ts_code, nrows=None, columns='all'):
+        """
+        从文件读入后复权的基金日线数据
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        columns: <str> 'all' = 所有可用的列
+                       'basic' = 'trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'
+        return: <df>
+        """
+        global raw_data
+        # print('[L940] raw_data:{}'.format(raw_data))
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            if columns == 'all':
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'adj_factor', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+            elif columns == 'basic':
+                result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['trade_date', 'close', 'open', 'high', 'low', 'vol', 'amount'], index_col='trade_date', nrows=nrows)
+            else:
+                log_args = [columns]
+                add_log(20, '[fn]Fund.load_fund_dfq() attribute columns "{0[0]}" invalid', log_args)
+                return
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Fund.load_fund_dfq() ts_code "{0[0]}" invalid', log_args)
+            return
+
+    @staticmethod
+    def load_daily_net(ts_code, nrows=None):
+        """
+        从文件读入基金净值数据
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        global raw_data
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('net_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            result = pd.read_csv(file_path, dtype={'ann_date': str, 'end_date': str}, usecols=['end_date', 'ts_code', 'ann_date', 'unit_nav', 'accum_nav', 'accum_div', 'net_asset', 'total_netasset', 'adj_nav'], index_col='end_date', nrows=nrows)
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Fund.load_daily_net() ts_code "{0[0]}" invalid', log_args)
+            return
+
+    @staticmethod
+    def load_adj_factor(ts_code, nrows=None):
+        """
+        从文件读入复权因子
+        nrows: <int> 指定读入最近n个周期的记录,None=全部
+        return: <df>
+        """
+        global raw_data
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('fq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            result = pd.read_csv(file_path, dtype={'trade_date': str}, usecols=['ts_code', 'trade_date', 'adj_factor'], index_col='trade_date', nrows=nrows)
+            return result
+        else:
+            log_args = [ts_code]
+            add_log(20, '[fn]Fund.load_adj_factor() ts_code "{0[0]}" invalid', log_args)
+            return
+
+    @staticmethod
+    def calc_dfq(ts_code, reload=False):
+        """
+        计算后复权的日线数据
+        ts_code: <str> e.g. '000001.SZ'
+        reload: <bool> True重头创建文件
+        """
+        global raw_data
+        df_fq = Fund.load_adj_factor(ts_code)[['adj_factor']]
+        if len(df_fq) == 0:
+            log_args = [ts_code]
+            add_log(30, '[fn]calc_dfq() ts_code:{0[0]} empty df_fq, skipped', log_args)
+            return
+        fq_head_index_str, = df_fq.head(1).index.values
+        # print('[354] latest_date_str:{}'.format(fq_head_index_str))
+        df_daily = Fund.load_fund_daily(ts_code)[['close', 'open', 'high', 'low', 'vol', 'amount']]
+
+        def _create_dfq():
+            # ---[drop]通过将df_factor头部的index定位到df_daily中行号x；x=0 无操作；x>0 drop df_daily前x行; 无法定位，倒查定位到df_factor中y，y>=0 无操作，无法定位 报错
+            fq_head_in_daily = None
+            try:
+                fq_head_in_daily = df_daily.index.get_loc(fq_head_index_str)  # fq头在stock中的位置
+            except KeyError:
+                stock_head_index_str, = df_daily.head(1).index.values
+                try:
+                    df_fq.index.get_loc(stock_head_index_str)
+                except KeyError:
+                    log_args = [ts_code]
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; head_index mutually get_loc fail; unknown problem', log_args)  # df_daily和df_fq(复权）相互查询不到第一条index的定位
+                    return
+            # print('[357] fq_head_in_daily position:{}'.format(fq_head_in_daily))
+            if fq_head_in_daily is not None:
+                if fq_head_in_daily > 0:
+                    df_daily.drop(df_daily.index[:fq_head_in_daily], inplace=True)
+            # ---[/drop]
+            with pd.option_context('mode.chained_assignment', None):  # 将包含代码的SettingWithCopyWarning暂时屏蔽
+                df_daily.loc[:, 'adj_factor'] = df_fq['adj_factor']
+                df_daily.loc[:, 'dfq_cls'] = df_daily['close'] * df_daily['adj_factor']
+                df_daily.loc[:, 'dfq_open'] = df_daily['open'] * df_daily['adj_factor']
+                df_daily.loc[:, 'dfq_high'] = df_daily['high'] * df_daily['adj_factor']
+                df_daily.loc[:, 'dfq_low'] = df_daily['low'] * df_daily['adj_factor']
+                df_daily.loc[:, 'dfq_vol'] = df_daily['vol'] / df_daily['adj_factor']
+            df_dfq = df_daily[['adj_factor', 'dfq_cls', 'dfq_open', 'dfq_high', 'dfq_low', 'dfq_vol', 'amount']]
+            df_dfq.rename(columns={'dfq_cls': 'close', 'dfq_open': 'open', 'dfq_high': 'high', 'dfq_low': 'low', 'dfq_vol': 'vol'}, inplace=True)
+            return df_dfq
+
+        def _generate_from_begin():
+            """
+            从头开始创建dfq文件
+            """
+            result = _create_dfq()
+            if isinstance(result, pd.DataFrame):
+                result.to_csv(file_path, encoding="utf-8")
+                log_args = [file_name]
+                add_log(40, '[fn]:Fund.calc_dfq() file: "{0[0]}" reloaded".', log_args)
+
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('dfq_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+        else:
+            log_args = [ts_code]
+            add_log(10, '[fn]Fund.calc_dfq() ts_code:{0[0]} invalid', log_args)
+            return
+        if reload is True:
+            _generate_from_begin()
+            return
+        else:  # read dfq file, calculate and fill back the new items
+            try:
+                df_dfq = Fund.load_fund_dfq(ts_code)
+            except FileNotFoundError:
+                log_args = [file_path]
+                add_log(20, '[fn]Fund.calc_dfq() file "{0[0]}" not exist, regenerate', log_args)
+                _generate_from_begin()
+                return
+            dfq_head_index_str, = df_dfq.head(1).index.values
+            try:
+                dfq_head_in_daily = df_daily.index.get_loc(dfq_head_index_str)
+            except KeyError:
+                log_args = [ts_code, dfq_head_index_str]
+                add_log(20,
+                        '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_daily, df_daily maybe not up to date',
+                        log_args)
+                return
+            if dfq_head_in_daily == 0:
+                log_args = [ts_code]
+                add_log(40, '[fn]calc_dfq() ts_code:{0[0]}; df_dfq up to df_daily date, no need to update', log_args)
+                return
+            elif dfq_head_in_daily > 0:
+                df_daily = take_head_n(df_daily, dfq_head_in_daily)
+            try:
+                dfq_head_in_fq = df_fq.index.get_loc(dfq_head_index_str)
+            except KeyError:
+                log_args = [ts_code, dfq_head_index_str]
+                add_log(20,
+                        '[fn]calc_dfq() ts_code:{0[0]}; dfq_head_index_str:"{0[1]}" not found in df_fq, df_fq maybe not up to date',
+                        log_args)
+                return
+            if dfq_head_in_fq == 0:
+                log_args = [ts_code]
+                add_log(40, '[fn]calc_dfq() ts_code:{0[0]}; df_dfq up to df_fq date, no need to update', log_args)
+                return
+            elif dfq_head_in_fq > 0:
+                df_fq = take_head_n(df_fq, dfq_head_in_fq)
+            _df_dfq = _create_dfq()
+            _frames = [_df_dfq, df_dfq]
+            result = pd.concat(_frames, sort=False)
+            result.to_csv(file_path, encoding="utf-8")
+            log_args = [file_name]
+            add_log(40, '[fn]:Fund.calc_dfq() file: "{0[0]}" updated".', log_args)
+
+
 class Hsgt:
     """
     沪港通相关
@@ -1721,6 +2065,10 @@ LOADER = {'index_sse': Index.load_index_daily,
           'stock_daily_basic': Stock.load_stock_daily_basic,
           'adj_factor': Stock.load_adj_factor,
           'hsgt_flow': Hsgt.load_moneyflow,
+          'fund_in': Fund.load_fund_daily,
+          'fund_out': Fund.load_fund_daily,
+          'fund_daily_net': Fund.load_daily_net,
+          'fund_adj_factor': Fund.load_adj_factor,
           }
 
 # GETTER从Tushare下载数据的接口
@@ -1731,6 +2079,10 @@ GETTER = {'index_sse': ts_pro.index_daily,
           'stock_daily_basic': ts_pro.daily_basic,
           'adj_factor': ts_pro.adj_factor,
           'hsgt_flow': Hsgt.getter_flow,
+          'fund_in': ts_pro.fund_daily,
+          'fund_out': ts_pro.fund_daily,
+          'fund_daily_net': ts_pro.fund_nav,
+          'fund_adj_factor': ts_pro.fund_adj,
           }
 
 # QUE_LIMIT,Tushare接口的单查询条目上限
@@ -1741,6 +2093,10 @@ QUE_LIMIT = {'index_sse': 8000,
              'stock_daily_basic': 4000,  # changed on '20200105', 8000 before
              'adj_factor': 8000,
              'hsgt_flow': 300,
+             'fund_in': 800,
+             'fund_out': 800,
+             'fund_daily_net': 4000,  # 未测试
+             'fund_adj_factor': 2000,
              }
 
 
