@@ -324,7 +324,7 @@ def update_gold_df(ts_code, start_date=None, end_date=None, reload=None):
     if exist and (reload is not True):  # 文件存在，load文件到df
         df = load_daily_df(ts_code)
         try:
-            last_date = str(df.index[0])  # 空<df>的情况还为处理
+            last_date = str(int(df.index[0]))  # 空<df>的情况还为处理
         except IndexError:
             log_args = [file_name]
             add_log(10, '[fn]update_gold_df() {0[1]} empty, need to delete it', log_args)
