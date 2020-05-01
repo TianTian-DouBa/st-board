@@ -113,7 +113,7 @@ def load_net_df(ts_code, nrows=None):
     file_name = PurePath('net_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     try:
-        df = pd.read_csv(file_path, dtype={'trade_date': str}, index_col='trade_date', nrows=nrows)
+        df = pd.read_csv(file_path, dtype={'trade_date': int}, index_col='trade_date', nrows=nrows)
     except FileNotFoundError:
         log_args = [file_name]
         add_log(20, '[fn]load_net_df() ts_code:{} file not exist', log_args)
@@ -239,7 +239,8 @@ def load_daily_df(ts_code, nrows=None):
     file_name = PurePath('d_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     try:
-        df = pd.read_csv(file_path, dtype={'trade_date': str}, nrows=nrows).set_index('trade_date')
+        df = pd.read_csv(file_path, dtype={'trade_date': int}, index_col='trade_date', nrows=nrows)
+        # df.index 为 <int64>
     except FileNotFoundError:
         log_args = [file_name]
         add_log(20, '[fn]load_daily_df() ts_code:{0[0]} file not exist', log_args)
@@ -324,7 +325,7 @@ def update_gold_df(ts_code, start_date=None, end_date=None, reload=None):
     if exist and (reload is not True):  # 文件存在，load文件到df
         df = load_daily_df(ts_code)
         try:
-            last_date = df.index[0]  # 空<df>的情况还为处理
+            last_date = str(df.index[0])  # 空<df>的情况还为处理
         except IndexError:
             log_args = [file_name]
             add_log(10, '[fn]update_gold_df() {0[1]} empty, need to delete it', log_args)
