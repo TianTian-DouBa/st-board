@@ -328,6 +328,7 @@ def update_gold_df(ts_code, start_date=None, end_date=None, reload=None):
         except IndexError:
             log_args = [file_name]
             add_log(10, '[fn]update_gold_df() {0[1]} empty, need to delete it', log_args)
+            return
         if start_date is None:
             _start = raw_data.next_trade_day(last_date)
         else:
