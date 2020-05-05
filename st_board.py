@@ -406,14 +406,15 @@ def bulk_dl_appendix(al_file, reload=False):
             # 基金类资产
             elif category in FUND:
                 # -------------基金净值--------------
-                category = 'fund_daily_net'  # 股票每日指标
-                file_name = PurePath('net_' + ts_code + '.csv')
-                file_path = sub_path / sub_path_2nd_fund_daily / file_name
-                if reload is True or (not os.path.exists(file_path)):
-                    _reload = True
-                else:
-                    _reload = False
-                download_data(ts_code, category, _reload)
+                # category = 'fund_daily_net'  # 股票每日指标
+                # file_name = PurePath('net_' + ts_code + '.csv')
+                # file_path = sub_path / sub_path_2nd_fund_daily / file_name
+                # if reload is True or (not os.path.exists(file_path)):
+                #     _reload = True
+                # else:
+                #     _reload = False
+                # download_data(ts_code, category, _reload)
+                Fund.get_daily_net(ts_code)
                 # -------------复权因子--------------
                 category = 'fund_adj_factor'  # 股票复权
                 file_name = PurePath('fq_' + ts_code + '.csv')
@@ -1724,40 +1725,28 @@ class Fund(Asset):
                      None: self.daily_data = None
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
-
-        # def _load_basic():
-        #     self.daily_data = self.load_fund_dfq(ts_code=self.ts_code,columns='basic')  # self.daily_data在Asset.__new__()中已定义
-            # sl_db = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate']  # 换手率
-            # sl_amount = self.load_fund_daily(ts_code=self.ts_code)['amount']
-            # try:
-            #     self.daily_data.loc[:, 'amount'] = sl_amount
-            #     # self.daily_data.loc[:, 'turnover_rate'] = sl_db
-            # except Exception as e:
-            #     log_args = [self.ts_code, type(e)]
-            #     add_log(20,
-            #             '[fn]Fund.load_daily_data() ts_code:{0[0]}; failed to load turnover_rate; error_type:{0[1]}',
-            #             log_args)  # 换手率未加载成功
-
         if load_daily == 'basic':
             print('[L1729] self={}'.format(self))
             self.daily_data = self.load_fund_dfq(ts_code=self.ts_code, columns='basic')  # self.daily_data在Asset.__new__()中已定义
         elif isinstance(load_daily, set):  # <set>增加额外字段的情况
             print('[L1732] self={}'.format(self))
             self.daily_data = self.load_fund_dfq(ts_code=self.ts_code,columns='basic')  # self.daily_data在Asset.__new__()中已定义
-            print('[L1730] 非basic类型的列还未就绪')
             if len(load_daily) == 0:
                 log_args = [self.ts_code]
                 add_log(20, '[fn]Fund.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
                 return
-            # for item in load_daily:
-            #     if item == 'turnover_rate_f':  # 流通换手率
-            #         sl_trf = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate_f']  # 流通换手率
-            #         self.daily_data.loc[:, 'turnover_rate_f'] = sl_trf
-            #     # --------后续修改--------
-            #     elif item == 'xxxx':
-            #         pass
-            #     else:
-            #         print('[1715] 扩展字段的情况待完成')
+            for item in load_daily:
+                if item == 'unit_net':  # 单位净值
+                    df_net = self.load_daily_net(ts_code=self.ts_code)
+                    df_net = df_net[df_net.update_flag == 0]
+                    print('[L1742] df_net:{}'.format(df_net))
+                    sl_net = df_net['unit_nav']  # 单位净值
+                    self.daily_data.loc[:, 'unit_net'] = sl_net
+                # --------后续修改--------
+                elif item == 'xxxx':
+                    pass
+                else:
+                    print('[1715] 扩展字段的情况待完成')
 
     @staticmethod
     def load_fund_daily(ts_code, nrows=None, columns='all'):
@@ -1827,12 +1816,36 @@ class Fund(Asset):
         if raw_data.valid_ts_code(ts_code):
             file_name = PurePath('net_' + ts_code + '.csv')
             file_path = sub_path / sub_path_2nd_fund_daily / file_name
-            result = pd.read_csv(file_path, dtype={'ann_date': str, 'end_date': str}, usecols=['end_date', 'ts_code', 'ann_date', 'unit_nav', 'accum_nav', 'accum_div', 'net_asset', 'total_netasset', 'adj_nav'], index_col='end_date', nrows=nrows)
+            result = pd.read_csv(file_path, dtype={'ann_date': str, 'end_date': str}, usecols=['end_date', 'ts_code', 'ann_date', 'unit_nav', 'accum_nav', 'accum_div', 'net_asset', 'total_netasset', 'adj_nav', 'update_flag'], index_col='end_date', nrows=nrows)
             return result
         else:
             log_args = [ts_code]
             add_log(20, '[fn]Fund.load_daily_net() ts_code "{0[0]}" invalid', log_args)
             return
+
+    @staticmethod
+    def get_daily_net(ts_code):
+        """
+        从ts_pro.fund_nav()获取所有净值信息
+        """
+        if raw_data.valid_ts_code(ts_code):
+            file_name = PurePath('net_' + ts_code + '.csv')
+            file_path = sub_path / sub_path_2nd_fund_daily / file_name
+            try:
+                df = ts_pro.fund_nav(ts_code=ts_code)
+                df.set_index('end_date', inplace=True)
+            except Exception as e:
+                log_args = [ts_code, e.__class__.__name__, e]
+                add_log(20, '[fn]Fund.get_daily_net(). ts_code:{0[0]} except:{0[1]}, {0[2]}', log_args)
+                return
+            df_n = len(df)
+            if df_n > 0:
+                df.to_csv(file_path, encoding='utf-8')
+                log_args = [file_name, df_n]
+                add_log(20, '[fn]Fund.get_daily_net(). file:{0[0]} items:{0[1]}', log_args)
+                return
+            return df
+
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
@@ -2081,7 +2094,7 @@ GETTER = {'index_sse': ts_pro.index_daily,
           'hsgt_flow': Hsgt.getter_flow,
           'fund_in': ts_pro.fund_daily,
           'fund_out': ts_pro.fund_daily,
-          'fund_daily_net': ts_pro.fund_nav,
+          # 'fund_daily_net': ts_pro.fund_nav,  # 特殊在Fund.get_daily_net()
           'fund_adj_factor': ts_pro.fund_adj,
           }
 

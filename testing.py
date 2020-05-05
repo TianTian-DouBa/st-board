@@ -1,95 +1,50 @@
 from datetime import datetime
-from st_board import All_Assets_List, Concept, Hsgt, bulk_download, bulk_dl_appendix, bulk_calc_dfq
+from st_board import Fund, Asset
+import tushare as ts
+
+ts.set_token('c42bfdc5a6b4d2b1078348ec201467dec594d3a75a4a276e650379dc')
+ts_pro = ts.pro_api()
 
 if __name__ == "__main__":
-    from st_common import Raw_Data
-    # global raw_data
-    start_time = datetime.now()
-    raw_data = Raw_Data(pull=False)
+    # df = ts_pro.fund_nav(ts_code='518880.SH', start_date='20191231', end_date='20200430')
+    # print(df)
+    etr_col = {'unit_net',}
+    etf = Asset('518880.SH', load_daily=etr_col)
+    daily_df = etf.daily_data
+    daily_df.loc[:, 'premium_rate'] = (daily_df.unit_net - daily_df.close) / daily_df.close
+    # print(etf.daily_data)
 
-    # #------------------------更新基础数据-----------------------
+    from spider.spider_common import update_gold_df, load_daily_df
+    update_gold_df('AU9999.SH')
+    au9999 = load_daily_df('AU9999.SH')
+    # print('--------------AU9999-------------')
+    # print(au9999)
+    sr_net = daily_df['unit_net'].head(450)
+    sr_auc = au9999['close'].head(450)  # 收盘价
+    # sr_rate = sr_net / sr_auc *10000
+    # print('----------sr_rate 518880净值与au9999收盘价的比率----------')
+    # print(sr_rate)
+    sr_r = (sr_net / sr_auc).tail(20)
+    # print(sr_r)
+    net_auc = sr_r.agg(['median'])['median']  # 518880净值与au9999收盘价的比率进20交易日的中位数
+    # 观察到518880.SH的净值与AU9999收盘价的耦合性是非常好的；可以通过当日晚公布的AU9999收盘价及近几日的net_auc比值推断出518880的净值
+    print('net_auc:{}'.format(net_auc))
+    print()
 
-    # 股票列表
-    st_basic = raw_data.stock.get_stock_basic()
-    if st_basic is not None:
-        print('[msg] stock_basic.csv updated items: {}'.format(len(st_basic)))
+    print('----------sr_net_auc推算预测转换系数----------')
+    _sr = sr_net / sr_auc
+    sr_net_auc = _sr.rolling(20).median()  # 预测转换系数
+    # sr_net_auc = sr_net_auc.iloc[::-1]
+    print(sr_net_auc)
+    print()
 
-    # 指数列表
-    n_sse, n_szse, n_sw = raw_data.index.get_index_basic()
-    print('[msg] index_basic_sse.csv:{}, index_basic_szse.csv:{}, index_basic_sw.csv:{} updated'.format(n_sse, n_szse, n_sw))
+    print('----------比较预测净值和实际净值的差异----------')
+    sr_fcst_net = sr_net_auc * sr_auc
+    sr_fcst_err = (sr_fcst_net - sr_net) / sr_net *10000
+    print(sr_fcst_err)
+    pass
 
-    # 全资产列表
-    n = All_Assets_List.rebuild_all_assets_list(True)
-    if n is not None:
-        print('[msg] config.all_assets_list.csv updated, items:{}'.format(n))
 
-    # 概念列表
-    n = Concept.get_concept()
-    if n is not None:
-        print('[msg] concept.csv updated, items:{}'.format(n))
-
-    # #------------------------更新资产列表al-----------------------
-
-    # 沪深300成分股
-    n = All_Assets_List.update_hs300_al()
-    print(('[msg] al_HS300成分股.csv updated, items:{}'.format(n)))
-
-    # 申万L1 L2 L3指数列表
-    n_l1, n_l2, n_l3 = All_Assets_List.update_swl123_al()
-    print(('[msg] al_SW_Index_L1.csv updated, items:{}'.format(n_l1)))
-    print(('[msg] al_SW_Index_L2.csv updated, items:{}'.format(n_l2)))
-    print(('[msg] al_SW_Index_L3.csv updated, items:{}'.format(n_l3)))
-
-    # 上证50成分股
-    n = All_Assets_List.update_sz50_al()
-    print(('[msg] al_上证50成分股.csv updated, items:{}'.format(n)))
-
-    # 中证500成分股
-    n = All_Assets_List.update_zz500_al()
-    print(('[msg] al_中证500成分股.csv updated, items:{}'.format(n)))
-
-    # download_all
-    n = All_Assets_List.update_download_all()
-    if n is not None:
-        print(('[msg] al_download_all.csv updated, items:{}'.format(n)))
-
-    # dl_stocks
-    n = All_Assets_List.update_dl_stocks()
-    if n is not None:
-        print(('[msg] al_dl_stocks.csv updated, items:{}'.format(n)))
-
-    # dl_indexes
-    n = All_Assets_List.update_dl_indexes()
-    if n is not None:
-        print(('[msg] al_dl_indexes.csv updated, items:{}'.format(n)))
-
-    # dl_sh_sz_indexes
-    n = All_Assets_List.update_dl_sh_sz_indexes()
-    if n is not None:
-        print(('[msg] al_dl_sh_sz_indexes.csv updated, items:{}'.format(n)))
-
-    # #------------------------批量下载数据-----------------------
-    df = Hsgt.get_moneyflow()  # 沪深港股通资金流向
-    if df is not None:
-        print('[msg] d_hsgt_flow.csv updated, items:{}'.format(len(df)))
-
-    # download_path = r"download_all"
-    download_path = r"try_001"
-    # download_path = r"dl_stocks"
-    bulk_download(download_path, reload=False)  # 批量下载数据
-
-    download_path = r"try_001"
-    # download_path = r"dl_stocks"
-    bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
-
-    # al_file_str = r"dl_stocks"
-    al_file_str = r"try_001"
-    bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
-
-    # #------------------------收尾-----------------------
-    end_time = datetime.now()
-    duration = end_time - start_time
-    print('duration={}'.format(duration))
 
 
 

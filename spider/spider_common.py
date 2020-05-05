@@ -10,16 +10,20 @@ import os
 
 # 改变当前目录导入raw_data
 original_dir = os.getcwd()
-assert original_dir[-6:] == 'spider'
-parent_dir = original_dir[:-7]
-# print(parent_dir)
-os.chdir(parent_dir)
-from st_common import raw_data
-os.chdir(original_dir)
-
+# print(original_dir)
+if original_dir[-6:] == 'spider':
+    parent_dir = original_dir[:-7]
+    os.chdir(parent_dir)
+    from st_common import raw_data
+    os.chdir(original_dir)
+elif original_dir[-8:] == 'st_board':
+    from st_common import raw_data
+else:
+    raise Exception('!!!unknown working path')
 
 def get_518880_net():
     """
+    不再使用，被tushare get_sh_gold()替代
     通过华安基金官网获取 518880 华安黄金易ETF 的最新每股净值（前一交易日）
     return: (<str>trade_date, <float>net, <float>change)
     """
@@ -103,13 +107,25 @@ def get_518880_net():
 
 def load_net_df(ts_code, nrows=None):
     """
+    不再使用
     从./st_board/data_csv/daily_data/net_xxxxxx.etf.csv中读取净值数据到df
     ts_code: <str> e.g. "518880.etf"
     return: <df>
     """
     ts_code = ts_code.upper()
+
+    # 处理在不同位置调用此函数
     this_folder = Path.cwd()
-    parent_folder = this_folder.parent
+    this_folder_str = this_folder.name
+    if this_folder_str == 'st_board':
+        parent_folder = this_folder
+    elif this_folder_str == 'spider':
+        parent_folder = this_folder.parent
+    else:
+        log_args = [this_folder]
+        add_log(20, '[fn]load_net_df() location:{}, not supported', log_args)
+        return
+
     file_name = PurePath('net_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     try:
@@ -123,13 +139,25 @@ def load_net_df(ts_code, nrows=None):
 
 def update_net_csv(ts_code, record):
     """
+    不再使用
     将record的数据增加到ts_code的文件中
     ts_code: <str> e.g. 518880.etf
     record: <tuple> e.g. (<str>trade_date, <float>net, <float>pct_change)
     """
     ts_code = ts_code.upper()
+
+    # 处理在不同位置调用此函数
     this_folder = Path.cwd()
-    parent_folder = this_folder.parent
+    this_folder_str = this_folder.name
+    if this_folder_str == 'st_board':
+        parent_folder = this_folder
+    elif this_folder_str == 'spider':
+        parent_folder = this_folder.parent
+    else:
+        log_args = [this_folder]
+        add_log(20, '[fn]update_net_csv() location:{}, not supported', log_args)
+        return
+
     file_name = PurePath('net_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     # print(file_path)
@@ -234,8 +262,19 @@ def load_daily_df(ts_code, nrows=None):
     return: <df>
     """
     ts_code = ts_code.upper()
+
+    # 处理在不同位置调用此函数
     this_folder = Path.cwd()
-    parent_folder = this_folder.parent
+    this_folder_str = this_folder.name
+    if this_folder_str == 'st_board':
+        parent_folder = this_folder
+    elif this_folder_str == 'spider':
+        parent_folder = this_folder.parent
+    else:
+        log_args = [this_folder]
+        add_log(20, '[fn]spider_common.load_daily_df() location:{}, not supported', log_args)
+        return
+
     file_name = PurePath('d_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     try:
@@ -258,6 +297,7 @@ def update_gold_df(ts_code, start_date=None, end_date=None, reload=None):
               <str> e.g. "20200429"
     reload: True 重新生成.csv文件
     """
+
     # 暂存由get_sh_gold()获取的数据块结构
     l_trade_date = []
     l_ts_code = []
@@ -315,8 +355,19 @@ def update_gold_df(ts_code, start_date=None, end_date=None, reload=None):
         l_average = []
 
     ts_code = ts_code.upper()
+
+    # 处理在不同位置调用此函数
     this_folder = Path.cwd()
-    parent_folder = this_folder.parent
+    this_folder_str = this_folder.name
+    if this_folder_str == 'st_board':
+        parent_folder = this_folder
+    elif this_folder_str == 'spider':
+        parent_folder = this_folder.parent
+    else:
+        log_args = [this_folder]
+        add_log(20, '[fn]update_gold_df() location:{}, not supported', log_args)
+        return
+
     file_name = PurePath('d_' + str(ts_code) + '.csv')
     file_path = parent_folder / 'data_csv' / 'daily_data' / file_name
     # print(file_path)
