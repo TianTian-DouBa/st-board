@@ -1188,6 +1188,9 @@ class Stock(Asset):
                 if item == 'turnover_rate_f':  # 流通换手率
                     sl_trf = self.load_stock_daily_basic(ts_code=self.ts_code)['turnover_rate_f']  # 流通换手率
                     self.daily_data.loc[:, 'turnover_rate_f'] = sl_trf
+                elif item == 'pct_chg':  # 涨跌%
+                    sl_pct_chg = self.load_stock_daily(ts_code=self.ts_code)['pct_chg']
+                    self.daily_data.loc[:, 'pct_chg'] = sl_pct_chg
                 # --------后续修改--------
                 elif item == 'xxxx':
                     pass
@@ -1488,8 +1491,12 @@ class Index(Asset):
                 add_log(20, '[fn]Index.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
                 return
             for item in load_daily:
-                if item == 'xxx':
-                    pass
+                if item == 'pct_chg':  # 涨跌%
+                    if self.category == 'index_sw':
+                        sl_pct_chg = self.load_sw_daily(ts_code=self.ts_code)['pct_change']
+                    else:  # category是index_sse或index_szse
+                        sl_pct_chg = self.load_index_daily(ts_code=self.ts_code)['pct_chg']
+                    self.daily_data.loc[:, 'pct_chg'] = sl_pct_chg
                 # --------后续修改--------
                 elif item == 'yyy':
                     pass
@@ -1726,20 +1733,23 @@ class Fund(Asset):
                      set('raw_close', 'amount'...) 基本字段外的其他补充字段
         """
         if load_daily == 'basic':
-            print('[L1729] self={}'.format(self))
+            # print('[L1729] self={}'.format(self))
             self.daily_data = self.load_fund_dfq(ts_code=self.ts_code, columns='basic')  # self.daily_data在Asset.__new__()中已定义
         elif isinstance(load_daily, set):  # <set>增加额外字段的情况
-            print('[L1732] self={}'.format(self))
+            # print('[L1732] self={}'.format(self))
             self.daily_data = self.load_fund_dfq(ts_code=self.ts_code,columns='basic')  # self.daily_data在Asset.__new__()中已定义
             if len(load_daily) == 0:
                 log_args = [self.ts_code]
                 add_log(20, '[fn]Fund.load_daily_data() ts_code:{0[0]}; empty [attr]load_daily specified', log_args)  # 空的
                 return
             for item in load_daily:
-                if item == 'unit_net':  # 单位净值
+                if item == 'pct_chg':  # 涨跌%
+                    sl_pct_chg = self.load_fund_daily(ts_code=self.ts_code)['pct_chg']
+                    self.daily_data.loc[:, 'pct_chg'] = sl_pct_chg
+                elif item == 'unit_net':  # 单位净值
                     df_net = self.load_daily_net(ts_code=self.ts_code)
                     df_net = df_net[df_net.update_flag == 0]
-                    print('[L1742] df_net:{}'.format(df_net))
+                    # print('[L1742] df_net:{}'.format(df_net))
                     sl_net = df_net['unit_nav']  # 单位净值
                     self.daily_data.loc[:, 'unit_net'] = sl_net
                 # --------后续修改--------
