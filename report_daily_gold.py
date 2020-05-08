@@ -75,7 +75,7 @@ def report():
     print('518800预测用比值x1w: {:.2f}'.format(net_auc_518800 * 10000))
     fcst_net_518800 = latest_auc * net_auc_518800  # 根据AU9999收盘价及近几日的net_auc比值推断出518800的净值
 
-    print('AU9999收盘: {:.2f}  {:.2f%}  {}'.format(latest_auc, latest_au_pct_chg, latest_auc_date))
+    print('AU9999收盘: {:.2f}  {:.2%}  {}'.format(latest_auc, latest_au_pct_chg, latest_auc_date))
 
     print('---------华安黄金----------')
     print('518880.SH 收盘： {}  {:.2f}%  {}'.format(latest_close_518880, latest_pct_chg_518880, latest_date_518880))
