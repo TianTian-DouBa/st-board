@@ -1315,7 +1315,12 @@ class Stock(Asset):
             try:
                 fq_head_in_stock = df_stock.index.get_loc(fq_head_index_str)  # fq头在stock中的位置
             except KeyError:
-                stock_head_index_str, = df_stock.head(1).index.values
+                try:
+                    stock_head_index_str, = df_stock.head(1).index.values
+                except ValueError:  # 新ts_code,df_stock为空的情况
+                    log_args = [ts_code]
+                    add_log(20, '[fn]calc_dfq() ts_code:{0[0]}; empty df_stock, maybe new ts_code', log_args)
+                    return
                 try:
                     df_fq.index.get_loc(stock_head_index_str)
                 except KeyError:
