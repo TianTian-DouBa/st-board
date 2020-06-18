@@ -1142,33 +1142,34 @@ class Jdxz(Indicator):
 
         # ---------主要部分开始------------
         if isinstance(df_idt, pd.DataFrame):
-            idt_head_index_str, = df_idt.head(1).index.values
-            try:
-                idt_head_in_source = dfsr_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
-            except KeyError:
-                log_args = [self.ts_code]
-                add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
-                return
-            if idt_head_in_source == 0:
-                log_args = [self.ts_code]
-                add_log(40, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
-                return
-            elif idt_head_in_source > 0:
-                dfsr_source.drop(dfsr_source.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些df_source记录用于计算
-                sr_amt.drop(sr_amt.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些记录用于计算
-                # values = []
-                # rvs_rslt = []
-                # source_column_name = self.source  # 此处以之前的indicator不同
-                # for idx in reversed(df_source.index):
-                #     values.append(df_source[source_column_name][idx])
-                #     if len(values) > period:
-                #         del values[0]
-                #     if len(values) == period:
-                #         rvs_rslt.append(np.average(values))
-            else:
-                log_args = [self.ts_code]
-                add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head unknown value', log_args)
-                return
+            if len(df_idt) > 0:
+                idt_head_index_str, = df_idt.head(1).index.values
+                try:
+                    idt_head_in_source = dfsr_source.index.get_loc(idt_head_index_str)  # idt head position in df_source
+                except KeyError:
+                    log_args = [self.ts_code]
+                    add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head not found in df_source', log_args)
+                    return
+                if idt_head_in_source == 0:
+                    log_args = [self.ts_code]
+                    add_log(40, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
+                    return
+                elif idt_head_in_source > 0:
+                    dfsr_source.drop(dfsr_source.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些df_source记录用于计算
+                    sr_amt.drop(sr_amt.index[idt_head_in_source + period - 1:], inplace=True)  # 根据period计算保留哪些记录用于计算
+                    # values = []
+                    # rvs_rslt = []
+                    # source_column_name = self.source  # 此处以之前的indicator不同
+                    # for idx in reversed(df_source.index):
+                    #     values.append(df_source[source_column_name][idx])
+                    #     if len(values) > period:
+                    #         del values[0]
+                    #     if len(values) == period:
+                    #         rvs_rslt.append(np.average(values))
+                else:
+                    log_args = [self.ts_code]
+                    add_log(20, '[fn]Jdxz._calc_res() ts_code:{0[0]}; idt_head unknown value', log_args)
+                    return
         # else:  # .csv file not exist
         #     values = []
         #     rvs_rslt = []
