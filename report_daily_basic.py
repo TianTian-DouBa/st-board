@@ -111,36 +111,66 @@ def rpt_d_basic(al_file):
             comment2 = ''
 
         # ----20日归%
-        ma20_last, = asset.ma_20.df_idt.head(1)['MA'].values
-        by_price = asset.by_price
-        ma20_gl = (by_price / ma20_last - 1) * 100  # close与ma_20的归离率
+        try:
+            ma20_last, = asset.ma_20.df_idt.head(1)['MA'].values
+            by_price = asset.by_price
+            ma20_gl = (by_price / ma20_last - 1) * 100  # close与ma_20的归离率
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; ma20_gl AttributeError, set value = -99', log_args)
+            ma20_gl = -99
 
         # ----20MA变化
-        maqs20, = asset.maqs_20.df_idt.head(1)['MAQS'].values
-        maqs20 = maqs20 * 1000
+        try:
+            maqs20, = asset.maqs_20.df_idt.head(1)['MAQS'].values
+            maqs20 = maqs20 * 1000
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs20 AttributeError, set value = -99', log_args)
+            maqs20 = -999
 
         # ----60MA变化
-        maqs60, = asset.maqs_60.df_idt.head(1)['MAQS'].values
-        maqs60 = maqs60 * 1000
+        try:
+            maqs60, = asset.maqs_60.df_idt.head(1)['MAQS'].values
+            maqs60 = maqs60 * 1000
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs60 AttributeError, set value = -99', log_args)
+            maqs60 = -999
 
         # ----量20MA变化
-        maqs_vol_20, = asset.maqs_vol_20.df_idt.head(1)['MAQS'].values
-        maqs_vol_20 = maqs_vol_20 * 1000
+        try:
+            maqs_vol_20, = asset.maqs_vol_20.df_idt.head(1)['MAQS'].values
+            maqs_vol_20 = maqs_vol_20 * 1000
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs_vol_20 AttributeError, set value = -99', log_args)
+            maqs_vol_20 = -99
 
         # ----量10MA变化
-        maqs_vol_10, = asset.maqs_vol_10.df_idt.head(1)['MAQS'].values
-        maqs_vol_10 = maqs_vol_10 * 1000
+        try:
+            maqs_vol_10, = asset.maqs_vol_10.df_idt.head(1)['MAQS'].values
+            maqs_vol_10 = maqs_vol_10 * 1000
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs_vol_10 AttributeError, set value = -99', log_args)
+            maqs_vol_10 = -99
 
         # ----价聚合<x%天数的占比（最近20个交易日中）
         df = asset.majh_60_20_5.df_idt
         DAYS = 20  # 交易日窗口
-        sr = df.head(DAYS)['MAJH']  # 如果数据少于20个，有几个取几个
-        n = len(sr)
-        if n > 0:
-            n_meet = len(sr[sr < X])
-            jh_pct = n_meet / n  # 聚合天数的占比
-        else:
-            jh_pct = 0
+        try:
+            sr = df.head(DAYS)['MAJH']  # 如果数据少于20个，有几个取几个
+            n = len(sr)
+            if n > 0:
+                n_meet = len(sr[sr < X])
+                jh_pct = n_meet / n  # 聚合天数的占比
+            else:
+                jh_pct = 0
+        except AttributeError:
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; jh_pct AttributeError, set value = -0.99', log_args)
+            jh_pct = -0.99
 
         # ----吸资归离, 10D 与 250D
         try:
@@ -150,7 +180,7 @@ def rpt_d_basic(al_file):
         except Exception as e:
             log_args = [asset.ts_code, e]
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xz_rate explicit type:{0[1]} to catch', log_args)
-            xz_rate = 9999.9
+            xz_rate = -99
 
         # ----吸资10QS`   `````
         try:
@@ -159,7 +189,7 @@ def rpt_d_basic(al_file):
         except Exception as e:
             log_args = [asset.ts_code, e]
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xzqs explicit type:{0[1]} to catch', log_args)
-            xzqs = 99999.9
+            xzqs = -99
 
         # ----价多空头排列天数
         p_dktp, = asset.dktp_5_10_20.df_idt.head(1)['DKTP'].values

@@ -195,6 +195,10 @@ class Indicator:
         from st_board import valid_file_path
         df_append = self._calc_res()
         if isinstance(df_append, pd.DataFrame):
+            if len(df_append) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Indicator.calc_idt() ts_code:{0[0]} df_append items = 0, aborted', log_args)
+                return
             if isinstance(self.df_idt, pd.DataFrame):
                 _frames = [df_append, self.df_idt]
                 df_idt = pd.concat(_frames, sort=False)
@@ -332,6 +336,10 @@ class Ma(Indicator):
                     rvs_rslt.append(np.average(values))
         iter_rslt = reversed(rvs_rslt)
         rslt = list(iter_rslt)
+        if len(rslt) == 0:
+            log_args = [self.ts_code]
+            add_log(30, '[fn]Ma._calc_res() ts_code:{0[0]} result items = 0, aborted', log_args)
+            return
         index_source = df_source.index[:len(df_source)-period+1]
         idt_column_name = 'MA'
         data = {idt_column_name: rslt}
@@ -451,6 +459,10 @@ class Ema(Indicator):
         del rvs_rslt[0]
         iter_rslt = reversed(rvs_rslt)
         rslt = list(iter_rslt)
+        if len(rslt) == 0:
+            log_args = [self.ts_code]
+            add_log(30, '[fn]Ema._calc_res() ts_code:{0[0]} result items = 0, aborted', log_args)
+            return
         index_source = df_source.index[:-1]
         idt_column_name = 'EMA'
         data = {idt_column_name: rslt}
@@ -544,6 +556,7 @@ class Macd(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_ema_long, df_ema_short
+            return: True if success, None if fail
             """
             nonlocal df_ema_long, df_ema_short
             # 前置指标名idt_name计算
@@ -581,12 +594,23 @@ class Macd(Indicator):
                 parent.add_indicator(**kwargs_short)
                 idt_ema_short = getattr(parent, idt_ema_short_name)
 
+            # 通过需要最多数据的idt_ema_long来判断几个idt的有效性
+            if not isinstance(idt_ema_long.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Macd._calc_res() ts_code:{0[0]}; idt_ema_long.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_ema_long.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Macd._calc_res() ts_code:{0[0]}; idt_ema_long.df_idt 0 items, aborted', log_args)
+                return
+
             if n is None:
                 df_ema_long = idt_ema_long.df_idt
                 df_ema_short = idt_ema_short.df_idt
             else:
                 df_ema_long = idt_ema_long.df_idt.head(n)
                 df_ema_short = idt_ema_short.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         last_dea = None
@@ -604,11 +628,19 @@ class Macd(Indicator):
                 add_log(40, '[fn]Macd._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source + 1)  # 前置指标处理
+                _rslt = _pre_idt_hdl(idt_head_in_source + 1)  # 前置指标处理
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Macd._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
                 last_dea = self.df_idt.iloc[0]['MACD']
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Macd._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         # sr_diff_append = pd.Series()
         short_col_name = 'EMA'
         long_col_name = 'EMA'
@@ -692,6 +724,7 @@ class Majh(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_ma_long, , df_ma_middle, df_ma_short
+            return: True if success, None if fail
             """
             nonlocal df_ma_long, df_ma_middle, df_ma_short
             # 前置指标名idt_name计算
@@ -745,6 +778,16 @@ class Majh(Indicator):
                 parent.add_indicator(**kwargs_short)
                 idt_ma_short = getattr(parent, idt_ma_short_name)
 
+            # 通过需要最多数据的idt_ma_long来判断几个idt的有效性
+            if not isinstance(idt_ma_long.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_ma_long.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_ma_long.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_ma_long.df_idt 0 items, aborted', log_args)
+                return
+
             if n is None:
                 df_ma_long = idt_ma_long.df_idt
                 df_ma_middle = idt_ma_middle.df_idt
@@ -753,6 +796,7 @@ class Majh(Indicator):
                 df_ma_long = idt_ma_long.df_idt.head(n)
                 df_ma_middle = idt_ma_middle.df_idt.head(n)
                 df_ma_short = idt_ma_short.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         # last_majh = None
@@ -770,10 +814,18 @@ class Majh(Indicator):
                 add_log(40, '[fn]Majh._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source)  # 前置指标处理，保留新增记录
+                _rslt = _pre_idt_hdl(idt_head_in_source)  # 前置指标处理，保留新增记录
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Majh._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Majh._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         short_col_name = 'MA'
         middle_col_name = 'MA'
         long_col_name = 'MA'
@@ -835,6 +887,7 @@ class Maqs(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_ma
+            return: True if success, None if fail
             """
             nonlocal df_ma
             # 前置指标名idt_name计算
@@ -854,10 +907,22 @@ class Maqs(Indicator):
             else:
                 parent.add_indicator(**kwargs_qz)
                 idt_ma = getattr(parent, idt_ma_name)
+
+            # 验证idt_ma的有效性
+            if not isinstance(idt_ma.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Maqs._calc_res() ts_code:{0[0]}; idt_ma.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_ma.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Maqs._calc_res() ts_code:{0[0]}; idt_ma_long.df_idt 0 items, aborted', log_args)
+                return
+
             if n is None:
                 df_ma = idt_ma.df_idt
             else:
                 df_ma = idt_ma.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         if isinstance(df_idt, pd.DataFrame):
@@ -874,11 +939,19 @@ class Maqs(Indicator):
                 add_log(40, '[fn]Maqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                _rslt = _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Maqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
                 # last_dea = self.df_idt.iloc[0]['MAQS']
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Maqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         ma_col_name = 'MA'  # 前置指标csv的字段名
         sr_append = df_ma[ma_col_name].pct_change(periods=-1)  # <Series> maqs序列
         sr_append = sr_append[:-1]  # 去掉最后一条
@@ -933,6 +1006,7 @@ class Emaqs(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_ema
+            return: True if success, None if fail
             """
             nonlocal df_ema
             # 前置指标名idt_name计算
@@ -952,10 +1026,22 @@ class Emaqs(Indicator):
             else:
                 parent.add_indicator(**kwargs_qz)
                 idt_ema = getattr(parent, idt_ema_name)
+
+            # 判断idt_ema的有效性
+            if not isinstance(idt_ema.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Emaqs._calc_res() ts_code:{0[0]}; idt_ema.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_ema.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Emaqs._calc_res() ts_code:{0[0]}; idt_ema.df_idt 0 items, aborted', log_args)
+                return
+
             if n is None:
                 df_ema = idt_ema.df_idt
             else:
                 df_ema = idt_ema.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         if isinstance(df_idt, pd.DataFrame):
@@ -972,10 +1058,18 @@ class Emaqs(Indicator):
                 add_log(40, '[fn]Emaqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                _rslt = _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Emaqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Emaqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         ema_col_name = 'EMA'  # 前置指标csv的字段名
         sr_append = df_ema[ema_col_name].pct_change(periods=-1)  # <Series> emaqs序列
         sr_append = sr_append[:-1]  # 去掉最后一条
@@ -1085,6 +1179,10 @@ class Madq(Indicator):
                     rvs_rslt.append(np.average(dq_values))
         iter_rslt = reversed(rvs_rslt)
         rslt = list(iter_rslt)
+        if len(rslt) == 0:
+            log_args = [self.ts_code]
+            add_log(30, '[fn]Madq._calc_res() ts_code:{0[0]} result items = 0, aborted', log_args)
+            return
         index_source = df_source.index[:len(df_source) - period + dq_n1 + 1]  # 注意修改
         idt_column_name = 'MADQ'
         data = {idt_column_name: rslt}
@@ -1235,6 +1333,7 @@ class Jdxzqs(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_pre
+            return: True if success, None if fail
             """
             nonlocal df_pre
             # 前置指标名idt_name计算
@@ -1254,10 +1353,22 @@ class Jdxzqs(Indicator):
             else:
                 parent.add_indicator(**kwargs_qz)
                 idt_pre = getattr(parent, idt_pre_name)
+
+            # 判断idt_pre的有效性
+            if not isinstance(idt_pre.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; idt_pre.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_pre.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; idt_pre.df_idt 0 items, aborted', log_args)
+                return
+
             if n is None:
                 df_pre = idt_pre.df_idt
             else:
                 df_pre = idt_pre.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         if isinstance(df_idt, pd.DataFrame):
@@ -1274,10 +1385,18 @@ class Jdxzqs(Indicator):
                 add_log(40, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                _rslt = _pre_idt_hdl(idt_head_in_source + 1)  # 注意根据算法和周期保留多少条
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Jdxzqs._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         pre_col_name = 'JDXZ'  # 前置指标csv的字段名
         sr_append = df_pre[pre_col_name].pct_change(periods=-1)  # <Series> pre_qs序列
         sr_append = sr_append[:-1]  # 去掉最后一条
@@ -1342,6 +1461,7 @@ class Dktp(Indicator):
             前置指标处理
             n:<int> keep first n records; None = keep all
             result: update df_ma_short, df_ma_medium, df_ma_long
+            return: True if success, None if fail
             """
             nonlocal df_ma_short, df_ma_medium, df_ma_long
             # 前置指标名idt_name计算
@@ -1398,6 +1518,16 @@ class Dktp(Indicator):
                 parent.add_indicator(**kwargs_long)
                 idt_ma_long = getattr(parent, idt_ma_long_name)
 
+            # 通过需要最多数据的idt_ma_long来判断几个idt的有效性
+            if not isinstance(idt_ma_long.df_idt, pd.DataFrame):
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Dktp._calc_res() ts_code:{0[0]}; idt_ma_long.df_idt is not DataFrame', log_args)
+                return
+            if len(idt_ma_long.df_idt) == 0:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Dktp._calc_res() ts_code:{0[0]}; idt_ma_long.df_idt 0 items, aborted', log_args)
+                return
+
             # 获取df
             if n is None:
                 df_ma_short = idt_ma_short.df_idt
@@ -1407,6 +1537,7 @@ class Dktp(Indicator):
                 df_ma_short = idt_ma_short.df_idt.head(n)
                 df_ma_medium = idt_ma_medium.df_idt.head(n)
                 df_ma_long = idt_ma_long.df_idt.head(n)
+            return True  # success
 
         # ---------主要部分开始------------
         last_dktp = None  # 前次更新指标的最后一个指标值
@@ -1424,11 +1555,19 @@ class Dktp(Indicator):
                 add_log(40, '[fn]Dktp._calc_res() ts_code:{0[0]}; idt_head up to source date, no need to update', log_args)
                 return
             elif idt_head_in_source > 0:
-                _pre_idt_hdl(idt_head_in_source)  # 前置指标处理
+                _rslt = _pre_idt_hdl(idt_head_in_source)  # 前置指标处理
+                if _rslt is None:
+                    log_args = [self.ts_code]
+                    add_log(30, '[fn]Dktp._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                    return
                 last_dktp = self.df_idt.iloc[0]['DKTP']
         else:
             # ----------重头生成df_idt----------
-            _pre_idt_hdl()
+            _rslt = _pre_idt_hdl()
+            if _rslt is None:
+                log_args = [self.ts_code]
+                add_log(30, '[fn]Dktp._calc_res() ts_code:{0[0]}; _pre_idt_hdl() returned None, aborted', log_args)
+                return
         short_col_name = 'MA'
         medium_col_name = 'MA'
         long_col_name = 'MA'

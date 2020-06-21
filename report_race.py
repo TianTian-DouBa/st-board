@@ -104,55 +104,155 @@ def report(al_file):
                 adj, = adj_sr['adj_factor'].head(1)  # 最新的复权因子
         close, _ = asset.get_price(trade_date=end_date, seek_direction='backwards')  # 最新收盘
 
-        # ----本周期n日涨幅
-        close_m1d, _ = asset.get_price(trade_date=m1d, seek_direction='backwards')
-        close_m2d, _ = asset.get_price(trade_date=m2d, seek_direction='backwards')
-        close_m5d, _ = asset.get_price(trade_date=m5d, seek_direction='backwards')
-        close_m10d, _ = asset.get_price(trade_date=m10d, seek_direction='backwards')
-        close_m20d, _ = asset.get_price(trade_date=m20d, seek_direction='backwards')
-        close_m60d, _ = asset.get_price(trade_date=m60d, seek_direction='backwards')
+        # ----1日
+        try:
+            close_m1d, _ = asset.get_price(trade_date=m1d, seek_direction='backwards')
+            m1d_pct = (close - close_m1d) / close_m1d  # 本周期1日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m1d_pct TypeError, set value = -0.99', log_args)
+            m1d_pct = -0.99
 
-        m1d_pct = (close - close_m1d) / close_m1d  # 1日涨跌幅
-        m2d_pct = (close - close_m2d) / close_m2d  # 2日涨跌幅
-        m5d_pct = (close - close_m5d) / close_m5d  # 5日涨跌幅
-        m10d_pct = (close - close_m10d) / close_m10d  # 10日涨跌幅
-        m20d_pct = (close - close_m20d) / close_m20d  # 20日涨跌幅
-        m60d_pct = (close - close_m60d) / close_m60d  # 60日涨跌幅
+        try:
+            close_p1d_end, _ = asset.get_price(trade_date=p1d_end, seek_direction='backwards')
+            close_p1d_start, _ = asset.get_price(trade_date=p1d_start, seek_direction='backwards')
+            p1d_pct = (close_p1d_end - close_p1d_start) / close_p1d_start  # 前周期1日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p1d_pct TypeError, set value = -0.99', log_args)
+            p1d_pct = -0.99
 
-        # ----前周期n日涨幅
-        close_p1d_end, _ = asset.get_price(trade_date=p1d_end, seek_direction='backwards')
-        close_p1d_start, _ = asset.get_price(trade_date=p1d_start, seek_direction='backwards')
-        close_p2d_end, _ = asset.get_price(trade_date=p2d_end, seek_direction='backwards')
-        close_p2d_start, _ = asset.get_price(trade_date=p2d_start, seek_direction='backwards')
-        close_p5d_end, _ = asset.get_price(trade_date=p5d_end, seek_direction='backwards')
-        close_p5d_start, _ = asset.get_price(trade_date=p5d_start, seek_direction='backwards')
-        close_p10d_end, _ = asset.get_price(trade_date=p10d_end, seek_direction='backwards')
-        close_p10d_start, _ = asset.get_price(trade_date=p10d_start, seek_direction='backwards')
-        close_p20d_end, _ = asset.get_price(trade_date=p20d_end, seek_direction='backwards')
-        close_p20d_start, _ = asset.get_price(trade_date=p20d_start, seek_direction='backwards')
-        close_p60d_end, _ = asset.get_price(trade_date=p60d_end, seek_direction='backwards')
-        close_p60d_start, _ = asset.get_price(trade_date=p60d_start, seek_direction='backwards')
+        close_m = close / adj  # 本周期最新未除权价格
 
-        p1d_pct = (close_p1d_end - close_p1d_start) / close_p1d_start  # 1日涨跌幅
-        p2d_pct = (close_p2d_end - close_p2d_start) / close_p2d_start  # 2日涨跌幅
-        p5d_pct = (close_p5d_end - close_p5d_start) / close_p5d_start  # 5日涨跌幅
-        p10d_pct = (close_p10d_end - close_p10d_start) / close_p10d_start  # 10日涨跌幅
-        p20d_pct = (close_p20d_end - close_p20d_start) / close_p20d_start  # 20日涨跌幅
-        p60d_pct = (close_p60d_end - close_p60d_start) / close_p60d_start  # 60日涨跌幅
+        # ----2日
+        try:
+            close_m2d, _ = asset.get_price(trade_date=m2d, seek_direction='backwards')
+            m2d_pct = (close - close_m2d) / close_m2d  # 本周期2日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m2d_pct TypeError, set value = -0.99', log_args)
+            m2d_pct = -0.99
 
-        # ----本周期n日价格
-        close_ma2, = asset.ma_2.df_idt.head(1)['MA'].values
-        close_ma5, = asset.ma_5.df_idt.head(1)['MA'].values
-        close_ma10, = asset.ma_10.df_idt.head(1)['MA'].values
-        close_ma20, = asset.ma_20.df_idt.head(1)['MA'].values
-        close_ma60, = asset.ma_60.df_idt.head(1)['MA'].values
+        try:
+            close_p2d_end, _ = asset.get_price(trade_date=p2d_end, seek_direction='backwards')
+            close_p2d_start, _ = asset.get_price(trade_date=p2d_start, seek_direction='backwards')
+            p2d_pct = (close_p2d_end - close_p2d_start) / close_p2d_start  # 前周期2日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p2d_pct TypeError, set value = -0.99', log_args)
+            p2d_pct = -0.99
 
-        close_m = close / adj  # 最新未除权价格
-        close_ma2r = close_ma2 / adj  # ma2未除权价格
-        close_ma5r = close_ma5 / adj  # ma5未除权价格
-        close_ma10r = close_ma10 / adj  # ma10未除权价格
-        close_ma20r = close_ma20 / adj  # ma20未除权价格
-        close_ma60r = close_ma60 / adj  # ma60未除权价格
+        try:
+            close_ma2, = asset.ma_2.df_idt.head(1)['MA'].values
+            close_ma2r = close_ma2 / adj  # 本周期ma2未除权价格
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma2r TypeError, set value = -99', log_args)
+            close_ma2r = -99
+
+        # ----5日
+        try:
+            close_m5d, _ = asset.get_price(trade_date=m5d, seek_direction='backwards')
+            m5d_pct = (close - close_m5d) / close_m5d  # 本周期5日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m5d_pct TypeError, set value = -0.99', log_args)
+            m5d_pct = -0.99
+
+        try:
+            close_p5d_end, _ = asset.get_price(trade_date=p5d_end, seek_direction='backwards')
+            close_p5d_start, _ = asset.get_price(trade_date=p5d_start, seek_direction='backwards')
+            p5d_pct = (close_p5d_end - close_p5d_start) / close_p5d_start  # 前周期5日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p5d_pct TypeError, set value = -0.99', log_args)
+            p5d_pct = -0.99
+
+        try:
+            close_ma5, = asset.ma_5.df_idt.head(1)['MA'].values
+            close_ma5r = close_ma5 / adj  # 本周期ma5未除权价格
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma5r TypeError, set value = -99', log_args)
+            close_ma5r = -99
+
+        # ----10日
+        try:
+            close_m10d, _ = asset.get_price(trade_date=m10d, seek_direction='backwards')
+            m10d_pct = (close - close_m10d) / close_m10d  # 本周期10日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m10d_pct TypeError, set value = -0.99', log_args)
+            m10d_pct = -0.99
+
+        try:
+            close_p10d_end, _ = asset.get_price(trade_date=p10d_end, seek_direction='backwards')
+            close_p10d_start, _ = asset.get_price(trade_date=p10d_start, seek_direction='backwards')
+            p10d_pct = (close_p10d_end - close_p10d_start) / close_p10d_start  # 前周期10日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p10d_pct TypeError, set value = -0.99', log_args)
+            p10d_pct = -0.99
+
+        try:
+            close_ma10, = asset.ma_10.df_idt.head(1)['MA'].values
+            close_ma10r = close_ma10 / adj  # 本周期ma10未除权价格
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma10r TypeError, set value = -99', log_args)
+            close_ma10r = -99
+
+        # ----20日
+        try:
+            close_m20d, _ = asset.get_price(trade_date=m20d, seek_direction='backwards')
+            m20d_pct = (close - close_m20d) / close_m20d  # 本周期20日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m20d_pct TypeError, set value = -0.99', log_args)
+            m20d_pct = -0.99
+
+        try:
+            close_p20d_end, _ = asset.get_price(trade_date=p20d_end, seek_direction='backwards')
+            close_p20d_start, _ = asset.get_price(trade_date=p20d_start, seek_direction='backwards')
+            p20d_pct = (close_p20d_end - close_p20d_start) / close_p20d_start  # 前周期20日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p20d_pct TypeError, set value = -0.99', log_args)
+            p20d_pct = -0.99
+
+        try:
+            close_ma20, = asset.ma_20.df_idt.head(1)['MA'].values
+            close_ma20r = close_ma20 / adj  # 本周期ma20未除权价格
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma20r TypeError, set value = -99', log_args)
+            close_ma20r = -99
+
+        # ----60日
+        try:
+            close_m60d, _ = asset.get_price(trade_date=m60d, seek_direction='backwards')
+            m60d_pct = (close - close_m60d) / close_m60d  # 本周期60日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m60d_pct TypeError, set value = -0.99', log_args)
+            m60d_pct = -0.99
+
+        try:
+            close_p60d_end, _ = asset.get_price(trade_date=p60d_end, seek_direction='backwards')
+            close_p60d_start, _ = asset.get_price(trade_date=p60d_start, seek_direction='backwards')
+            p60d_pct = (close_p60d_end - close_p60d_start) / close_p60d_start  # 前周期60日涨跌幅
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p60d_pct TypeError, set value = -0.99', log_args)
+            p60d_pct = -0.99
+
+        try:
+            close_ma60, = asset.ma_60.df_idt.head(1)['MA'].values
+            close_ma60r = close_ma60 / adj  # 本周期ma60未除权价格
+        except (AttributeError, TypeError):
+            log_args = [asset.ts_code]
+            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma60r TypeError, set value = -99', log_args)
+            close_ma60r = -99
 
         # ----asset加入<df>中
         data = {'ts_code': ts_code, 'a_name': name,
