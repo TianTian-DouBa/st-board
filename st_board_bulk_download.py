@@ -79,20 +79,20 @@ if __name__ == "__main__":
     bulk_download(download_path, reload=False)  # 批量下载数据
     download_path = r"dl_sh_sz_indexes"
     bulk_download(download_path, reload=False)  # 批量下载数据
-    download_path = r"special001"
-    bulk_download(download_path, reload=False)  # 批量下载数据
+    # download_path = r"special001"
+    # bulk_download(download_path, reload=False)  # 批量下载数据
 
     # download_path = r"try_001"
     download_path = r"dl_stocks"
     bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
-    download_path = r"special001"
-    bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
+    # download_path = r"special001"
+    # bulk_dl_appendix(download_path, reload=False)  # 批量下载股票每日指标数据，及股票复权因子
 
     al_file_str = r"dl_stocks"
     # al_file_str = r"try_001"
     bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
-    al_file_str = r"special001"
-    bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
+    # al_file_str = r"special001"
+    # bulk_calc_dfq(al_file_str, reload=False)  # 批量计算复权
 
     # #------------------------收尾-----------------------
     end_time = datetime.now()
