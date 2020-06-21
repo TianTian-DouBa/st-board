@@ -115,7 +115,7 @@ def rpt_d_basic(al_file):
             ma20_last, = asset.ma_20.df_idt.head(1)['MA'].values
             by_price = asset.by_price
             ma20_gl = (by_price / ma20_last - 1) * 100  # close与ma_20的归离率
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; ma20_gl AttributeError, set value = -99', log_args)
             ma20_gl = -99
@@ -124,7 +124,7 @@ def rpt_d_basic(al_file):
         try:
             maqs20, = asset.maqs_20.df_idt.head(1)['MAQS'].values
             maqs20 = maqs20 * 1000
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs20 AttributeError, set value = -99', log_args)
             maqs20 = -999
@@ -133,7 +133,7 @@ def rpt_d_basic(al_file):
         try:
             maqs60, = asset.maqs_60.df_idt.head(1)['MAQS'].values
             maqs60 = maqs60 * 1000
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs60 AttributeError, set value = -99', log_args)
             maqs60 = -999
@@ -142,7 +142,7 @@ def rpt_d_basic(al_file):
         try:
             maqs_vol_20, = asset.maqs_vol_20.df_idt.head(1)['MAQS'].values
             maqs_vol_20 = maqs_vol_20 * 1000
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs_vol_20 AttributeError, set value = -99', log_args)
             maqs_vol_20 = -99
@@ -151,7 +151,7 @@ def rpt_d_basic(al_file):
         try:
             maqs_vol_10, = asset.maqs_vol_10.df_idt.head(1)['MAQS'].values
             maqs_vol_10 = maqs_vol_10 * 1000
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; maqs_vol_10 AttributeError, set value = -99', log_args)
             maqs_vol_10 = -99
@@ -167,7 +167,7 @@ def rpt_d_basic(al_file):
                 jh_pct = n_meet / n  # 聚合天数的占比
             else:
                 jh_pct = 0
-        except AttributeError:
+        except (AttributeError, TypeError):
             log_args = [asset.ts_code]
             add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; jh_pct AttributeError, set value = -0.99', log_args)
             jh_pct = -0.99
