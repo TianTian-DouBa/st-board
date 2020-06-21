@@ -1857,8 +1857,7 @@ class Fund(Asset):
             if df_n > 0:
                 df.to_csv(file_path, encoding='utf-8')
                 log_args = [file_name, df_n]
-                add_log(20, '[fn]Fund.get_daily_net(). file:{0[0]} items:{0[1]}', log_args)
-                return
+                add_log(40, '[fn]Fund.get_daily_net(). file:{0[0]} items:{0[1]}', log_args)
             return df
 
 
