@@ -179,7 +179,7 @@ def rpt_d_basic(al_file):
             xz_rate = jdxz10 / jdxz250 - 1
         except Exception as e:
             log_args = [asset.ts_code, e]
-            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xz_rate explicit type:{0[1]} to catch', log_args)
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xz_rate except type:{0[1]} to catch', log_args)
             xz_rate = -99
 
         # ----吸资10QS`   `````
@@ -188,14 +188,24 @@ def rpt_d_basic(al_file):
             xzqs = (xz_current / xz_previous - 1) * 100
         except Exception as e:
             log_args = [asset.ts_code, e]
-            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xzqs explicit type:{0[1]} to catch', log_args)
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; xzqs except type:{0[1]} to catch', log_args)
             xzqs = -99
 
         # ----价多空头排列天数
-        p_dktp, = asset.dktp_5_10_20.df_idt.head(1)['DKTP'].values
+        try:
+            p_dktp, = asset.dktp_5_10_20.df_idt.head(1)['DKTP'].values
+        except Exception as e:
+            log_args = [asset.ts_code, e]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; p_dktp except type:{0[1]} to catch', log_args)
+            p_dktp = -99
 
         # ----量多空头排列天数
-        v_dktp, = asset.dktp_vol_5_10_20.df_idt.head(1)['DKTP'].values
+        try:
+            v_dktp, = asset.dktp_vol_5_10_20.df_idt.head(1)['DKTP'].values
+        except Exception as e:
+            log_args = [asset.ts_code, e]
+            add_log(20, '[fn]rpt_d_basic() ts_code:{0[0]}; v_dktp except type:{0[1]} to catch', log_args)
+            v_dktp = -99
 
         # ----添加数据
         data.append((ts_code, name, comment1, comment2, ma20_gl, maqs20, maqs60,
