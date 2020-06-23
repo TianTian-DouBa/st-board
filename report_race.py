@@ -102,7 +102,12 @@ def report(al_file):
             adj_sr = Stock.load_adj_factor(ts_code, nrows=1)
             if adj_sr is not None:
                 adj, = adj_sr['adj_factor'].head(1)  # 最新的复权因子
-        close, _ = asset.get_price(trade_date=end_date, seek_direction='backwards')  # 最新收盘
+        try:
+            close, _ = asset.get_price(trade_date=end_date, seek_direction='backwards')  # 最新收盘
+        except Exception as e:
+            log_args = [asset.ts_code, e]
+            add_log(20, '[fn]report_race.report() ts_code:{0[0]}; except type:{0[1]}, no valid close recently. skip asset', log_args)
+            continue
 
         # ----1日
         try:
@@ -110,7 +115,7 @@ def report(al_file):
             m1d_pct = (close - close_m1d) / close_m1d  # 本周期1日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m1d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m1d_pct TypeError, set value = -0.99', log_args)
             m1d_pct = -0.99
 
         try:
@@ -119,7 +124,7 @@ def report(al_file):
             p1d_pct = (close_p1d_end - close_p1d_start) / close_p1d_start  # 前周期1日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p1d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p1d_pct TypeError, set value = -0.99', log_args)
             p1d_pct = -0.99
 
         close_m = close / adj  # 本周期最新未除权价格
@@ -130,7 +135,7 @@ def report(al_file):
             m2d_pct = (close - close_m2d) / close_m2d  # 本周期2日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m2d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m2d_pct TypeError, set value = -0.99', log_args)
             m2d_pct = -0.99
 
         try:
@@ -139,7 +144,7 @@ def report(al_file):
             p2d_pct = (close_p2d_end - close_p2d_start) / close_p2d_start  # 前周期2日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p2d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p2d_pct TypeError, set value = -0.99', log_args)
             p2d_pct = -0.99
 
         try:
@@ -147,7 +152,7 @@ def report(al_file):
             close_ma2r = close_ma2 / adj  # 本周期ma2未除权价格
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma2r TypeError, set value = -99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; close_ma2r TypeError, set value = -99', log_args)
             close_ma2r = -99
 
         # ----5日
@@ -156,7 +161,7 @@ def report(al_file):
             m5d_pct = (close - close_m5d) / close_m5d  # 本周期5日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m5d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m5d_pct TypeError, set value = -0.99', log_args)
             m5d_pct = -0.99
 
         try:
@@ -165,7 +170,7 @@ def report(al_file):
             p5d_pct = (close_p5d_end - close_p5d_start) / close_p5d_start  # 前周期5日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p5d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p5d_pct TypeError, set value = -0.99', log_args)
             p5d_pct = -0.99
 
         try:
@@ -173,7 +178,7 @@ def report(al_file):
             close_ma5r = close_ma5 / adj  # 本周期ma5未除权价格
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma5r TypeError, set value = -99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; close_ma5r TypeError, set value = -99', log_args)
             close_ma5r = -99
 
         # ----10日
@@ -182,7 +187,7 @@ def report(al_file):
             m10d_pct = (close - close_m10d) / close_m10d  # 本周期10日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m10d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m10d_pct TypeError, set value = -0.99', log_args)
             m10d_pct = -0.99
 
         try:
@@ -191,7 +196,7 @@ def report(al_file):
             p10d_pct = (close_p10d_end - close_p10d_start) / close_p10d_start  # 前周期10日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p10d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p10d_pct TypeError, set value = -0.99', log_args)
             p10d_pct = -0.99
 
         try:
@@ -199,7 +204,7 @@ def report(al_file):
             close_ma10r = close_ma10 / adj  # 本周期ma10未除权价格
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma10r TypeError, set value = -99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; close_ma10r TypeError, set value = -99', log_args)
             close_ma10r = -99
 
         # ----20日
@@ -208,7 +213,7 @@ def report(al_file):
             m20d_pct = (close - close_m20d) / close_m20d  # 本周期20日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m20d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m20d_pct TypeError, set value = -0.99', log_args)
             m20d_pct = -0.99
 
         try:
@@ -217,7 +222,7 @@ def report(al_file):
             p20d_pct = (close_p20d_end - close_p20d_start) / close_p20d_start  # 前周期20日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p20d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p20d_pct TypeError, set value = -0.99', log_args)
             p20d_pct = -0.99
 
         try:
@@ -225,7 +230,7 @@ def report(al_file):
             close_ma20r = close_ma20 / adj  # 本周期ma20未除权价格
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma20r TypeError, set value = -99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; close_ma20r TypeError, set value = -99', log_args)
             close_ma20r = -99
 
         # ----60日
@@ -234,7 +239,7 @@ def report(al_file):
             m60d_pct = (close - close_m60d) / close_m60d  # 本周期60日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; m60d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; m60d_pct TypeError, set value = -0.99', log_args)
             m60d_pct = -0.99
 
         try:
@@ -243,7 +248,7 @@ def report(al_file):
             p60d_pct = (close_p60d_end - close_p60d_start) / close_p60d_start  # 前周期60日涨跌幅
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; p60d_pct TypeError, set value = -0.99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; p60d_pct TypeError, set value = -0.99', log_args)
             p60d_pct = -0.99
 
         try:
@@ -251,7 +256,7 @@ def report(al_file):
             close_ma60r = close_ma60 / adj  # 本周期ma60未除权价格
         except (AttributeError, TypeError):
             log_args = [asset.ts_code]
-            add_log(30, '[fn]rpt_d_basic() ts_code:{0[0]}; close_ma60r TypeError, set value = -99', log_args)
+            add_log(30, '[fn]report_race.report() ts_code:{0[0]}; close_ma60r TypeError, set value = -99', log_args)
             close_ma60r = -99
 
         # ----asset加入<df>中
