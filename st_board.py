@@ -49,10 +49,11 @@ def now_time_str():
 
 def valid_file_path(file_path):
     r"""
-    检验file_path的形式有效性
+    检验file_path的形式有效性，使用了pathlib需要修改完善（还未修改）
     file_path:<str> e.g. '.\data_csv\daily_data\xxx.csv'
-    return: Ture if valid, None if invalid
+    return: True if valid, None if invalid
     """
+    file_path = str(file_path)
     if isinstance(file_path, str):
         if len(file_path) >= 3:
             return True
