@@ -667,7 +667,12 @@ class All_Assets_List:
                 <str> e.g. 'stock', 'index_sw', 'index_sse', 'index_szse'
         """
         global raw_data
-        name, _type, stype1, stype2 = raw_data.all_assets_list.loc[ts_code][['name', 'type', 'stype1', 'stype2']]
+        try:
+            name, _type, stype1, stype2 = raw_data.all_assets_list.loc[ts_code][['name', 'type', 'stype1', 'stype2']]
+        except KeyError:
+            log_args = [ts_code]
+            add_log(20, '[fn]All_Assets_List.query_category_str(). ts_code:{0[0]} not match, aborted', log_args)
+            return
         category = None  # 资产的类别，传给下游[fn]处理
         # --------------申万指数---------------
         if _type == 'index' and stype1 == 'SW':
