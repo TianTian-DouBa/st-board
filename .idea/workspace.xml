@@ -4,7 +4,6 @@
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/testing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -221,7 +220,14 @@
       <option name="project" value="LOCAL" />
       <updated>1576504312888</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="update">
+      <created>1593872410530</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1593872410530</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -246,6 +252,10 @@
       <screen x="0" y="0" width="1605" height="1050" />
     </state>
     <state x="153" y="161" key="#Inspections/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064641517" />
+    <state x="503" y="133" key="CommitChangelistDialog2" timestamp="1593872409593">
+      <screen x="0" y="0" width="1845" height="1080" />
+    </state>
+    <state x="503" y="133" key="CommitChangelistDialog2/0.0.1845.1080@0.0.1845.1080" timestamp="1593872409593" />
     <state width="1824" height="454" key="GridCell.Tab.0.bottom" timestamp="1593697069794">
       <screen x="0" y="0" width="1845" height="1080" />
     </state>
@@ -326,7 +336,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>5046</line>
+          <line>5057</line>
           <option name="timeStamp" value="17" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

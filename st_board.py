@@ -2858,9 +2858,15 @@ class Pool:
                     add_log(30, '[fn]Pool.init_assets(). ts_code:{0[0]} already in the assets, skip', log_args)
                     continue
                 else:
-                    self.assets[ts_code] = Asset(ts_code=ts_code, in_date=in_date, load_daily=load_daily, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
-                    log_args = [ts_code]
-                    add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
+                    _asset = Asset(ts_code=ts_code, in_date=in_date, load_daily=load_daily, in_price_mode=in_price_mode, price_seek_direction=price_seek_direction)
+                    if isinstance(_asset, Asset):
+                        self.assets[ts_code] = _asset
+                        log_args = [ts_code]
+                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} added', log_args)
+                    else:
+                        log_args = [ts_code]
+                        add_log(40, '[fn]Pool.init_assets(). ts_code:{0[0]} failed to add', log_args)
+                        return
             else:
                 log_args = [index]
                 add_log(40, '[fn]Pool.init_assets() {0[0]} selected is not "T", skipped', log_args)
@@ -3083,17 +3089,22 @@ class Pool:
         """
         from st_common import CND_SPC_TYPES  # 特殊的非Indicator类Condition
         for asset in self.assets.values():
-            for cond in self.conditions:
-                if cond.para1.idt_type not in CND_SPC_TYPES:
-                    post_args1 = cond.para1.idt_init_dict
-                    asset.add_indicator(**post_args1)
-                if cond.para2.idt_type not in CND_SPC_TYPES:
-                    post_args2 = cond.para2.idt_init_dict
-                    asset.add_indicator(**post_args2)
-            for calc in self.calcs:
-                if calc.idt_type not in CND_SPC_TYPES:
-                    post_args = calc.idt_init_dict
-                    asset.add_indicator(**post_args)
+            if isinstance(asset, Asset):
+                for cond in self.conditions:
+                    if cond.para1.idt_type not in CND_SPC_TYPES:
+                        post_args1 = cond.para1.idt_init_dict
+                        asset.add_indicator(**post_args1)
+                    if cond.para2.idt_type not in CND_SPC_TYPES:
+                        post_args2 = cond.para2.idt_init_dict
+                        asset.add_indicator(**post_args2)
+                for calc in self.calcs:
+                    if calc.idt_type not in CND_SPC_TYPES:
+                        post_args = calc.idt_init_dict
+                        asset.add_indicator(**post_args)
+            else:
+                log_args = [asset.key]
+                add_log(30, '[fn]Pool.iter_al() asset:{0[0]} is not an instance of Asset, skipped', log_args)
+                continue
 
     def op_cnds_matrix(self, mode='i', ts_code=None, al=None, **kwargs):
         """
