@@ -2,16 +2,16 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="13863769-41c1-47df-b695-f555d474297d" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/st_board.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/st_board.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pi_bulk_download_special.py" beforeDir="false" afterPath="$PROJECT_DIR$/pi_bulk_download_special.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_board.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_board.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="FavoritesManager">
-    <favorites_list name="st-board" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -27,14 +27,13 @@
   <component name="ProjectId" id="1UTVKFer6Ra9Lu8c5CgArFJBCd2" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showExcludedFiles" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PythonContentEntriesConfigurable" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -42,7 +41,7 @@
       <recent name="C:\Users\springfan\AppData\Local\Programs\Python\Python36\TST\st-board\plot_result" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.testing">
+  <component name="RunManager" selected="Python.pi_bulk_download_special">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="st_board" />
       <option name="INTERPRETER_OPTIONS" value="-i" />
@@ -56,6 +55,27 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pi_bulk_download_special" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="st_board" />
+      <option name="INTERPRETER_OPTIONS" value="-i" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pi_bulk_download_special.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -98,27 +118,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/report_daily_gold.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="spider_common" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="st_board" />
-      <option name="INTERPRETER_OPTIONS" value="-i" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\springfan\AppData\Local\Programs\Python\Python36\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/spider" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/spider/spider_common.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -171,30 +170,15 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.pi_bulk_download_special" />
         <item itemvalue="Python.testing" />
         <item itemvalue="Python.pi_report_all_stocks" />
         <item itemvalue="Python.report_daily_gold" />
         <item itemvalue="Python.st_board_bulk_download" />
-        <item itemvalue="Python.spider_common" />
       </list>
     </recent_temporary>
   </component>
-  <component name="ServiceViewManager">
-    <option name="viewStates">
-      <list>
-        <serviceView>
-          <treeState>
-            <expand />
-            <select />
-          </treeState>
-        </serviceView>
-      </list>
-    </option>
-  </component>
-  <component name="StructureViewFactory">
-    <option name="AUTOSCROLL_MODE" value="false" />
-    <option name="ACTIVE_ACTIONS" value=",SHOW_INHERITED" />
-  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="project-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -235,91 +219,54 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State>
-              <option name="COLUMN_ORDER" />
-            </State>
+            <State />
           </value>
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="update" />
     <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="153" y="161" key="#Inspections" timestamp="1588064641517">
-      <screen x="0" y="0" width="1605" height="1050" />
+    <state width="1592" height="316" key="GridCell.Tab.0.bottom" timestamp="1606187470337">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state x="153" y="161" key="#Inspections/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588064641517" />
-    <state x="503" y="133" key="CommitChangelistDialog2" timestamp="1593872409593">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.0.bottom/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470337" />
+    <state width="1592" height="316" key="GridCell.Tab.0.center" timestamp="1606187470337">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state x="503" y="133" key="CommitChangelistDialog2/0.0.1845.1080@0.0.1845.1080" timestamp="1593872409593" />
-    <state width="1824" height="454" key="GridCell.Tab.0.bottom" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.0.center/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470337" />
+    <state width="1592" height="316" key="GridCell.Tab.0.left" timestamp="1606187470337">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.0.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.0.bottom/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.0.center" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.0.left/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470337" />
+    <state width="1592" height="316" key="GridCell.Tab.0.right" timestamp="1606187470337">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.0.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.0.center/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.0.left" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.0.right/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470337" />
+    <state width="1592" height="316" key="GridCell.Tab.1.bottom" timestamp="1606187470250">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.0.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.0.left/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.0.right" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.1.bottom/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470250" />
+    <state width="1592" height="316" key="GridCell.Tab.1.center" timestamp="1606187470250">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.0.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.0.right/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.1.bottom" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.1.center/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470250" />
+    <state width="1592" height="316" key="GridCell.Tab.1.left" timestamp="1606187470250">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.1.bottom/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.1.bottom/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.1.center" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.1.left/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470250" />
+    <state width="1592" height="316" key="GridCell.Tab.1.right" timestamp="1606187470250">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.1.center/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.1.center/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.1.left" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
+    <state width="1592" height="316" key="GridCell.Tab.1.right/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1606187470250" />
+    <state x="309" y="125" key="SettingsEditor" timestamp="1605532869079">
+      <screen x="0" y="0" width="1614" height="960" />
     </state>
-    <state width="905" height="558" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.1.left/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.1.left/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state width="1824" height="454" key="GridCell.Tab.1.right" timestamp="1593697069794">
-      <screen x="0" y="0" width="1845" height="1080" />
-    </state>
-    <state width="905" height="558" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@-120.-1200.1845.1200" timestamp="1588600388000" />
-    <state width="1584" height="478" key="GridCell.Tab.1.right/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588855334623" />
-    <state width="1824" height="454" key="GridCell.Tab.1.right/0.0.1845.1080@0.0.1845.1080" timestamp="1593697069794" />
-    <state x="303" y="167" key="SettingsEditor" timestamp="1588659017445">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="303" y="167" key="SettingsEditor/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588659017445" />
-    <state width="810" height="533" key="XDebugger.FullValuePopup" timestamp="1588167162239">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state width="810" height="533" key="XDebugger.FullValuePopup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588167162239" />
-    <state x="297" y="408" key="com.intellij.execution.console.ConsoleHistoryController$MyBrowseAction$1" timestamp="1593697029451">
-      <screen x="0" y="0" width="1845" height="1080" />
-    </state>
-    <state x="297" y="408" key="com.intellij.execution.console.ConsoleHistoryController$MyBrowseAction$1/0.0.1845.1080@0.0.1845.1080" timestamp="1593697029451" />
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup" timestamp="1588659164562">
-      <screen x="0" y="0" width="1605" height="1050" />
-    </state>
-    <state x="465" y="227" width="672" height="678" key="search.everywhere.popup/-120.-1200.1845.1200/0.0.1605.1050@0.0.1605.1050" timestamp="1588659164562" />
+    <state x="309" y="125" key="SettingsEditor/-2560.0.1614.960/0.0.1614.960@0.0.1614.960" timestamp="1605532869079" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -336,7 +283,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/st_board.py</url>
-          <line>5057</line>
+          <line>5099</line>
           <option name="timeStamp" value="17" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

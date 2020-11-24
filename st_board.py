@@ -470,6 +470,40 @@ def bulk_calc_dfq(al_file, reload=False):
                 add_log(40, '[fn]bulk_calc_dfq(). {0[0]} category:{0[1]} skip', log_args)
 
 
+def bulk_pad_fq(al_file):
+    r"""
+    根据al_file中项目的category,填补因为原数据问题造成的adj_factor缺失
+    al_file: <str> path for al file e.g. '.\data_csv\assets_lists\al_<al_file>.csv'
+    """
+    file_path = None
+    if isinstance(al_file, str):
+        if len(al_file) > 0:
+            file_name = PurePath('al_' + al_file + '.csv')
+            file_path = sub_path / sub_path_al / file_name
+    if file_path is None:
+        log_args = [al_file]
+        add_log(10, '[fn]bulk_pad_fq(). invalid al_file string: {0[0]}', log_args)
+        return
+    try:
+        df_al = pd.read_csv(file_path, index_col='ts_code')
+    except FileNotFoundError:
+        log_args = [file_path]
+        add_log(10, '[fn]bulk_pad_fq(). al_file "{0[0]}" not exist', log_args)
+        return
+    log_args = [len(df_al)]
+    add_log(40, '[fn]bulk_pad_fq(). df_al loaded -success, items:"{0[0]}"', log_args)
+    for index, row in df_al.iterrows():
+        if row['selected'] == 'T' or row['selected'] == 't':
+            ts_code = index
+            category = All_Assets_List.query_category_str(ts_code)
+            if category in FUND:
+                pad_fund_adj_factor(ts_code)
+            else:
+                log_args = [ts_code, category]
+                add_log(40, '[fn]bulk_pad_fq(). {0[0]} category:{0[1]} skip', log_args)
+                continue
+
+
 def take_head_n(df, nrows):
     """
     df: <DataFrame>实例
@@ -509,6 +543,51 @@ def load_source_df(ts_code, source, nrows=None):
     #     log_args = [ts_code, source]
     #     add_log(30, '[fn]load_source_df ts_code:{0[0]}; source:{0[1]} not matched', log_args)
     #     return
+
+
+def pad_fund_adj_factor(ts_code, df_fq=None):
+    """
+    根据fund_daily <df>的index，pad补全fund_adj_factor缺失的数据
+    ts_code: <str>
+    df_fq: <DataFrame> of fund_adj_factor，直接pad此df，不重新读入
+        None, 重新load fund_adj_factor后再pad
+    """
+    global raw_data
+    if raw_data.valid_ts_code(ts_code):
+        if df_fq is None:
+            df_fq = Fund.load_adj_factor(ts_code)
+        elif isinstance(df_fq, pd.DataFrame) is not True:
+            log_args = [ts_code]
+            add_log(20, '[fn]pad_fund_adj_factor() ts_code "{0[0]}" invalid df_adj', log_args)
+            return
+        # ----pad df_fq, _df_fq是结果
+        df_fund = Fund.load_fund_daily(ts_code, columns='basic')
+        if isinstance(df_fund, pd.DataFrame) is not True:
+            log_args = [ts_code]
+            add_log(20, '[fn]pad_fund_adj_factor() ts_code "{0[0]}" invalid df_fund', log_args)
+            return
+        idx_fund = df_fund.index  # 日期排序由近到远
+        _df_fq = pd.DataFrame(index=idx_fund)
+        _df_fq.sort_index(ascending=True, inplace=True)  # 日期排序由远到近
+        _df_fq.loc[:, 'ts_code'] = ts_code
+        _df_fq.loc[:, 'adj_factor'] = df_fq.adj_factor
+        _df_fq['adj_factor'].interpolate(method='pad', inplace=True, limit_direction='forward', limit=5)  # pad模式只能forward
+        _df_fq.sort_index(ascending=False, inplace=True)  # 日期排序由近到远
+        # ----export _df_fq to csv
+        df_n = len(_df_fq)
+        file_name = PurePath('fq_' + ts_code + '.csv')
+        file_path = sub_path / sub_path_2nd_fund_daily / file_name
+        if df_n > 0:
+            _df_fq.to_csv(file_path, encoding='utf-8')
+            log_args = [file_name, df_n]
+            add_log(40, '[fn]pad_fund_adj_factor(). file:{0[0]} items:{0[1]}', log_args)
+        else:
+            log_args = [file_name, df_n]
+            add_log(30, '[fn]pad_fund_adj_factor(). file_name:{0[0]} items:{0[1]}, aborted', log_args)
+    else:
+        log_args = [ts_code]
+        add_log(20, '[fn]pad_fund_adj_factor() ts_code "{0[0]}" invalid', log_args)
+        return
 
 
 class All_Assets_List:
@@ -1865,7 +1944,6 @@ class Fund(Asset):
                 log_args = [file_name, df_n]
                 add_log(40, '[fn]Fund.get_daily_net(). file:{0[0]} items:{0[1]}', log_args)
             return df
-
 
     @staticmethod
     def load_adj_factor(ts_code, nrows=None):
