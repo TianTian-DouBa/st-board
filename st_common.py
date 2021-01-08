@@ -391,6 +391,7 @@ class Raw_Data:
     def query_name(self, ts_code):
         """
         查询asset的name
+        return: <str> e.g. "上证指数"
         """
         try:
             name = self.all_assets_list.loc[ts_code]['name']
